@@ -4,16 +4,15 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Crown, Check, Sparkles } from 'lucide-react'
-import { useSubscriptionStore, PRO_FEATURES, PRO_PRICE_MONTHLY, PRO_PRICE_YEARLY } from '@/lib/subscription'
+import { Crown, Check, Sparkles, ExternalLink, AlertCircle } from 'lucide-react'
+import { useSubscriptionStore, PRO_FEATURES, PRO_PRICE_MONTHLY, PRO_PRICE_YEARLY, BillingPeriod } from '@/lib/subscription'
 import { toast } from 'sonner'
 
-type BillingPeriod = 'monthly' | 'yearly'
-
 export function GoProView() {
-  const { tier, setTier, setUpgradeDialogOpen } = useSubscriptionStore()
+  const { tier, setTier, setSubscriptionData, stripeSessionId, cancelAtPeriodEnd, currentPeriodEnd, isTrial, trialEnd } = useSubscriptionStore()
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('yearly')
   const [upgrading, setUpgrading] = useState(false)
+  const [managing, setManaging] = useState(false)
 
   const isPro = tier === 'pro'
   const price = billingPeriod === 'monthly' ? PRO_PRICE_MONTHLY : PRO_PRICE_YEARLY
@@ -22,15 +21,75 @@ export function GoProView() {
 
   async function handleUpgrade() {
     setUpgrading(true)
-    await new Promise((resolve) => setTimeout(resolve, 800))
-    setTier('pro')
-    setUpgrading(false)
-    toast.success('Welcome to Reunify Pro! 🎉', {
-      description: 'You now have access to all Pro features.',
-    })
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ billingPeriod }),
+      })
+
+      const data = await res.json()
+
+      if (data.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.url
+      } else if (data.error) {
+        if (res.status === 503) {
+          // Stripe not configured yet — fall back to free trial
+          setTier('pro')
+          toast.success('Free trial activated! 🎉', {
+            description: 'Payment integration coming soon. Enjoy Pro features for free!',
+          })
+        } else {
+          toast.error('Something went wrong', { description: data.error })
+        }
+      }
+    } catch {
+      // Network error — fall back to free trial
+      setTier('pro')
+      toast.success('Free trial activated! 🎉', {
+        description: 'Payment integration coming soon. Enjoy Pro features for free!',
+      })
+    } finally {
+      setUpgrading(false)
+    }
   }
 
+  async function handleManageSubscription() {
+    if (!stripeSessionId) {
+      toast.error('No active subscription found', {
+        description: 'Your Pro access may be from a free trial.',
+      })
+      return
+    }
+
+    setManaging(true)
+    try {
+      const res = await fetch('/api/stripe/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: stripeSessionId }),
+      })
+
+      const data = await res.json()
+
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        toast.error('Could not open billing portal', { description: data.error })
+      }
+    } catch {
+      toast.error('Network error', { description: 'Please try again.' })
+    } finally {
+      setManaging(false)
+    }
+  }
+
+  // Pro member view
   if (isPro) {
+    const trialActive = isTrial()
+    const periodEnd = currentPeriodEnd ? new Date(currentPeriodEnd * 1000).toLocaleDateString() : null
+
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <div className="flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 shadow-lg mb-4">
@@ -40,6 +99,40 @@ export function GoProView() {
         <p className="text-muted-foreground text-center max-w-md">
           You have access to all Pro features. Keep making progress on your reunification journey!
         </p>
+
+        {/* Subscription status info */}
+        <div className="mt-4 text-center space-y-1">
+          {trialActive && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+              <Sparkles className="size-3.5 text-amber-600" />
+              <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                Free Trial — {trialEnd ? `${Math.ceil((trialEnd - Date.now() / 1000) / 86400)} days left` : 'Active'}
+              </span>
+            </div>
+          )}
+          {cancelAtPeriodEnd && periodEnd && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800">
+              <AlertCircle className="size-3.5 text-orange-600" />
+              <span className="text-sm font-medium text-orange-700 dark:text-orange-400">
+                Cancels on {periodEnd}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Manage subscription */}
+        {stripeSessionId && (
+          <Button
+            variant="outline"
+            className="mt-4 gap-2"
+            onClick={handleManageSubscription}
+            disabled={managing}
+          >
+            <ExternalLink className="size-4" />
+            {managing ? 'Opening...' : 'Manage Subscription'}
+          </Button>
+        )}
+
         <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-lg w-full">
           {PRO_FEATURES.slice(0, 4).map((f) => (
             <div key={f.key} className="text-center p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20">
@@ -52,6 +145,7 @@ export function GoProView() {
     )
   }
 
+  // Upgrade view
   return (
     <div className="max-w-2xl mx-auto py-6 space-y-6">
       {/* Header */}
@@ -134,16 +228,16 @@ export function GoProView() {
           disabled={upgrading}
         >
           {upgrading ? (
-            <span className="animate-pulse">Activating...</span>
+            <span className="animate-pulse">Redirecting to checkout...</span>
           ) : (
             <>
               <Sparkles className="size-4" />
-              Start Free Trial
+              Start 7-Day Free Trial
             </>
           )}
         </Button>
         <p className="text-xs text-muted-foreground">
-          Cancel anytime. Your data stays yours.
+          7-day free trial, then {billingPeriod === 'monthly' ? `$${PRO_PRICE_MONTHLY}/month` : `$${PRO_PRICE_YEARLY}/year`}. Cancel anytime.
         </p>
       </div>
     </div>

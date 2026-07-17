@@ -2,13 +2,32 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 export type SubscriptionTier = 'free' | 'pro'
+export type BillingPeriod = 'monthly' | 'yearly'
 
 interface SubscriptionState {
   tier: SubscriptionTier
   upgradeDialogOpen: boolean
+  stripeSessionId: string | null
+  stripeCustomerId: string | null
+  subscriptionStatus: string | null
+  trialEnd: number | null
+  currentPeriodEnd: number | null
+  cancelAtPeriodEnd: boolean
   setTier: (tier: SubscriptionTier) => void
   setUpgradeDialogOpen: (open: boolean) => void
+  setStripeSession: (sessionId: string | null) => void
+  setSubscriptionData: (data: {
+    tier: SubscriptionTier
+    stripeSessionId?: string | null
+    stripeCustomerId?: string | null
+    subscriptionStatus?: string | null
+    trialEnd?: number | null
+    currentPeriodEnd?: number | null
+    cancelAtPeriodEnd?: boolean
+  }) => void
   isPro: () => boolean
+  isTrial: () => boolean
+  logout: () => void
 }
 
 // PRO_FEATURES list for reference
@@ -31,9 +50,30 @@ export const useSubscriptionStore = create<SubscriptionState>()(
     (set, get) => ({
       tier: 'free' as SubscriptionTier,
       upgradeDialogOpen: false,
+      stripeSessionId: null,
+      stripeCustomerId: null,
+      subscriptionStatus: null,
+      trialEnd: null,
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
       setTier: (tier) => set({ tier }),
       setUpgradeDialogOpen: (open) => set({ upgradeDialogOpen: open }),
+      setStripeSession: (sessionId) => set({ stripeSessionId: sessionId }),
+      setSubscriptionData: (data) => set(data),
       isPro: () => get().tier === 'pro',
+      isTrial: () => {
+        const state = get()
+        return state.tier === 'pro' && state.trialEnd !== null && state.trialEnd > Date.now() / 1000
+      },
+      logout: () => set({
+        tier: 'free',
+        stripeSessionId: null,
+        stripeCustomerId: null,
+        subscriptionStatus: null,
+        trialEnd: null,
+        currentPeriodEnd: null,
+        cancelAtPeriodEnd: false,
+      }),
     }),
     { name: 'reunify-subscription' }
   )
