@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FolderHeart, Eye, Loader2, FileText, ArrowRight } from 'lucide-react'
 import { CreateCaseDialog } from '@/components/create-case-dialog'
+import { UpgradeDialog } from '@/components/upgrade-dialog'
 
 // Lazy load all view components to reduce initial compilation memory
 const DashboardView = lazy(() => import('@/components/views/dashboard-view').then(m => ({ default: m.DashboardView })))
@@ -24,6 +25,7 @@ const CourtDatesView = lazy(() => import('@/components/views/court-dates-view').
 const ParentingClassesView = lazy(() => import('@/components/views/parenting-classes-view').then(m => ({ default: m.ParentingClassesView })))
 const ProgressView = lazy(() => import('@/components/views/progress-view').then(m => ({ default: m.ProgressView })))
 const DailyCheckinsView = lazy(() => import('@/components/views/daily-checkins-view').then(m => ({ default: m.DailyCheckinsView })))
+const GoProView = lazy(() => import('@/components/views/go-pro-view').then(m => ({ default: m.GoProView })))
 
 const VIEW_MAP: Record<ViewType, React.ComponentType> = {
   'dashboard': DashboardView,
@@ -38,6 +40,7 @@ const VIEW_MAP: Record<ViewType, React.ComponentType> = {
   'parenting-classes': ParentingClassesView,
   'daily-checkins': DailyCheckinsView,
   'progress': ProgressView,
+  'go-pro': GoProView,
 }
 
 function ViewLoader() {
@@ -190,6 +193,7 @@ export default function Home() {
           </footer>
         </div>
       </SidebarInset>
+      <UpgradeDialog />
     </SidebarProvider>
   )
 }
