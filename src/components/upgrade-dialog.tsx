@@ -11,10 +11,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Crown, Check, Sparkles } from 'lucide-react'
-import { useSubscriptionStore, PRO_FEATURES, PRO_PRICE_MONTHLY, PRO_PRICE_YEARLY } from '@/lib/subscription'
+import { useSubscriptionStore, PRO_FEATURES, PRO_PRICE_MONTHLY, PRO_PRICE_YEARLY, BillingPeriod } from '@/lib/subscription'
 import { toast } from 'sonner'
-
-type BillingPeriod = 'monthly' | 'yearly'
 
 export function UpgradeDialog() {
   const { upgradeDialogOpen, setUpgradeDialogOpen, setTier, tier } = useSubscriptionStore()
@@ -27,14 +25,40 @@ export function UpgradeDialog() {
 
   async function handleUpgrade() {
     setUpgrading(true)
-    // Simulate a brief delay for UX
-    await new Promise((resolve) => setTimeout(resolve, 800))
-    setTier('pro')
-    setUpgrading(false)
-    setUpgradeDialogOpen(false)
-    toast.success('Welcome to Reunify Pro! 🎉', {
-      description: 'You now have access to all Pro features.',
-    })
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ billingPeriod }),
+      })
+
+      const data = await res.json()
+
+      if (data.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.url
+      } else if (data.error) {
+        if (res.status === 503) {
+          // Stripe not configured yet — fall back to free trial
+          setTier('pro')
+          setUpgradeDialogOpen(false)
+          toast.success('Free trial activated! 🎉', {
+            description: 'Payment integration coming soon. Enjoy Pro features for free!',
+          })
+        } else {
+          toast.error('Something went wrong', { description: data.error })
+        }
+      }
+    } catch {
+      // Network error — fall back to free trial
+      setTier('pro')
+      setUpgradeDialogOpen(false)
+      toast.success('Free trial activated! 🎉', {
+        description: 'Payment integration coming soon. Enjoy Pro features for free!',
+      })
+    } finally {
+      setUpgrading(false)
+    }
   }
 
   return (
@@ -122,16 +146,16 @@ export function UpgradeDialog() {
                 disabled={upgrading}
               >
                 {upgrading ? (
-                  <span className="animate-pulse">Activating...</span>
+                  <span className="animate-pulse">Redirecting to checkout...</span>
                 ) : (
                   <>
                     <Sparkles className="size-4" />
-                    Start Free Trial
+                    Start 7-Day Free Trial
                   </>
                 )}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
-                Cancel anytime. Your data stays yours.
+                7-day free trial, then {billingPeriod === 'monthly' ? `$${PRO_PRICE_MONTHLY}/month` : `$${PRO_PRICE_YEARLY}/year`}. Cancel anytime.
               </p>
             </>
           )}

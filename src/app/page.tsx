@@ -11,6 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { FolderHeart, Eye, Loader2, FileText, ArrowRight } from 'lucide-react'
 import { CreateCaseDialog } from '@/components/create-case-dialog'
 import { UpgradeDialog } from '@/components/upgrade-dialog'
+import { useSubscriptionStore } from '@/lib/subscription'
+import { toast } from 'sonner'
 
 // Lazy load all view components to reduce initial compilation memory
 const DashboardView = lazy(() => import('@/components/views/dashboard-view').then(m => ({ default: m.DashboardView })))
@@ -174,6 +176,61 @@ function ActiveView() {
 
 export default function Home() {
   const { activeCaseId } = useAppStore()
+  const { setTier, setSubscriptionData } = useSubscriptionStore()
+
+  // Handle Stripe checkout return
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const checkoutStatus = params.get('checkout')
+    const sessionId = params.get('session_id')
+
+    if (checkoutStatus === 'success' && sessionId) {
+      // Verify the session with our backend
+      fetch('/api/stripe/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'active' && data.subscription) {
+            setSubscriptionData({
+              tier: 'pro',
+              stripeSessionId: sessionId,
+              subscriptionStatus: data.subscription.status,
+              trialEnd: data.subscription.trialEnd,
+              currentPeriodEnd: data.subscription.currentPeriodEnd,
+              cancelAtPeriodEnd: data.subscription.cancelAtPeriodEnd,
+            })
+            toast.success('Welcome to Reunify Pro! 🎉', {
+              description: 'Your 7-day free trial has started. Enjoy all Pro features!',
+            })
+          } else {
+            // Still activate as fallback
+            setTier('pro')
+            setSubscriptionData({ tier: 'pro', stripeSessionId: sessionId })
+            toast.success('Welcome to Reunify Pro! 🎉', {
+              description: 'Your subscription is being processed. Pro features are now active!',
+            })
+          }
+        })
+        .catch(() => {
+          setTier('pro')
+          setSubscriptionData({ tier: 'pro', stripeSessionId: sessionId })
+          toast.success('Welcome to Reunify Pro! 🎉', {
+            description: 'Your subscription is being processed.',
+          })
+        })
+
+      // Clean up URL
+      window.history.replaceState({}, '', '/')
+    } else if (checkoutStatus === 'cancel') {
+      toast.info('Checkout canceled', {
+        description: 'No worries — you can upgrade anytime!',
+      })
+      window.history.replaceState({}, '', '/')
+    }
+  }, [setTier, setSubscriptionData])
 
   return (
     <SidebarProvider>
