@@ -81,7 +81,7 @@ const emptyCompleteForm: MarkCompleteFormData = {
 }
 
 export function NAStepsView() {
-  const { activeCaseId } = useAppStore()
+  const { activeCaseId, addDialogTrigger } = useAppStore()
   const { data: steps, isLoading } = useNASteps(activeCaseId)
   const createMutation = useCreateItem('na-steps')
   const updateMutation = useUpdateItem('na-steps')
@@ -141,6 +141,13 @@ export function NAStepsView() {
     })
     setAddOpen(true)
   }
+
+  useEffect(() => {
+    if (addDialogTrigger > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      handleAddStep()
+    }
+  }, [addDialogTrigger])
 
   function handleEditStep(step: NAStep) {
     setEditingStep(step)

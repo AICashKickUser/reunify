@@ -139,7 +139,7 @@ export function CreateCaseDialog({ open, onOpenChange }: CreateCaseDialogProps) 
             Create New Case
           </DialogTitle>
           <DialogDescription>
-            Enter your case details to start tracking your reunification journey. All fields except Case Number are optional — you can always fill them in later.
+            Enter your case details below. You can always edit these later.
           </DialogDescription>
         </DialogHeader>
 
@@ -163,7 +163,7 @@ export function CreateCaseDialog({ open, onOpenChange }: CreateCaseDialogProps) 
             <Label htmlFor="courtName">Court Name</Label>
             <Input
               id="courtName"
-              placeholder="e.g., Harris County Family Court"
+              placeholder="e.g., Harris County Family Court - 313th District"
               value={courtName}
               onChange={(e) => setCourtName(e.target.value)}
             />
@@ -175,7 +175,7 @@ export function CreateCaseDialog({ open, onOpenChange }: CreateCaseDialogProps) 
               <Label htmlFor="caseworkerName">Caseworker Name</Label>
               <Input
                 id="caseworkerName"
-                placeholder="Name"
+                placeholder="e.g., Maria Santos"
                 value={caseworkerName}
                 onChange={(e) => setCaseworkerName(e.target.value)}
               />
@@ -184,7 +184,7 @@ export function CreateCaseDialog({ open, onOpenChange }: CreateCaseDialogProps) 
               <Label htmlFor="caseworkerPhone">Caseworker Phone</Label>
               <Input
                 id="caseworkerPhone"
-                placeholder="(555) 123-4567"
+                placeholder="e.g., (713) 555-0142"
                 value={caseworkerPhone}
                 onChange={(e) => setCaseworkerPhone(e.target.value)}
               />
@@ -196,7 +196,7 @@ export function CreateCaseDialog({ open, onOpenChange }: CreateCaseDialogProps) 
             <Label htmlFor="judgeName">Judge Name</Label>
             <Input
               id="judgeName"
-              placeholder="Judge name"
+              placeholder="e.g., Hon. Patricia Williams"
               value={judgeName}
               onChange={(e) => setJudgeName(e.target.value)}
             />
@@ -208,7 +208,7 @@ export function CreateCaseDialog({ open, onOpenChange }: CreateCaseDialogProps) 
               <Label htmlFor="attorneyName">Attorney Name</Label>
               <Input
                 id="attorneyName"
-                placeholder="Name"
+                placeholder="e.g., David Chen"
                 value={attorneyName}
                 onChange={(e) => setAttorneyName(e.target.value)}
               />
@@ -217,7 +217,7 @@ export function CreateCaseDialog({ open, onOpenChange }: CreateCaseDialogProps) 
               <Label htmlFor="attorneyPhone">Attorney Phone</Label>
               <Input
                 id="attorneyPhone"
-                placeholder="(555) 123-4567"
+                placeholder="e.g., (713) 555-0298"
                 value={attorneyPhone}
                 onChange={(e) => setAttorneyPhone(e.target.value)}
               />
@@ -307,10 +307,10 @@ export function CreateCaseDialog({ open, onOpenChange }: CreateCaseDialogProps) 
             />
             <div className="space-y-1 leading-none">
               <Label htmlFor="addDefaultReqs" className="text-sm font-medium cursor-pointer">
-                Add common case plan requirements
+                Add common CPS case plan requirements (recommended)
               </Label>
               <p className="text-xs text-muted-foreground">
-                Automatically add 10 typical CPS requirements like counseling, drug testing, NA meetings, supervised visits, and more. You can customize them later.
+                Automatically adds 10 typical CPS requirements (counseling, drug testing, NA meetings, supervised visits, parenting classes, and more) so you don&apos;t have to enter them manually. You can customize or remove them anytime.
               </p>
             </div>
           </div>

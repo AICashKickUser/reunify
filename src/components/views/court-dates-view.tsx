@@ -469,7 +469,13 @@ function CourtDateCard({
 function CourtDateTimeline({ courtDates }: { courtDates: CourtDate[] }) {
   const [addOpen, setAddOpen] = useState(false)
   const [editDate, setEditDate] = useState<CourtDate | null>(null)
-  const { activeCaseId } = useAppStore()
+  const { activeCaseId, addDialogTrigger } = useAppStore()
+  const [prevTrigger, setPrevTrigger] = useState(addDialogTrigger)
+
+  if (addDialogTrigger !== prevTrigger && addDialogTrigger > 0) {
+    setPrevTrigger(addDialogTrigger)
+    setAddOpen(true)
+  }
 
   const sortedDates = [...courtDates].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 

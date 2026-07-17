@@ -278,3 +278,31 @@ export function useSeedDatabase() {
     },
   })
 }
+
+// Reset case data (delete all related data, keep case)
+export function useResetCase() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (caseId: string) => {
+      const res = await fetch(`/api/cases/${caseId}/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (!res.ok) throw new Error('Failed to reset case data')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['case'] })
+      queryClient.invalidateQueries({ queryKey: ['requirements'] })
+      queryClient.invalidateQueries({ queryKey: ['counseling'] })
+      queryClient.invalidateQueries({ queryKey: ['drug-tests'] })
+      queryClient.invalidateQueries({ queryKey: ['na-steps'] })
+      queryClient.invalidateQueries({ queryKey: ['na-meetings'] })
+      queryClient.invalidateQueries({ queryKey: ['supervised-visits'] })
+      queryClient.invalidateQueries({ queryKey: ['court-dates'] })
+      queryClient.invalidateQueries({ queryKey: ['parenting-classes'] })
+      queryClient.invalidateQueries({ queryKey: ['milestones'] })
+      queryClient.invalidateQueries({ queryKey: ['daily-checkins'] })
+    },
+  })
+}

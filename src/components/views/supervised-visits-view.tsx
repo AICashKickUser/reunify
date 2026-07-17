@@ -636,10 +636,16 @@ function VisitCard({
 }
 
 export function SupervisedVisitsView() {
-  const { activeCaseId } = useAppStore()
+  const { activeCaseId, addDialogTrigger } = useAppStore()
   const { data: visits, isLoading } = useSupervisedVisits(activeCaseId)
   const [addOpen, setAddOpen] = useState(false)
   const [editVisit, setEditVisit] = useState<SupervisedVisit | null>(null)
+  const [prevTrigger, setPrevTrigger] = useState(addDialogTrigger)
+
+  if (addDialogTrigger !== prevTrigger && addDialogTrigger > 0) {
+    setPrevTrigger(addDialogTrigger)
+    setAddOpen(true)
+  }
 
   if (isLoading) {
     return (

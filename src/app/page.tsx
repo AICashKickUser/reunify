@@ -8,7 +8,7 @@ import { useAppStore, VIEW_LABELS, type ViewType } from '@/lib/store'
 import { useCases, useSeedDatabase } from '@/lib/data-hooks'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { FolderHeart, Plus, Loader2, FileText } from 'lucide-react'
+import { FolderHeart, Eye, Loader2, FileText, ArrowRight } from 'lucide-react'
 import { CreateCaseDialog } from '@/components/create-case-dialog'
 
 // Lazy load all view components to reduce initial compilation memory
@@ -80,29 +80,46 @@ function WelcomeScreen() {
             Track your CPS reunification case plan progress. Stay organized, stay focused, and bring your kids home.
           </p>
         </div>
-        <Card className="text-left">
-          <CardHeader>
-            <CardTitle className="text-lg">Get Started</CardTitle>
-            <CardDescription>Set up your case to begin tracking your progress</CardDescription>
+
+        {/* Primary Action: Create Your Case */}
+        <Card className="text-left border-emerald-200 dark:border-emerald-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg text-emerald-700 dark:text-emerald-400">Set Up Your Case</CardTitle>
+            <CardDescription>Enter your case details to start tracking your progress</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Your case plan details will help you stay on top of every requirement — from counseling sessions and drug tests to supervised visits and court dates.
             </p>
             <Button
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-12 text-base"
               onClick={() => setCreateDialogOpen(true)}
             >
-              <FileText className="size-4" />
-              Create New Case
+              <FileText className="size-5 mr-1" />
+              Create My Case
+              <ArrowRight className="size-4 ml-1" />
             </Button>
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">or</span>
-              </div>
+          </CardContent>
+        </Card>
+
+        {/* Divider: Just exploring? */}
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-3 text-muted-foreground/70">Just exploring?</span>
+          </div>
+        </div>
+
+        {/* Secondary Action: Load Demo */}
+        <Card className="text-left border-dashed">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Eye className="size-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                Load a sample case with realistic data to explore how Reunify works — this is not real data.
+              </p>
             </div>
             <Button
               variant="outline"
@@ -115,13 +132,10 @@ function WelcomeScreen() {
               {seedMutation.isPending ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
-                <Plus className="size-4" />
+                <Eye className="size-4" />
               )}
-              {seedMutation.isPending ? 'Loading Demo Case...' : 'Load Demo Case'}
+              {seedMutation.isPending ? 'Loading Demo Case...' : 'Explore with Demo Data'}
             </Button>
-            <p className="text-xs text-muted-foreground text-center">
-              Load a sample case with realistic data to explore the app
-            </p>
           </CardContent>
         </Card>
 

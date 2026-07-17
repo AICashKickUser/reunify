@@ -100,7 +100,7 @@ function EmptyCheckins() {
 
 // --- Main Component ---
 export function DailyCheckinsView() {
-  const { activeCaseId } = useAppStore()
+  const { activeCaseId, addDialogTrigger } = useAppStore()
   const { data: caseData, isLoading: caseLoading } = useCase(activeCaseId)
   const { data: checkins, isLoading: checkinsLoading } = useDailyCheckIns(activeCaseId)
   const createCheckin = useCreateItem('daily-checkins')
@@ -127,6 +127,13 @@ export function DailyCheckinsView() {
     setFormDrugTestCompleted(false)
     setFormMeetingsAttended(0)
     setFormNotes('')
+  }
+
+  const [prevTrigger, setPrevTrigger] = useState(addDialogTrigger)
+  if (addDialogTrigger !== prevTrigger && addDialogTrigger > 0) {
+    setPrevTrigger(addDialogTrigger)
+    resetForm()
+    setAddDialogOpen(true)
   }
 
   function openEditDialog(checkin: NonNullable<typeof checkins>[0]) {

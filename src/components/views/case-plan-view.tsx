@@ -5,10 +5,10 @@ import { format, differenceInDays, parseISO, isPast } from 'date-fns'
 import {
   ClipboardList, Plus, Edit, Trash2, Phone, User, Gavel,
   CalendarDays, StickyNote, CheckCircle2, Clock, AlertTriangle,
-  ChevronRight, Loader2, Building2
+  ChevronRight, Loader2, Building2, RefreshCw
 } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
-import { useCase, useRequirements, useCreateItem, useUpdateItem, useDeleteItem } from '@/lib/data-hooks'
+import { useCase, useRequirements, useCreateItem, useUpdateItem, useDeleteItem, useResetCase } from '@/lib/data-hooks'
 import { CATEGORY_COLORS, type CaseRequirement } from '@/lib/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,10 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -667,9 +671,17 @@ function RequirementItem({
 function RequirementsList({ requirements }: { requirements: CaseRequirement[] }) {
   const [addOpen, setAddOpen] = useState(false)
   const [editReq, setEditReq] = useState<CaseRequirement | null>(null)
-  const { activeCaseId } = useAppStore()
+  const [resetDialogOpen, setResetDialogOpen] = useState(false)
+  const { activeCaseId, addDialogTrigger } = useAppStore()
   const updateMutation = useUpdateItem('requirements')
   const deleteMutation = useDeleteItem('requirements')
+  const resetMutation = useResetCase()
+  const [prevTrigger, setPrevTrigger] = useState(addDialogTrigger)
+
+  if (addDialogTrigger !== prevTrigger && addDialogTrigger > 0) {
+    setPrevTrigger(addDialogTrigger)
+    setAddOpen(true)
+  }
 
   const groupedRequirements = useMemo(() => {
     const groups: Record<string, CaseRequirement[]> = {}
@@ -698,6 +710,15 @@ function RequirementsList({ requirements }: { requirements: CaseRequirement[] })
     deleteMutation.mutate(id)
   }
 
+  const handleResetCase = () => {
+    if (!activeCaseId) return
+    resetMutation.mutate(activeCaseId, {
+      onSuccess: () => {
+        setResetDialogOpen(false)
+      },
+    })
+  }
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -706,14 +727,32 @@ function RequirementsList({ requirements }: { requirements: CaseRequirement[] })
             <ClipboardList className="size-5 text-emerald-600" />
             Requirements
           </CardTitle>
-          <Button
-            className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            size="sm"
-            onClick={() => setAddOpen(true)}
-          >
-            <Plus className="size-3.5 mr-1" />
-            Add Requirement
-          </Button>
+          <div className="flex items-center gap-2">
+            {(requirements.length > 0) && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => setResetDialogOpen(true)}
+                disabled={resetMutation.isPending}
+              >
+                {resetMutation.isPending ? (
+                  <Loader2 className="size-3.5 mr-1 animate-spin" />
+                ) : (
+                  <RefreshCw className="size-3.5 mr-1" />
+                )}
+                Start Fresh
+              </Button>
+            )}
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              size="sm"
+              onClick={() => setAddOpen(true)}
+            >
+              <Plus className="size-3.5 mr-1" />
+              Add Requirement
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -780,6 +819,31 @@ function RequirementsList({ requirements }: { requirements: CaseRequirement[] })
         onOpenChange={(open) => { if (!open) setEditReq(null) }}
         requirement={editReq}
       />
+
+      <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Start Fresh</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove all data from this case (requirements, sessions, tests, meetings, visits, etc.) but keep your case details. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={handleResetCase}
+              disabled={resetMutation.isPending}
+            >
+              {resetMutation.isPending ? (
+                <><Loader2 className="size-4 animate-spin mr-1" />Clearing...</>
+              ) : (
+                'Yes, Clear All Data'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   )
 }

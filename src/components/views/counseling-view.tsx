@@ -78,7 +78,7 @@ const emptyForm: SessionFormData = {
 }
 
 export function CounselingView() {
-  const { activeCaseId } = useAppStore()
+  const { activeCaseId, addDialogTrigger } = useAppStore()
   const { data: sessions, isLoading } = useCounselingSessions(activeCaseId)
   const createMutation = useCreateItem('counseling')
   const updateMutation = useUpdateItem('counseling')
@@ -89,6 +89,13 @@ export function CounselingView() {
   const [form, setForm] = useState<SessionFormData>(emptyForm)
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [prevTrigger, setPrevTrigger] = useState(addDialogTrigger)
+
+  if (addDialogTrigger !== prevTrigger && addDialogTrigger > 0) {
+    setPrevTrigger(addDialogTrigger)
+    setForm(emptyForm)
+    setAddOpen(true)
+  }
 
   // Stats
   const stats = useMemo(() => {

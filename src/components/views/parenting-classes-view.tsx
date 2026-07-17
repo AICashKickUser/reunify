@@ -448,11 +448,17 @@ function ClassCard({
 }
 
 export function ParentingClassesView() {
-  const { activeCaseId } = useAppStore()
+  const { activeCaseId, addDialogTrigger } = useAppStore()
   const { data: classes, isLoading } = useParentingClasses(activeCaseId)
   const deleteMutation = useDeleteItem('parenting-classes')
   const [addOpen, setAddOpen] = useState(false)
   const [editClass, setEditClass] = useState<ParentingClass | null>(null)
+  const [prevTrigger, setPrevTrigger] = useState(addDialogTrigger)
+
+  if (addDialogTrigger !== prevTrigger && addDialogTrigger > 0) {
+    setPrevTrigger(addDialogTrigger)
+    setAddOpen(true)
+  }
 
   if (isLoading) {
     return (

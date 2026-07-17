@@ -67,7 +67,7 @@ const emptyForm: MeetingFormData = {
 }
 
 export function NAMeetingsView() {
-  const { activeCaseId } = useAppStore()
+  const { activeCaseId, addDialogTrigger } = useAppStore()
   const { data: meetings, isLoading } = useNAMeetings(activeCaseId)
   const createMutation = useCreateItem('na-meetings')
   const updateMutation = useUpdateItem('na-meetings')
@@ -77,6 +77,13 @@ export function NAMeetingsView() {
   const [editingMeeting, setEditingMeeting] = useState<NAMeeting | null>(null)
   const [form, setForm] = useState<MeetingFormData>(emptyForm)
   const [verifiedFilter, setVerifiedFilter] = useState<string>('all')
+  const [prevTrigger, setPrevTrigger] = useState(addDialogTrigger)
+
+  if (addDialogTrigger !== prevTrigger && addDialogTrigger > 0) {
+    setPrevTrigger(addDialogTrigger)
+    setForm(emptyForm)
+    setAddOpen(true)
+  }
 
   // Stats
   const stats = useMemo(() => {

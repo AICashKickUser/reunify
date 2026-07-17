@@ -5,13 +5,26 @@ import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
-import { useAppStore, VIEW_LABELS } from '@/lib/store'
+import { useAppStore, VIEW_LABELS, type ViewType } from '@/lib/store'
 import { useCase } from '@/lib/data-hooks'
 
+const VIEW_ADD_LABELS: Partial<Record<ViewType, string>> = {
+  'counseling': 'Add Session',
+  'drug-testing': 'Log Test',
+  'na-steps': 'Add Step',
+  'na-meetings': 'Add Meeting',
+  'supervised-visits': 'Add Visit',
+  'court-dates': 'Add Court Date',
+  'parenting-classes': 'Add Class',
+  'case-plan': 'Add Requirement',
+  'daily-checkins': 'Check In',
+}
+
 export function AppHeader() {
-  const { activeView, activeCaseId } = useAppStore()
+  const { activeView, activeCaseId, triggerAddDialog } = useAppStore()
   const title = VIEW_LABELS[activeView]
   const { data: caseData } = useCase(activeCaseId)
+  const addLabel = VIEW_ADD_LABELS[activeView]
 
   // Calculate overall progress from requirements
   const requirements = caseData?.requirements ?? []
@@ -39,10 +52,10 @@ export function AppHeader() {
         </div>
       )}
 
-      {activeCaseId && (
-        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white">
+      {activeCaseId && addLabel && (
+        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={triggerAddDialog}>
           <Plus className="size-4" />
-          <span className="hidden sm:inline">Add New</span>
+          <span className="hidden sm:inline">{addLabel}</span>
         </Button>
       )}
     </header>

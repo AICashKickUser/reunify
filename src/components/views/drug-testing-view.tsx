@@ -105,7 +105,7 @@ const emptyForm: DrugTestFormData = {
 }
 
 export function DrugTestingView() {
-  const { activeCaseId } = useAppStore()
+  const { activeCaseId, addDialogTrigger } = useAppStore()
   const { data: tests, isLoading } = useDrugTests(activeCaseId)
   const createMutation = useCreateItem('drug-tests')
   const updateMutation = useUpdateItem('drug-tests')
@@ -116,6 +116,13 @@ export function DrugTestingView() {
   const [form, setForm] = useState<DrugTestFormData>(emptyForm)
   const [resultFilter, setResultFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [prevTrigger, setPrevTrigger] = useState(addDialogTrigger)
+
+  if (addDialogTrigger !== prevTrigger && addDialogTrigger > 0) {
+    setPrevTrigger(addDialogTrigger)
+    setForm(emptyForm)
+    setAddOpen(true)
+  }
 
   // Stats
   const stats = useMemo(() => {
