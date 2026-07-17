@@ -1,0 +1,420 @@
+     1→# Worklog - Reunify CPS Reunification Progress Tracker
+     2→
+     3→## Task 2-a: API Routes Implementation
+     4→**Date**: 2026-07-17
+     5→**Agent**: API Route Developer
+     6→
+     7→### Completed Work
+     8→
+     9→Created all 23 API route files for the Reunify application:
+    10→
+    11→#### Route Files Created
+    12→1. `/src/app/api/cases/route.ts` - GET (list with counts), POST (create)
+    13→2. `/src/app/api/cases/[id]/route.ts` - GET (with all related data), PUT, DELETE
+    14→3. `/src/app/api/counseling/route.ts` - GET (filter by caseId), POST
+    15→4. `/src/app/api/counseling/[id]/route.ts` - PUT, DELETE
+    16→5. `/src/app/api/drug-tests/route.ts` - GET (filter by caseId), POST
+    17→6. `/src/app/api/drug-tests/[id]/route.ts` - PUT, DELETE
+    18→7. `/src/app/api/na-steps/route.ts` - GET (filter by caseId), POST
+    19→8. `/src/app/api/na-steps/[id]/route.ts` - PUT, DELETE
+    20→9. `/src/app/api/na-meetings/route.ts` - GET (filter by caseId), POST
+    21→10. `/src/app/api/na-meetings/[id]/route.ts` - PUT, DELETE
+    22→11. `/src/app/api/supervised-visits/route.ts` - GET (filter by caseId), POST
+    23→12. `/src/app/api/supervised-visits/[id]/route.ts` - PUT, DELETE
+    24→13. `/src/app/api/court-dates/route.ts` - GET (filter by caseId), POST
+    25→14. `/src/app/api/court-dates/[id]/route.ts` - PUT, DELETE
+    26→15. `/src/app/api/parenting-classes/route.ts` - GET (filter by caseId), POST
+    27→16. `/src/app/api/parenting-classes/[id]/route.ts` - PUT, DELETE
+    28→17. `/src/app/api/milestones/route.ts` - GET (filter by caseId), POST
+    29→18. `/src/app/api/milestones/[id]/route.ts` - PUT, DELETE
+    30→19. `/src/app/api/requirements/route.ts` - GET (filter by caseId), POST
+    31→20. `/src/app/api/requirements/[id]/route.ts` - PUT, DELETE
+    32→21. `/src/app/api/daily-checkins/route.ts` - GET (filter by caseId), POST
+    33→22. `/src/app/api/daily-checkins/[id]/route.ts` - PUT, DELETE
+    34→23. `/src/app/api/seed/route.ts` - POST (comprehensive seed with demo data)
+    35→
+    36→#### Seed Data Details
+    37→The seed route creates a realistic CPS reunification scenario:
+    38→- **Case**: CPS-2024-0847, Harris County Family Court, active status
+    39→- **NA Steps**: 12 steps (1-12), first 3 completed with sponsor verification
+    40→- **Counseling Sessions**: 12 sessions (9 completed, 3 upcoming), mix of individual/family/group/couples
+    41→- **Drug Tests**: 13 tests (mostly negative, 1 diluted with retest, 2 pending)
+    42→- **NA Meetings**: 11 meetings (9 verified, 2 upcoming)
+    43→- **Supervised Visits**: 8 visits (6 completed progressing from supervised→semi-supervised, 2 upcoming unsupervised)
+    44→- **Court Dates**: 6 hearings (4 completed spanning emergency→adjudication→review→permanency, 2 upcoming)
+    45→- **Parenting Classes**: 10 sessions (all completed, certificate received)
+    46→- **Milestones**: 12 milestones (6 completed, 6 in progress across legal/recovery/family/housing/employment)
+    47→- **Requirements**: 17 requirements covering all categories (counseling, drug-testing, na-meetings, na-steps, supervised-visits, parenting-classes, housing, employment, other)
+    48→- **Daily Check-ins**: 14 days of checkins with realistic moods and notes
+    49→
+    50→#### Technical Details
+    51→- Uses `import { db } from '@/lib/db'` for database access
+    52→- Uses Next.js 16 pattern: `const { id } = await params` for dynamic route params
+    53→- All list endpoints support `caseId` query parameter filtering
+    54→- Cases list includes `_count` of all related entities
+    55→- Single case GET includes all related data with proper ordering
+    56→- Proper error handling with try/catch and appropriate HTTP status codes
+    57→- ESLint passes with no errors
+    58→- All endpoints tested and verified working
+    59→
+    60→## Task 3-b: Case Plan and Court Dates Views
+    61→**Date**: 2026-07-17
+    62→**Agent**: View Component Developer
+    63→
+    64→### Completed Work
+    65→
+    66→Implemented two major view components for the Reunify CPS Reunification Progress Tracker app.
+    67→
+    68→#### Files Modified
+    69→1. `/src/components/views/case-plan-view.tsx` - Full Case Plan view implementation
+    70→2. `/src/components/views/court-dates-view.tsx` - Full Court Dates view implementation
+    71→
+    72→#### Case Plan View Features
+    73→- **Case Info Summary Card**: Displays case number, court name, caseworker (name + phone), attorney (name + phone), judge, removal date, target reunification date, days elapsed, and days remaining. Edit button opens a dialog to update case details.
+    74→- **Progress Overview**: Large progress bar showing overall completion percentage with "X of Y requirements completed". Category breakdown grid with small progress bars for each category, using CATEGORY_COLORS from types.ts.
+    75→- **Requirements List**: Grouped by category using Accordion components. Each category shows name, completion count (e.g., "3/5"), and expand/collapse. Individual requirements show: checkbox toggle, title/description, frequency badge, due date, status indicators (completed=green check, pending=amber clock, overdue=red alert), notes indicator, edit/delete buttons.
+    76→- **Add Requirement Dialog**: Category select, title input, description textarea, frequency select, due date picker. Creates via `useCreateItem('requirements')`.
+    77→- **Edit Requirement Dialog**: Same fields pre-filled, updates via `useUpdateItem('requirements')`.
+    78→- **Edit Case Dialog**: All case detail fields, updates via `useUpdateItem('cases')`.
+    79→- **Loading/Empty States**: Skeleton loading for async data, empty state with call-to-action for no requirements.
+    80→
+    81→#### Court Dates View Features
+    82→- **Summary Card**: Total hearings count, next court date highlighted with days-until badge (destructive if <7 days, outline otherwise), last hearing outcome display.
+    83→- **Timeline-Style List**: Vertical timeline with dot indicators (green=completed, amber ring=upcoming, gray=past). Each court date displayed as a Card with: date prominently shown, hearing type badge (color-coded: emergency=red, adjudication=amber, disposition=orange, review=sky, permanency=purple, termination=rose, final=emerald), outcome (green box), judge notes, next steps, edit button. Emergency hearings get red border styling.
+    84→- **Add Court Date Dialog**: Date picker, hearing type select, notes textarea. Creates via `useCreateItem('court-dates')`.
+    85→- **Edit Court Date Dialog**: Same fields plus outcome, judge notes, next steps (shown when "Hearing completed" checkbox is checked). Updates via `useUpdateItem('court-dates')`.
+    86→- **Loading/Empty States**: Skeleton loading, empty state with call-to-action.
+    87→
+    88→#### Technical Details
+    89→- All components are `'use client'` as required
+    90→- Uses data hooks from `@/lib/data-hooks` (`useCase`, `useRequirements`, `useCourtDates`, `useCreateItem`, `useUpdateItem`, `useDeleteItem`)
+    91→- Uses `useAppStore().activeCaseId` for case context
+    92→- Uses shadcn/ui components: Card, Accordion, Badge, Checkbox, Progress, Dialog, Select, Popover, Calendar, Separator, Skeleton
+    93→- Uses Lucide icons for visual indicators
+    94→- Uses date-fns for date formatting and calculations
+    95→- CATEGORY_COLORS applied consistently for category badges and progress bars
+    96→- Responsive layout with grid breakpoints
+    97→- ESLint passes with no errors for both files
+    98→- Pre-existing lint error in dashboard-view.tsx (Stairs import) is unrelated to this task
+    99→
+   100→## Task 3-c: Counseling, Drug Testing, NA Steps, and NA Meetings Views
+   101→**Date**: 2026-07-17
+   102→**Agent**: View Component Developer
+   103→
+   104→### Completed Work
+   105→
+   106→Implemented four major view components for the Reunify CPS Reunification Progress Tracker app.
+   107→
+   108→#### Files Modified
+   109→1. `/src/components/views/counseling-view.tsx` - Full Counseling Sessions view
+   110→2. `/src/components/views/drug-testing-view.tsx` - Full Drug Testing view
+   111→3. `/src/components/views/na-steps-view.tsx` - Full NA 12 Steps view
+   112→4. `/src/components/views/na-meetings-view.tsx` - Full NA Meetings view
+   113→
+   114→#### Counseling View Features
+   115→- **Stats Row**: 4 cards - Total Sessions (calendar icon), Completed (check icon, emerald), Upcoming (clock icon, amber), Completion Rate (trending icon, percentage)
+   116→- **Session List**: Card grid with each session showing date, counselor name, session type badge (color-coded: individual=emerald, group=sky, family=violet, couples=rose), duration, notes preview, completed/upcoming status badge, edit button
+   117→- **Sorting**: Upcoming sessions first (by date asc), then past sessions (by date desc)
+   118→- **Filters**: Filter by session type (individual/group/family/couples) and completion status
+   119→- **Add Session Dialog**: Date, counselor name, session type select, duration (minutes), notes textarea. Creates via `useCreateItem('counseling')` with `caseId: activeCaseId`
+   120→- **Edit Session Dialog**: Same fields plus isCompleted checkbox toggle. Updates via `useUpdateItem('counseling')`
+   121→- **Loading/Empty States**: Skeleton loading, motivational empty state with call-to-action
+   122→
+   123→#### Drug Testing View Features
+   124→- **Stats Row**: 6 cards - Total Tests, Negative (emerald), Positive (red), Pending (amber), Pass Rate (percentage), Clean Streak (flame icon, consecutive clean days, orange)
+   125→- **30-Day Clean Streak Calendar**: GitHub contribution-graph-style grid of 30 small squares. Green=negative, Red=positive, Yellow=pending, Yellow=diluted, Gray=no test. Tooltip on hover showing date and result. Legend below the grid.
+   126→- **Test History List**: Cards for each drug test showing: color-coded result dot, date, result badge (color-coded), test type badge, random/scheduled badge (orange), facility + notes, edit button
+   127→- **Filters**: Filter by result (negative/positive/pending/diluted/refused) and test type (urine/hair/blood/saliva)
+   128→- **Add Drug Test Dialog**: Date, test type select, isRandom checkbox, result select, testing facility, notes. Creates via `useCreateItem('drug-tests')` with `caseId: activeCaseId`
+   129→- **Edit Drug Test Dialog**: Same fields. Updates via `useUpdateItem('drug-tests')`
+   130→- **Clean Streak Calculation**: Counts consecutive negative results from most recent test backward
+   131→- **Calendar Overlap Handling**: When multiple tests on same day, worst result takes priority (positive > refused > diluted > pending > negative)
+   132→
+   133→#### NA Steps View Features
+   134→- **Overall Progress Bar**: Large progress bar showing X/12 steps completed with motivational message based on progress percentage
+   135→- **12-Step Timeline**: Vertical timeline layout with steps 1-12. Each step shows: numbered circle (filled emerald if completed, purple outlined if current, gray if not started), step title text from NA_STEP_TITLES, completion status badges, sponsor verified badge (sky), sponsor name, notes, mark complete/edit buttons. Completed steps have green connecting line, incomplete have dotted gray line. Current step (first incomplete) is highlighted with purple border and shadow.
+   136→- **Missing Steps Detection**: Identifies steps not yet added to database, shows "Add Missing Steps" button
+   137→- **Add Step Dialog**: Step number select (1-12, already-added steps disabled), title auto-filled from NA_STEP_TITLES, description textarea, notes textarea. Creates via `useCreateItem('na-steps')` with `caseId: activeCaseId`
+   138→- **Edit Step Dialog**: Title, description, notes, sponsor name, sponsor verified checkbox, completed checkbox, completed date (shown when completed). Updates via `useUpdateItem('na-steps')`
+   139→- **Mark Complete Dialog**: Dedicated dialog for completing a step with: completed date, sponsor name, sponsor verified checkbox, notes textarea. Shows step title in a highlighted purple box. Updates via `useUpdateItem('na-steps')`
+   140→
+   141→#### NA Meetings View Features
+   142→- **Stats Row**: 4 cards - Total Meetings (users icon), This Week (calendar icon), This Month (calendar days icon), Verified Rate (badge-check icon, emerald percentage)
+   143→- **Meeting List**: Card grid with each meeting showing: date, verified/unverified badge, meeting name, location (with map pin icon), speaker (with mic icon), topic (with book icon), notes preview, edit button
+   144→- **Filters**: Filter by verification status (all/verified/unverified)
+   145→- **Add Meeting Dialog**: Date, meeting name, location, speaker, topic, verified checkbox, notes textarea. Creates via `useCreateItem('na-meetings')` with `caseId: activeCaseId`
+   146→- **Edit Meeting Dialog**: Same fields. Updates via `useUpdateItem('na-meetings')`
+   147→- **Loading/Empty States**: Skeleton loading, motivational empty state
+   148→
+   149→#### Technical Details
+   150→- All components are `'use client'` as required
+   151→- Uses data hooks from `@/lib/data-hooks` (`useCounselingSessions`, `useDrugTests`, `useNASteps`, `useNAMeetings`, `useCreateItem`, `useUpdateItem`)
+   152→- Uses `useAppStore().activeCaseId` for case context
+   153→- Uses shadcn/ui components: Card, Badge, Dialog, Button, Input, Label, Textarea, Select, Checkbox, Progress, Skeleton, Tooltip
+   154→- Uses CATEGORY_COLORS from types.ts for consistent color coding of header icons
+   155→- Uses NA_STEP_TITLES from types.ts for step title display
+   156→- Uses Lucide icons throughout for visual indicators
+   157→- All create mutations include `caseId: activeCaseId` in submitted data
+   158→- Date inputs use simple `<input type="date">` for simplicity
+   159→- Responsive: stacks cards on mobile (grid-cols-1/2), expands on desktop (sm:grid-cols-2, lg:grid-cols-4)
+   160→- ESLint passes with no errors across all 4 files
+   161→
+   162→## Task 3-d: Supervised Visits, Parenting Classes, and Progress Report Views
+   163→**Date**: 2026-07-17
+   164→**Agent**: View Component Developer
+   165→
+   166→### Completed Work
+   167→
+   168→Implemented three major view components for the Reunify CPS Reunification Progress Tracker app, plus fixed a critical QueryClientProvider issue.
+   169→
+   170→#### Files Modified
+   171→1. `/src/components/views/supervised-visits-view.tsx` - Full Supervised Visits view
+   172→2. `/src/components/views/parenting-classes-view.tsx` - Full Parenting Classes view
+   173→3. `/src/components/views/progress-view.tsx` - Full Progress Report view
+   174→4. `/src/components/providers.tsx` - **NEW** - React Query provider wrapper
+   175→5. `/src/app/layout.tsx` - Added Providers wrapper and Sonner Toaster
+   176→
+   177→#### Supervised Visits View Features
+   178→- **Stats Row**: 4 cards - Total Visits (baby icon), Completed (check-circle, emerald), Upcoming (clock, amber), Current Level (visit type progression stepper)
+   179→- **Visit Type Progression Stepper**: Visual 3-step progression showing Supervised → Semi-Supervised → Unsupervised. Completed levels show green filled circles with checkmark, current level shows amber filled circle, future levels show gray outlined circles. Arrow connectors between steps change color based on progress.
+   180→- **Visit List**: Cards split into Upcoming (amber header) and Completed (emerald header) sections. Each visit card shows: date/time, visit type badge (supervised=sky, semi-supervised=amber, unsupervised=emerald), completed/pending status badge, location (map pin icon), supervisor name (user icon), duration in minutes (timer icon), child behavior badge (happy=emerald, anxious=amber, withdrawn=slate, engaged=emerald, upset=red), parent behavior badge (same colors), notes (file text icon). Left border color indicates status (emerald=completed, amber=pending). Completed visits list has max-h-96 with scroll overflow.
+   181→- **Add Visit Dialog**: Date, Visit Type select (supervised/semi-supervised/unsupervised), Location, Supervisor Name, Duration (minutes), Child Behavior select, Parent Behavior select, Notes textarea. Creates via `useCreateItem('supervised-visits')` with `caseId: activeCaseId`.
+   182→- **Edit Visit Dialog**: Same fields plus isCompleted checkbox toggle. Updates via `useUpdateItem('supervised-visits')`.
+   183→- **Loading/Empty States**: Skeleton loading, motivational empty state with baby icon.
+   184→
+   185→#### Parenting Classes View Features
+   186→- **Stats Row**: 4 cards - Total Classes (graduation cap icon), Completed (check icon, emerald), Certificates Earned (award icon, amber), Completion Rate (percent icon, percentage)
+   187→- **Class List**: Cards split into Pending (amber header) and Completed (emerald header) sections. Each class card shows: date, completed/pending status badge, certificate earned badge (award icon), class name (book icon), provider (building icon), topic (calendar icon), notes (file text icon). Left border color indicates status. Edit and delete buttons. Completed classes list has max-h-96 with scroll overflow.
+   188→- **Add Class Dialog**: Date, Class Name, Provider, Topic, Completed checkbox, Has Certificate checkbox, Notes textarea. Creates via `useCreateItem('parenting-classes')` with `caseId: activeCaseId`.
+   189→- **Edit Class Dialog**: Same fields. Updates via `useUpdateItem('parenting-classes')`.
+   190→- **Delete**: Uses `useDeleteItem('parenting-classes')` with toast notifications.
+   191→- **Loading/Empty States**: Skeleton loading, motivational empty state with graduation cap icon.
+   192→
+   193→#### Progress Report View Features
+   194→- **Overall Progress Section**: Large emerald circular progress indicator (SVG-based, animated transition) showing overall completion percentage. "Your Reunification Journey" header with motivational message that changes based on progress level (5 tiers: <25%, 25-50%, 50-70%, 70-90%, 90%+). Completed/Total goals counter.
+   195→- **Category Breakdown Grid**: 8 cards in a responsive 4-column grid, each with:
+   196→  - Counseling: Sessions completed/total, attendance rate
+   197→  - Drug Testing: Pass rate, clean streak count, total tests
+   198→  - 12 Steps: Steps completed out of 12
+   199→  - NA Meetings: Verified rate, verified/total
+   200→  - Visits: Completed visits, visit type level label
+   201→  - Parenting Classes: Completion percentage, certificates earned
+   202→  - Court Dates: Completion rate, next court date
+   203→  - Overall Requirements: Completed/total requirements
+   204→  - Each card has: category icon, status badge (Completed/On Track/Needs Attention/Behind), progress bar, key stat, color-coded left border (green/amber/red based on status)
+   205→- **Charts Section** (using recharts):
+   206→  - Radar Chart: Shows progress across all 8 categories on a polar grid with emerald fill
+   207→  - Horizontal Bar Chart: Category comparison with color-coded bars (green=on-track/completed, amber=needs-attention, red=behind)
+   208→- **Key Milestones Timeline**: Vertical timeline showing removal date → completed milestones → reunification target. Green filled dots with connecting lines for completed items, gray outlined dots for pending.
+   209→- **Generate Report Button**: Placeholder button with toast notification indicating future feature.
+   210→- **Status Calculation**: Completed (100%), On Track (≥60%), Needs Attention (≥30%), Behind (<30%)
+   211→- **Loading States**: Skeleton loading with circular progress placeholder.
+   212→
+   213→#### Infrastructure Fixes
+   214→- **QueryClientProvider**: Created `/src/components/providers.tsx` with React Query provider (QueryClient with 60s staleTime, no refetch on window focus). This was required because the app was missing a QueryClientProvider wrapper, causing all data hooks to fail with "No QueryClient set" error.
+   215→- **Sonner Toaster**: Updated layout to use Sonner Toaster (instead of shadcn toaster) to support `toast` from 'sonner' used in all view components.
+   216→- **App now renders successfully**: Both fixes combined resolve the 500 errors that were occurring on page load.
+   217→
+   218→#### Technical Details
+   219→- All 3 view components are `'use client'` as required
+   220→- Uses data hooks from `@/lib/data-hooks` (`useSupervisedVisits`, `useParentingClasses`, `useCase`, `useCreateItem`, `useUpdateItem`, `useDeleteItem`)
+   221→- Uses `useAppStore().activeCaseId` for case context
+   222→- Uses shadcn/ui components: Card, Badge, Dialog, Button, Input, Label, Textarea, Select, Checkbox, Progress, Skeleton, Separator
+   223→- Uses recharts components: RadarChart, BarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, CartesianGrid, XAxis, YAxis, Tooltip, Bar
+   224→- Uses ChartContainer from `@/components/ui/chart` for chart theming
+   225→- Uses Lucide icons throughout for visual indicators
+   226→- All create mutations include `caseId: activeCaseId` in submitted data
+   227→- Date inputs use simple `<input type="date">` for simplicity
+   228→- Responsive: stacks cards on mobile, grid on desktop (sm:grid-cols-2, lg:grid-cols-4)
+   229→- ESLint passes with no errors across all files
+   230→- App compiles and returns 200 status successfully
+   231→- Seed API tested and working with demo data
+   232→
+   233→## Task 3-a: Dashboard and Timeline Views
+   234→**Date**: 2026-07-17
+   235→**Agent**: Dashboard & Timeline View Developer
+   236→
+   237→### Completed Work
+   238→
+   239→Implemented two major view components for the Reunify CPS Reunification Progress Tracker app.
+   240→
+   241→#### Files Modified
+   242→1. `/src/components/views/dashboard-view.tsx` - Full Dashboard view implementation (replaced placeholder)
+   243→2. `/src/components/views/timeline-view.tsx` - Full Timeline/Calendar view implementation (replaced placeholder)
+   244→
+   245→#### Dashboard View Features
+   246→- **6 Stat Cards** (2x3 responsive grid): Case Plan Progress (emerald), Clean Drug Tests (amber), NA Steps Completed (purple), Counseling Sessions (green), Supervised Visits (sky), Days in Case (slate)
+   247→- Each stat card has: color accent bar on left, icon, value, subtitle, optional progress bar
+   248→- **Upcoming Deadlines & Events** (left column): Next 7 days of events, color-coded by category, sorted by date, max-height scrollable list
+   249→- **Recent Activity** (right column): Last 7 days of completed items with check marks, motivational tone, scrollable
+   250→- **Quick Actions Row**: 4 color-coded shortcut buttons (Log Drug Test, Record Visit, Add Counseling Session, Check In Today)
+   251→- **Loading/Empty States**: Skeleton placeholders while data loads, encouraging empty state messages
+   252→- Uses `useCase(activeCaseId)` to fetch all case data in one query
+   253→- `useMemo` for computed stats and filtered event lists
+   254→- CATEGORY_COLORS applied consistently for category badges and styling
+   255→- Responsive: 2-col on mobile, 3-col on desktop for stat cards
+   256→
+   257→#### Timeline View Features
+   258→- **Filter Controls**: Category filter checkboxes (Counseling, Drug Tests, NA Meetings, Visits, Court, Parenting, Milestones) with Checkbox component
+   259→- **Week Navigation**: Prev/next week arrows, current week label, "Today" button
+   260→- **View Mode Toggle**: Switch between "Week" grid view and "List" chronological view
+   261→- **Week View**: 7-column grid (Mon-Sun) on desktop, vertical day list on mobile. Each day cell shows event pills color-coded by category, today highlighted with emerald border, click to expand day detail
+   262→- **Day Detail Panel**: Full list of events for selected day with status indicators, type badges, descriptions, "Add Event" button, close button
+   263→- **List View**: All events chronologically grouped by date with date headers, status indicators, category badges
+   264→- **Loading/Empty States**: Skeleton loading, empty state with calendar icon
+   265→- Unified TimelineEvent type combining all data sources (counseling, drug tests, NA meetings, visits, court dates, parenting classes, milestones)
+   266→- State management: currentWeekStart, selectedDate, viewMode, activeFilters
+   267→
+   268→#### Technical Details
+   269→- All components are `'use client'` as required
+   270→- Uses data hooks from `@/lib/data-hooks` (`useCase`)
+   271→- Uses `useAppStore().activeCaseId` for case context
+   272→- Uses shadcn/ui components: Card, Badge, Button, Progress, Checkbox, Skeleton
+   273→- Uses Lucide icons throughout (Footprints replaces Stairs which doesn't exist in lucide-react)
+   274→- Uses date-fns for all date operations (format, differenceInDays, isToday, isFuture, isWithinInterval, addDays, startOfWeek, endOfWeek, etc.)
+   275→- CATEGORY_COLORS applied consistently for category styling
+   276→- ESLint passes with no errors
+   277→- App compiles and returns 200 status
+   278→
+   279→## Task 2: Daily Check-in View for CPS Reunification Tracker
+   280→**Date**: 2026-07-17
+   281→**Agent**: Daily Check-in View Developer
+   282→
+   283→### Completed Work
+   284→
+   285→Implemented the Daily Check-in view component and integrated it into the Reunify CPS Reunification Progress Tracker app.
+   286→
+   287→#### Files Modified
+   288→1. `/src/lib/store.ts` - Added 'daily-checkins' to ViewType union and VIEW_LABELS
+   289→2. `/src/components/app-sidebar.tsx` - Added CalendarCheck icon import and daily-checkins nav item to Overview group
+   290→3. `/src/app/page.tsx` - Added DailyCheckinsView lazy import and VIEW_MAP entry
+   291→4. `/src/components/views/daily-checkins-view.tsx` - **NEW** - Full Daily Check-in view component
+   292→
+   293→#### Daily Check-in View Features
+   294→
+   295→- **Today's Check-in Card**: Prominent card at top with dynamic state:
+   296→  - If not checked in: Warm amber-bordered card with sun icon, encouraging message, and large "Check In Now" button with sparkles icon
+   297→  - If checked in: Green-bordered card with checkmark icon, completion timestamp, and quick summary of mood, drug test, and meetings badges. Edit button available.
+   298→  
+   299→- **Quick Check-in Form** (inline, appears after clicking "Check In Now"):
+   300→  - **Mood Selector**: 5 emoji buttons (Great 😊, Good 🙂, Okay 😐, Struggling 😔, Bad 😢) with color-coded active states (emerald, green, amber, orange, red). Selected mood gets ring highlight and colored background.
+   301→  - **Drug Test Status Section**: Amber-tinted box with TestTube2 icon. Toggle for "Drug test required today?" and conditional toggle for "Drug test completed?" (only shows when required is checked). Green "Done" badge when completed.
+   302→  - **Meetings Attended Counter**: Increment/decrement buttons with Users icon and violet accent. Large centered count display.
+   303→  - **Notes Textarea**: Daily reflection field with StickyNote icon, placeholder encouraging reflection.
+   304→  - Submit button (disabled until mood selected) and Cancel button.
+   305→
+   306→- **Stats Row**: 4 cards with icons:
+   307→  - Current Streak (Flame icon, orange, with animated pulse for 7+ days)
+   308→  - Total Check-ins (CalendarDays icon, emerald)
+   309→  - Drug Tests (TestTube2 icon, amber, completed/required ratio)
+   310→  - Meetings (Users icon, violet, total attended)
+   311→
+   312→- **Streak Banner**: Gradient orange-to-amber card showing:
+   313→  - Visual flame icons (up to 7, with "+N" for longer streaks)
+   314→  - Day count with fire emoji
+   315→  - Motivational messages that change based on streak length (1-6 days, 7+ days, 14+ days, 30+ days)
+   316→
+   317→- **Check-in History**: Scrollable list (max-h-96 with overflow-y-auto) of past check-ins:
+   318→  - Each card shows: formatted date, days-ago label, mood emoji+label badge
+   319→  - Drug test status badge (green "Test done" or red "Test pending")
+   320→  - Meetings attended badge
+   321→  - Expandable notes section with "Has notes" expand toggle / "Collapse" toggle
+   322→  - Notes displayed with emerald left-border and italic styling
+   323→  - Edit button on each card
+   324→
+   325→- **Edit Dialog**: Full edit form with same fields as create form:
+   326→  - Date input, mood selector, drug test toggles, meetings counter, notes textarea
+   327→  - Save Changes and Cancel buttons
+   328→
+   329→#### Technical Details
+   330→
+   331→- Component is `'use client'` as required
+   332→- Uses `useDailyCheckIns(activeCaseId)` for data fetching, `useCreateItem('daily-checkins')` and `useUpdateItem('daily-checkins')` for mutations
+   333→- Uses `useAppStore().activeCaseId` for case context
+   334→- Uses CATEGORY_COLORS['counseling'] for emerald header styling
+   335→- Uses shadcn/ui components: Card, CardHeader, CardTitle, CardContent, Badge, Button, Label, Textarea, Checkbox, Skeleton, Separator, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle
+   336→- Uses Lucide icons: CalendarCheck, Flame, CheckCircle2, Plus, Pencil, Loader2, Minus, ChevronDown, ChevronUp, Sun, TestTube2, Users, StickyNote, CalendarDays, Sparkles
+   337→- Uses date-fns for: format, isToday, differenceInCalendarDays, parseISO, startOfDay
+   338→- Streak calculation: Finds unique check-in dates, sorts descending, checks if most recent is today or yesterday, then counts consecutive days backward
+   339→- Today's check-in detection: Uses isToday with parseISO on date strings
+   340→- Past check-ins are sorted by date descending with days-ago label
+   341→- Form validation: Submit button disabled until mood is selected
+   342→- Drug test completed toggle only visible when drug test required is checked
+   343→- Responsive: stacks cards on mobile (grid-cols-1), expands on desktop (sm:grid-cols-2, lg:grid-cols-4)
+   344→- All create mutations include `caseId: activeCaseId` in submitted data
+   345→- ESLint passes with no errors
+   346→- App compiles and runs successfully
+   347→
+   348→## Task 3: New Case Creation Flow + Dashboard Quick Actions
+   349→**Date**: 2026-07-17
+   350→**Agent**: Case Creation & Navigation Developer
+   351→
+   352→### Completed Work
+   353→
+   354→Implemented the New Case Creation Dialog and made Dashboard Quick Actions functional in the Reunify CPS Reunification Progress Tracker app.
+   355→
+   356→#### Files Created
+   357→1. `/src/components/create-case-dialog.tsx` - **NEW** - Full Create Case dialog component
+   358→
+   359→#### Files Modified
+   360→1. `/src/app/page.tsx` - Added Create New Case button to WelcomeScreen, imported CreateCaseDialog and useState
+   361→2. `/src/components/views/dashboard-view.tsx` - Made Quick Actions buttons navigate using setActiveView
+   362→3. `/src/components/views/daily-checkins-view.tsx` - **NEW** - Full Daily Check-in view component (needed for Check In Today navigation)
+   363→
+   364→#### Part 1: Create New Case Dialog Features
+   365→
+   366→- **Dialog Form** collecting all required case information:
+   367→  - Case Number (required, with red asterisk)
+   368→  - Court Name
+   369→  - Caseworker Name + Phone (side-by-side grid on desktop)
+   370→  - Judge Name
+   371→  - Attorney Name + Phone (side-by-side grid on desktop)
+   372→  - Removal Date (Calendar popover picker, same style as case-plan-view)
+   373→  - Target Reunification Date (Calendar popover picker)
+   374→  - Notes (textarea)
+   375→
+   376→- **Auto-populate Requirements Checkbox**: Emerald-tinted box with checkbox, checked by default. When enabled, creates 10 common CPS CaseRequirement records:
+   377→  1. Attend individual counseling sessions (weekly)
+   378→  2. Complete random drug testing (as-needed)
+   379→  3. Attend NA/AA meetings 3x per week minimum (weekly)
+   380→  4. Complete 12-step program with sponsor (one-time)
+   381→  5. Attend supervised visits 2x per week (weekly)
+   382→  6. Complete parenting classes (one-time)
+   383→  7. Maintain stable housing (monthly)
+   384→  8. Maintain employment or job search (weekly)
+   385→  9. Attend all court hearings (as-needed)
+   386→  10. Submit to random home visits (as-needed)
+   387→
+   388→- **Flow**: Creates case via `useCreateCase()`, sets active case ID, then creates all requirements via `Promise.all()` with `useCreateItem('requirements')`. Shows success/error toasts.
+   389→
+   390→- **Welcome Screen Layout**: "Create New Case" is now the primary emerald CTA button, with a divider ("or") and "Load Demo Case" as secondary outline button below.
+   391→
+   392→#### Part 2: Dashboard Quick Actions
+   393→
+   394→All four Quick Action buttons now navigate to the appropriate view using `setActiveView`:
+   395→1. **"Log Drug Test"** → navigates to `drug-testing` view
+   396→2. **"Record Visit"** → navigates to `supervised-visits` view
+   397→3. **"Add Counseling Session"** → navigates to `counseling` view
+   398→4. **"Check In Today"** → navigates to `daily-checkins` view
+   399→
+   400→#### Daily Check-ins View
+   401→
+   402→Created a complete Daily Check-in view component with:
+   403→- **Stats Row**: 4 cards - Total Check-ins, This Week, Drug Test Compliance %, Average Mood score
+   404→- **Today's Status Card**: Dynamic card showing either "Checked in" (emerald) or "Haven't checked in" (amber) with CTA button
+   405→- **Check-in History**: Scrollable list with mood icons, drug test/meeting badges, edit buttons
+   406→- **Add/Edit Dialog**: Full form with date input, mood selector (5 button grid), drug test requirement/completion checkboxes, meetings counter, notes textarea
+   407→- **Form Dialog Component**: Extracted reusable `CheckinFormDialog` component for both create and edit flows
+   408→
+   409→#### Technical Details
+   410→- All components are `'use client'` as required
+   411→- Uses `useCreateCase()`, `useCreateItem('requirements')`, `useCreateItem('daily-checkins')`, `useUpdateItem('daily-checkins')`, `useDailyCheckIns()`, `useCase()` from data-hooks
+   412→- Uses `useAppStore()` for `setActiveCaseId`, `setActiveView`, `activeCaseId`
+   413→- Uses shadcn/ui components: Dialog, Popover, Calendar, Input, Label, Textarea, Button, Badge, Card, Checkbox, Select, Skeleton
+   414→- Uses date-fns for date formatting and comparison
+   415→- Calendar popover date pickers with controlled open state (same pattern as case-plan-view)
+   416→- Responsive: side-by-side grid on desktop for paired fields, stacked on mobile
+   417→- All mutations include `caseId: activeCaseId` in submitted data
+   418→- ESLint passes with no errors
+   419→- App compiles and runs successfully
+   420→
