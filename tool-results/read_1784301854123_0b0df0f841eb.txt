@@ -1,0 +1,806 @@
+     1→'use client'
+     2→
+     3→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+     4→import { Badge } from '@/components/ui/badge'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Progress } from '@/components/ui/progress'
+     7→import { Skeleton } from '@/components/ui/skeleton'
+     8→import { Separator } from '@/components/ui/separator'
+     9→import {
+    10→  Heart,
+    11→  TestTube2,
+    12→  Footprints,
+    13→  Users,
+    14→  Baby,
+    15→  GraduationCap,
+    16→  Scale,
+    17→  ClipboardCheck,
+    18→  Printer,
+    19→  TrendingUp,
+    20→  CheckCircle,
+    21→  AlertTriangle,
+    22→  CircleDot,
+    23→  ArrowRight,
+    24→  Sparkles,
+    25→  Download,
+    26→  Shield,
+    27→  Loader2,
+    28→} from 'lucide-react'
+    29→import { useAppStore } from '@/lib/store'
+    30→import { useCase } from '@/lib/data-hooks'
+    31→import { ChartContainer } from '@/components/ui/chart'
+    32→import {
+    33→  RadarChart,
+    34→  PolarGrid,
+    35→  PolarAngleAxis,
+    36→  PolarRadiusAxis,
+    37→  Radar,
+    38→  ResponsiveContainer,
+    39→  BarChart,
+    40→  Bar,
+    41→  XAxis,
+    42→  YAxis,
+    43→  CartesianGrid,
+    44→  Tooltip,
+    45→} from 'recharts'
+    46→import { toast } from 'sonner'
+    47→import { useState } from 'react'
+    48→
+    49→interface CategoryProgress {
+    50→  key: string
+    51→  label: string
+    52→  icon: React.ReactNode
+    53→  progress: number
+    54→  statLabel: string
+    55→  statValue: string
+    56→  status: 'completed' | 'on-track' | 'needs-attention' | 'behind'
+    57→  color: string
+    58→}
+    59→
+    60→function getMotivationalMessage(progress: number): {
+    61→  title: string
+    62→  message: string
+    63→} {
+    64→  if (progress >= 90) {
+    65→    return {
+    66→      title: 'Almost there! 🌟',
+    67→      message:
+    68→        "You're so close to completing your case plan! Keep pushing forward — your kids are waiting for you.",
+    69→    }
+    70→  }
+    71→  if (progress >= 70) {
+    72→    return {
+    73→      title: 'Great momentum! 💪',
+    74→      message:
+    75→        "You're making incredible progress. The finish line is in sight — stay focused and consistent.",
+    76→    }
+    77→  }
+    78→  if (progress >= 50) {
+    79→    return {
+    80→      title: 'Halfway there! 🎯',
+    81→      message:
+    82→        "You've come a long way. Every step counts, and you're proving your commitment every day.",
+    83→    }
+    84→  }
+    85→  if (progress >= 25) {
+    86→    return {
+    87→      title: 'Keep going! 🌱',
+    88→      message:
+    89→        "You're building a foundation for your family's future. Small steps lead to big changes.",
+    90→    }
+    91→  }
+    92→  return {
+    93→    title: 'Your journey starts now 🚀',
+    94→    message:
+    95→      "Every journey begins with a single step. You've taken the first step by being here. Stay strong and keep showing up.",
+    96→  }
+    97→}
+    98→
+    99→function getStatusColor(status: string): string {
+   100→  switch (status) {
+   101→    case 'completed':
+   102→      return 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20'
+   103→    case 'on-track':
+   104→      return 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20'
+   105→    case 'needs-attention':
+   106→      return 'border-amber-400 bg-amber-50 dark:bg-amber-950/20'
+   107→    case 'behind':
+   108→      return 'border-red-400 bg-red-50 dark:bg-red-950/20'
+   109→    default:
+   110→      return 'border-slate-300 bg-slate-50 dark:bg-slate-950/20'
+   111→  }
+   112→}
+   113→
+   114→function getStatusBadge(status: string) {
+   115→  switch (status) {
+   116→    case 'completed':
+   117→      return (
+   118→        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
+   119→          <CheckCircle className="size-3" />
+   120→          Completed
+   121→        </Badge>
+   122→      )
+   123→    case 'on-track':
+   124→      return (
+   125→        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
+   126→          <TrendingUp className="size-3" />
+   127→          On Track
+   128→        </Badge>
+   129→      )
+   130→    case 'needs-attention':
+   131→      return (
+   132→        <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">
+   133→          <AlertTriangle className="size-3" />
+   134→          Needs Attention
+   135→        </Badge>
+   136→      )
+   137→    case 'behind':
+   138→      return (
+   139→        <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100">
+   140→          <CircleDot className="size-3" />
+   141→          Behind
+   142→        </Badge>
+   143→      )
+   144→    default:
+   145→      return null
+   146→  }
+   147→}
+   148→
+   149→function CircularProgress({
+   150→  value,
+   151→  size = 180,
+   152→  strokeWidth = 12,
+   153→}: {
+   154→  value: number
+   155→  size?: number
+   156→  strokeWidth?: number
+   157→}) {
+   158→  const radius = (size - strokeWidth) / 2
+   159→  const circumference = 2 * Math.PI * radius
+   160→  const offset = circumference - (value / 100) * circumference
+   161→
+   162→  return (
+   163→    <div className="relative inline-flex items-center justify-center">
+   164→      <svg width={size} height={size} className="-rotate-90">
+   165→        <circle
+   166→          cx={size / 2}
+   167→          cy={size / 2}
+   168→          r={radius}
+   169→          fill="none"
+   170→          stroke="currentColor"
+   171→          strokeWidth={strokeWidth}
+   172→          className="text-slate-200 dark:text-slate-700"
+   173→        />
+   174→        <circle
+   175→          cx={size / 2}
+   176→          cy={size / 2}
+   177→          r={radius}
+   178→          fill="none"
+   179→          stroke="currentColor"
+   180→          strokeWidth={strokeWidth}
+   181→          strokeDasharray={circumference}
+   182→          strokeDashoffset={offset}
+   183→          strokeLinecap="round"
+   184→          className="text-emerald-500 transition-all duration-1000 ease-out"
+   185→        />
+   186→      </svg>
+   187→      <div className="absolute flex flex-col items-center justify-center">
+   188→        <span className="text-4xl font-bold text-foreground">{value}%</span>
+   189→        <span className="text-xs text-muted-foreground">Overall</span>
+   190→      </div>
+   191→    </div>
+   192→  )
+   193→}
+   194→
+   195→function TimelineSummary({
+   196→  milestones,
+   197→  caseData,
+   198→}: {
+   199→  milestones: { title: string; isCompleted: boolean; completedAt: string | null; category: string }[]
+   200→  caseData: { removalDate: string | null; targetReunificationDate: string | null }
+   201→}) {
+   202→  const keyMilestones = milestones
+   203→    .filter(
+   204→      (m) =>
+   205→        m.category === 'legal' ||
+   206→        m.category === 'recovery' ||
+   207→        m.category === 'family' ||
+   208→        m.title.toLowerCase().includes('first') ||
+   209→        m.title.toLowerCase().includes('removal') ||
+   210→        m.title.toLowerCase().includes('reunification')
+   211→    )
+   212→    .slice(0, 8)
+   213→
+   214→  const timelineItems = [
+   215→    ...(caseData.removalDate
+   216→      ? [
+   217→          {
+   218→            title: 'Removal Date',
+   219→            date: caseData.removalDate,
+   220→            isCompleted: true,
+   221→          },
+   222→        ]
+   223→      : []),
+   224→    ...keyMilestones.map((m) => ({
+   225→      title: m.title,
+   226→      date: m.completedAt || '',
+   227→      isCompleted: m.isCompleted,
+   228→    })),
+   229→    ...(caseData.targetReunificationDate
+   230→      ? [
+   231→          {
+   232→            title: 'Reunification Target',
+   233→            date: caseData.targetReunificationDate,
+   234→            isCompleted: false,
+   235→          },
+   236→        ]
+   237→      : []),
+   238→  ].slice(0, 10)
+   239→
+   240→  return (
+   241→    <div className="space-y-0">
+   242→      {timelineItems.map((item, index) => (
+   243→        <div key={index} className="flex gap-3">
+   244→          <div className="flex flex-col items-center">
+   245→            <div
+   246→              className={`flex size-6 items-center justify-center rounded-full border-2 ${
+   247→                item.isCompleted
+   248→                  ? 'border-emerald-500 bg-emerald-500'
+   249→                  : 'border-slate-300 bg-background'
+   250→              }`}
+   251→            >
+   252→              {item.isCompleted && (
+   253→                <CheckCircle className="size-3.5 text-white" />
+   254→              )}
+   255→            </div>
+   256→            {index < timelineItems.length - 1 && (
+   257→              <div
+   258→                className={`w-0.5 flex-1 min-h-6 ${
+   259→                  item.isCompleted ? 'bg-emerald-300' : 'bg-slate-200'
+   260→                }`}
+   261→              />
+   262→            )}
+   263→          </div>
+   264→          <div className="pb-6 flex-1">
+   265→            <p
+   266→              className={`text-sm font-medium ${
+   267→                item.isCompleted
+   268→                  ? 'text-emerald-700 dark:text-emerald-400'
+   269→                  : 'text-muted-foreground'
+   270→              }`}
+   271→            >
+   272→              {item.title}
+   273→            </p>
+   274→            {item.date && (
+   275→              <p className="text-xs text-muted-foreground">
+   276→                {new Date(item.date).toLocaleDateString('en-US', {
+   277→                  month: 'short',
+   278→                  day: 'numeric',
+   279→                  year: 'numeric',
+   280→                })}
+   281→              </p>
+   282→            )}
+   283→          </div>
+   284→        </div>
+   285→      ))}
+   286→    </div>
+   287→  )
+   288→}
+   289→
+   290→function PrivacyNotice() {
+   291→  return (
+   292→    <Card className="border-emerald-200 dark:border-emerald-800">
+   293→      <CardContent className="p-4">
+   294→        <div className="flex items-start gap-3">
+   295→          <Shield className="size-5 text-emerald-600 mt-0.5 shrink-0" />
+   296→          <div className="space-y-1">
+   297→            <p className="text-sm font-medium">Your Data is Private</p>
+   298→            <p className="text-xs text-muted-foreground">
+   299→              All case data is stored locally on your device. Reunify does not
+   300→              send your information to any external servers. Exported files
+   301→              contain your complete case data — store them securely and only
+   302→              share with trusted parties like your attorney.
+   303→            </p>
+   304→          </div>
+   305→        </div>
+   306→      </CardContent>
+   307→    </Card>
+   308→  )
+   309→}
+   310→
+   311→export function ProgressView() {
+   312→  const { activeCaseId } = useAppStore()
+   313→  const { data: caseData, isLoading } = useCase(activeCaseId)
+   314→  const [exporting, setExporting] = useState(false)
+   315→
+   316→  async function handleExport() {
+   317→    if (!activeCaseId) return
+   318→    try {
+   319→      setExporting(true)
+   320→      const res = await fetch(`/api/export?caseId=${activeCaseId}`)
+   321→      if (!res.ok) throw new Error('Export failed')
+   322→      const data = await res.json()
+   323→      const blob = new Blob([JSON.stringify(data, null, 2)], {
+   324→        type: 'application/json',
+   325→      })
+   326→      const url = URL.createObjectURL(blob)
+   327→      const a = document.createElement('a')
+   328→      a.href = url
+   329→      a.download = `reunify-export-${data.case.caseNumber}-${new Date().toISOString().split('T')[0]}.json`
+   330→      document.body.appendChild(a)
+   331→      a.click()
+   332→      document.body.removeChild(a)
+   333→      URL.revokeObjectURL(url)
+   334→      toast.success('Case data exported successfully')
+   335→    } catch (error) {
+   336→      console.error('Export error:', error)
+   337→      toast.error('Failed to export case data')
+   338→    } finally {
+   339→      setExporting(false)
+   340→    }
+   341→  }
+   342→
+   343→  if (isLoading || !caseData) {
+   344→    return (
+   345→      <div className="space-y-6">
+   346→        <div className="flex flex-col items-center py-8">
+   347→          <Skeleton className="size-44 rounded-full" />
+   348→          <Skeleton className="mt-4 h-6 w-48" />
+   349→          <Skeleton className="mt-2 h-4 w-64" />
+   350→        </div>
+   351→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   352→          {Array.from({ length: 4 }).map((_, i) => (
+   353→            <Card key={i}>
+   354→              <CardContent className="p-4">
+   355→                <Skeleton className="h-4 w-24" />
+   356→                <Skeleton className="mt-2 h-8 w-16" />
+   357→                <Skeleton className="mt-2 h-2 w-full" />
+   358→              </CardContent>
+   359→            </Card>
+   360→          ))}
+   361→        </div>
+   362→      </div>
+   363→    )
+   364→  }
+   365→
+   366→  // Calculate category progress
+   367→  const {
+   368→    requirements = [],
+   369→    counselingSessions = [],
+   370→    drugTests = [],
+   371→    naSteps = [],
+   372→    naMeetings = [],
+   373→    supervisedVisits = [],
+   374→    parentingClasses = [],
+   375→    courtDates = [],
+   376→    milestones = [],
+   377→  } = caseData
+   378→
+   379→  // Counseling
+   380→  const totalCounseling = counselingSessions.length
+   381→  const completedCounseling = counselingSessions.filter(
+   382→    (s) => s.isCompleted
+   383→  ).length
+   384→  const counselingRate =
+   385→    totalCounseling > 0
+   386→      ? Math.round((completedCounseling / totalCounseling) * 100)
+   387→      : 0
+   388→
+   389→  // Drug Testing
+   390→  const totalDrugTests = drugTests.length
+   391→  const passedTests = drugTests.filter(
+   392→    (t) => t.result === 'negative'
+   393→  ).length
+   394→  const drugPassRate =
+   395→    totalDrugTests > 0 ? Math.round((passedTests / totalDrugTests) * 100) : 0
+   396→
+   397→  // Calculate clean streak
+   398→  const sortedTests = [...drugTests].sort(
+   399→    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+   400→  )
+   401→  let cleanStreak = 0
+   402→  for (const test of sortedTests) {
+   403→    if (test.result === 'negative') {
+   404→      cleanStreak++
+   405→    } else {
+   406→      break
+   407→    }
+   408→  }
+   409→
+   410→  // NA Steps
+   411→  const completedSteps = naSteps.filter((s) => s.isCompleted).length
+   412→  const stepsProgress =
+   413→    naSteps.length > 0
+   414→      ? Math.round((completedSteps / 12) * 100)
+   415→      : 0
+   416→
+   417→  // NA Meetings
+   418→  const totalMeetings = naMeetings.length
+   419→  const verifiedMeetings = naMeetings.filter((m) => m.isVerified).length
+   420→  const verificationRate =
+   421→    totalMeetings > 0
+   422→      ? Math.round((verifiedMeetings / totalMeetings) * 100)
+   423→      : 0
+   424→
+   425→  // Supervised Visits
+   426→  const totalVisits = supervisedVisits.length
+   427→  const completedVisits = supervisedVisits.filter(
+   428→    (v) => v.isCompleted
+   429→  ).length
+   430→  const visitProgress =
+   431→    totalVisits > 0 ? Math.round((completedVisits / totalVisits) * 100) : 0
+   432→
+   433→  // Determine visit type level
+   434→  const completedVisitsList = supervisedVisits
+   435→    .filter((v) => v.isCompleted)
+   436→    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+   437→  const latestVisitType =
+   438→    completedVisitsList[0]?.visitType || 'supervised'
+   439→  const visitLevelLabel =
+   440→    latestVisitType === 'unsupervised'
+   441→      ? 'Unsupervised'
+   442→      : latestVisitType === 'semi-supervised'
+   443→        ? 'Semi-Supervised'
+   444→        : 'Supervised'
+   445→
+   446→  // Parenting Classes
+   447→  const totalClasses = parentingClasses.length
+   448→  const completedClasses = parentingClasses.filter(
+   449→    (c) => c.isCompleted
+   450→  ).length
+   451→  const certificatesEarned = parentingClasses.filter(
+   452→    (c) => c.hasCertificate
+   453→  ).length
+   454→  const classProgress =
+   455→    totalClasses > 0 ? Math.round((completedClasses / totalClasses) * 100) : 0
+   456→
+   457→  // Court Dates
+   458→  const totalCourtDates = courtDates.length
+   459→  const completedCourtDates = courtDates.filter(
+   460→    (c) => c.isCompleted
+   461→  ).length
+   462→  const nextCourtDate = courtDates
+   463→    .filter((c) => !c.isCompleted && new Date(c.date) > new Date())
+   464→    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0]
+   465→
+   466→  // Requirements
+   467→  const totalRequirements = requirements.length
+   468→  const completedRequirements = requirements.filter(
+   469→    (r) => r.isCompleted
+   470→  ).length
+   471→  const reqProgress =
+   472→    totalRequirements > 0
+   473→      ? Math.round((completedRequirements / totalRequirements) * 100)
+   474→      : 0
+   475→
+   476→  // Overall progress
+   477→  const overallProgress =
+   478→    totalRequirements > 0
+   479→      ? Math.round((completedRequirements / totalRequirements) * 100)
+   480→      : 0
+   481→
+   482→  // Determine statuses
+   483→  function getStatus(progress: number): CategoryProgress['status'] {
+   484→    if (progress >= 100) return 'completed'
+   485→    if (progress >= 60) return 'on-track'
+   486→    if (progress >= 30) return 'needs-attention'
+   487→    return 'behind'
+   488→  }
+   489→
+   490→  const categories: CategoryProgress[] = [
+   491→    {
+   492→      key: 'counseling',
+   493→      label: 'Counseling',
+   494→      icon: <Heart className="size-5 text-emerald-600" />,
+   495→      progress: counselingRate,
+   496→      statLabel: 'Sessions',
+   497→      statValue: `${completedCounseling}/${totalCounseling}`,
+   498→      status: getStatus(counselingRate),
+   499→      color: 'emerald',
+   500→    },
+   501→    {
+   502→      key: 'drug-testing',
+   503→      label: 'Drug Testing',
+   504→      icon: <TestTube2 className="size-5 text-amber-600" />,
+   505→      progress: drugPassRate,
+   506→      statLabel: 'Pass Rate',
+   507→      statValue: `${drugPassRate}% (${cleanStreak} clean)`,
+   508→      status: getStatus(drugPassRate),
+   509→      color: 'amber',
+   510→    },
+   511→    {
+   512→      key: 'na-steps',
+   513→      label: '12 Steps',
+   514→      icon: <Footprints className="size-5 text-purple-600" />,
+   515→      progress: stepsProgress,
+   516→      statLabel: 'Steps Completed',
+   517→      statValue: `${completedSteps}/12`,
+   518→      status: getStatus(stepsProgress),
+   519→      color: 'purple',
+   520→    },
+   521→    {
+   522→      key: 'na-meetings',
+   523→      label: 'NA Meetings',
+   524→      icon: <Users className="size-5 text-violet-600" />,
+   525→      progress: verificationRate,
+   526→      statLabel: 'Verified',
+   527→      statValue: `${verifiedMeetings}/${totalMeetings}`,
+   528→      status: getStatus(verificationRate),
+   529→      color: 'violet',
+   530→    },
+   531→    {
+   532→      key: 'visits',
+   533→      label: 'Visits',
+   534→      icon: <Baby className="size-5 text-sky-600" />,
+   535→      progress: visitProgress,
+   536→      statLabel: 'Level',
+   537→      statValue: visitLevelLabel,
+   538→      status: getStatus(visitProgress),
+   539→      color: 'sky',
+   540→    },
+   541→    {
+   542→      key: 'parenting-classes',
+   543→      label: 'Parenting Classes',
+   544→      icon: <GraduationCap className="size-5 text-rose-600" />,
+   545→      progress: classProgress,
+   546→      statLabel: 'Certificates',
+   547→      statValue: `${certificatesEarned} earned`,
+   548→      status: getStatus(classProgress),
+   549→      color: 'rose',
+   550→    },
+   551→    {
+   552→      key: 'court-dates',
+   553→      label: 'Court Dates',
+   554→      icon: <Scale className="size-5 text-slate-600" />,
+   555→      progress:
+   556→        totalCourtDates > 0
+   557→          ? Math.round((completedCourtDates / totalCourtDates) * 100)
+   558→          : 0,
+   559→      statLabel: 'Next Date',
+   560→      statValue: nextCourtDate
+   561→        ? new Date(nextCourtDate.date).toLocaleDateString('en-US', {
+   562→            month: 'short',
+   563→            day: 'numeric',
+   564→          })
+   565→        : 'None scheduled',
+   566→      status:
+   567→        totalCourtDates > 0
+   568→          ? getStatus(
+   569→              Math.round((completedCourtDates / totalCourtDates) * 100)
+   570→            )
+   571→          : 'behind',
+   572→      color: 'slate',
+   573→    },
+   574→    {
+   575→      key: 'requirements',
+   576→      label: 'Overall Requirements',
+   577→      icon: <ClipboardCheck className="size-5 text-teal-600" />,
+   578→      progress: reqProgress,
+   579→      statLabel: 'Completed',
+   580→      statValue: `${completedRequirements}/${totalRequirements}`,
+   581→      status: getStatus(reqProgress),
+   582→      color: 'teal',
+   583→    },
+   584→  ]
+   585→
+   586→  const motivation = getMotivationalMessage(overallProgress)
+   587→
+   588→  // Chart data
+   589→  const radarData = categories.map((cat) => ({
+   590→    category: cat.label,
+   591→    progress: cat.progress,
+   592→    fullMark: 100,
+   593→  }))
+   594→
+   595→  const barData = categories.map((cat) => ({
+   596→    name: cat.label.length > 12 ? cat.label.slice(0, 12) + '…' : cat.label,
+   597→    progress: cat.progress,
+   598→    fill:
+   599→      cat.status === 'completed'
+   600→        ? '#10b981'
+   601→        : cat.status === 'on-track'
+   602→          ? '#22c55e'
+   603→          : cat.status === 'needs-attention'
+   604→            ? '#f59e0b'
+   605→            : '#ef4444',
+   606→  }))
+   607→
+   608→  const chartConfig = {
+   609→    progress: { label: 'Progress', color: '#10b981' },
+   610→    fullMark: { label: 'Target', color: '#e2e8f0' },
+   611→  }
+   612→
+   613→  return (
+   614→    <div className="space-y-6">
+   615→      {/* Overall Progress */}
+   616→      <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/20 dark:to-background">
+   617→        <CardContent className="p-6 sm:p-8">
+   618→          <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:justify-center">
+   619→            <CircularProgress value={overallProgress} />
+   620→            <div className="text-center sm:text-left max-w-md">
+   621→              <div className="flex items-center justify-center gap-2 sm:justify-start">
+   622→                <Sparkles className="size-5 text-emerald-600" />
+   623→                <h2 className="text-xl font-bold text-foreground">
+   624→                  Your Reunification Journey
+   625→                </h2>
+   626→              </div>
+   627→              <p className="mt-1 text-lg font-semibold text-emerald-700 dark:text-emerald-400">
+   628→                {motivation.title}
+   629→              </p>
+   630→              <p className="mt-2 text-sm text-muted-foreground">
+   631→                {motivation.message}
+   632→              </p>
+   633→              <div className="mt-4 flex items-center gap-4 justify-center sm:justify-start">
+   634→                <div className="text-center">
+   635→                  <p className="text-2xl font-bold text-foreground">
+   636→                    {completedRequirements}
+   637→                  </p>
+   638→                  <p className="text-xs text-muted-foreground">Completed</p>
+   639→                </div>
+   640→                <ArrowRight className="size-4 text-muted-foreground" />
+   641→                <div className="text-center">
+   642→                  <p className="text-2xl font-bold text-foreground">
+   643→                    {totalRequirements}
+   644→                  </p>
+   645→                  <p className="text-xs text-muted-foreground">Total Goals</p>
+   646→                </div>
+   647→              </div>
+   648→            </div>
+   649→          </div>
+   650→        </CardContent>
+   651→      </Card>
+   652→
+   653→      {/* Category Breakdown */}
+   654→      <div>
+   655→        <h2 className="text-lg font-semibold text-foreground mb-4">
+   656→          Progress by Category
+   657→        </h2>
+   658→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   659→          {categories.map((cat) => (
+   660→            <Card
+   661→              key={cat.key}
+   662→              className={`border-l-4 ${getStatusColor(cat.status)}`}
+   663→            >
+   664→              <CardContent className="p-4">
+   665→                <div className="flex items-center justify-between mb-2">
+   666→                  <div className="flex items-center gap-2">
+   667→                    {cat.icon}
+   668→                    <span className="font-medium text-sm text-foreground">
+   669→                      {cat.label}
+   670→                    </span>
+   671→                  </div>
+   672→                  {getStatusBadge(cat.status)}
+   673→                </div>
+   674→                <div className="mt-3 space-y-1">
+   675→                  <div className="flex items-center justify-between text-xs">
+   676→                    <span className="text-muted-foreground">
+   677→                      {cat.statLabel}
+   678→                    </span>
+   679→                    <span className="font-semibold text-foreground">
+   680→                      {cat.statValue}
+   681→                    </span>
+   682→                  </div>
+   683→                  <Progress value={cat.progress} className="h-2" />
+   684→                  <p className="text-xs text-muted-foreground text-right">
+   685→                    {cat.progress}%
+   686→                  </p>
+   687→                </div>
+   688→              </CardContent>
+   689→            </Card>
+   690→          ))}
+   691→        </div>
+   692→      </div>
+   693→
+   694→      {/* Charts */}
+   695→      <div className="grid gap-6 lg:grid-cols-2">
+   696→        <Card>
+   697→          <CardHeader>
+   698→            <CardTitle className="text-base">Progress Radar</CardTitle>
+   699→          </CardHeader>
+   700→          <CardContent>
+   701→            <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[300px] w-full">
+   702→              <RadarChart data={radarData}>
+   703→                <PolarGrid />
+   704→                <PolarAngleAxis
+   705→                  dataKey="category"
+   706→                  tick={{ fontSize: 10 }}
+   707→                />
+   708→                <PolarRadiusAxis
+   709→                  angle={30}
+   710→                  domain={[0, 100]}
+   711→                  tick={{ fontSize: 10 }}
+   712→                />
+   713→                <Radar
+   714→                  name="Progress"
+   715→                  dataKey="progress"
+   716→                  stroke="#10b981"
+   717→                  fill="#10b981"
+   718→                  fillOpacity={0.3}
+   719→                  strokeWidth={2}
+   720→                />
+   721→              </RadarChart>
+   722→            </ChartContainer>
+   723→          </CardContent>
+   724→        </Card>
+   725→        <Card>
+   726→          <CardHeader>
+   727→            <CardTitle className="text-base">Category Comparison</CardTitle>
+   728→          </CardHeader>
+   729→          <CardContent>
+   730→            <ChartContainer config={chartConfig} className="aspect-video w-full">
+   731→              <BarChart data={barData} layout="vertical">
+   732→                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+   733→                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} />
+   734→                <YAxis
+   735→                  dataKey="name"
+   736→                  type="category"
+   737→                  width={100}
+   738→                  tick={{ fontSize: 10 }}
+   739→                />
+   740→                <Tooltip
+   741→                  formatter={(value: number) => [`${value}%`, 'Progress']}
+   742→                />
+   743→                <Bar dataKey="progress" radius={[0, 4, 4, 0]} />
+   744→              </BarChart>
+   745→            </ChartContainer>
+   746→          </CardContent>
+   747→        </Card>
+   748→      </div>
+   749→
+   750→      {/* Timeline Summary */}
+   751→      <Card>
+   752→        <CardHeader>
+   753→          <CardTitle className="text-base flex items-center gap-2">
+   754→            <TrendingUp className="size-5 text-emerald-600" />
+   755→            Key Milestones Timeline
+   756→          </CardTitle>
+   757→        </CardHeader>
+   758→        <CardContent>
+   759→          {milestones.length === 0 ? (
+   760→            <p className="text-sm text-muted-foreground text-center py-4">
+   761→              No milestones tracked yet. Complete activities to see your
+   762→              progress here.
+   763→            </p>
+   764→          ) : (
+   765→            <TimelineSummary milestones={milestones} caseData={caseData} />
+   766→          )}
+   767→        </CardContent>
+   768→      </Card>
+   769→
+   770→      {/* Export & Report */}
+   771→      <Separator />
+   772→      <div className="space-y-4 py-4">
+   773→        <div className="flex flex-col items-center gap-3">
+   774→          <p className="text-sm text-muted-foreground text-center">
+   775→            Export your complete case data or print a progress report to share
+   776→            with your caseworker, attorney, or judge.
+   777→          </p>
+   778→          <div className="flex flex-wrap items-center justify-center gap-3">
+   779→            <Button
+   780→              className="gap-2"
+   781→              onClick={handleExport}
+   782→              disabled={exporting || !activeCaseId}
+   783→            >
+   784→              {exporting ? (
+   785→                <Loader2 className="size-4 animate-spin" />
+   786→              ) : (
+   787→                <Download className="size-4" />
+   788→              )}
+   789→              {exporting ? 'Exporting...' : 'Export Case Data'}
+   790→            </Button>
+   791→            <Button
+   792→              variant="outline"
+   793→              className="gap-2"
+   794→              onClick={() => window.print()}
+   795→            >
+   796→              <Printer className="size-4" />
+   797→              Print Report
+   798→            </Button>
+   799→          </div>
+   800→        </div>
+   801→        <PrivacyNotice />
+   802→      </div>
+   803→    </div>
+   804→  )
+   805→}
+   806→

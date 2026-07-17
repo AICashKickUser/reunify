@@ -18,18 +18,22 @@ interface AppState {
   activeView: ViewType
   activeCaseId: string | null
   sidebarOpen: boolean
+  addDialogTrigger: number
   setActiveView: (view: ViewType) => void
   setActiveCaseId: (id: string | null) => void
   setSidebarOpen: (open: boolean) => void
+  triggerAddDialog: () => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
   activeView: 'dashboard',
   activeCaseId: null,
   sidebarOpen: true,
+  addDialogTrigger: 0,
   setActiveView: (view) => set({ activeView: view }),
   setActiveCaseId: (id) => set({ activeCaseId: id }),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
+  triggerAddDialog: () => set((state) => ({ addDialogTrigger: state.addDialogTrigger + 1 })),
 }))
 
 export const VIEW_LABELS: Record<ViewType, string> = {

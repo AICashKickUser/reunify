@@ -45,6 +45,14 @@ import {
 } from 'recharts'
 import { toast } from 'sonner'
 import { useState } from 'react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 interface CategoryProgress {
   key: string
@@ -308,10 +316,159 @@ function PrivacyNotice() {
   )
 }
 
+function SummaryDialog({ open, onOpenChange, caseData, categories }: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  caseData: Record<string, unknown>
+  categories: CategoryProgress[]
+}) {
+  const requirements = (caseData.requirements || []) as Array<Record<string, unknown>>
+  const completedReqs = requirements.filter((r) => r.isCompleted)
+  const incompleteReqs = requirements.filter((r) => !r.isCompleted)
+
+  const counselingSessions = (caseData.counselingSessions || []) as Array<Record<string, unknown>>
+  const completedSessions = counselingSessions.filter((s) => s.isCompleted)
+
+  const drugTests = (caseData.drugTests || []) as Array<Record<string, unknown>>
+  const passedTests = drugTests.filter((t) => t.result === 'negative')
+  const failedTests = drugTests.filter((t) => t.result === 'positive')
+  const pendingTests = drugTests.filter((t) => t.result === 'pending' || !t.result)
+
+  const naSteps = (caseData.naSteps || []) as Array<Record<string, unknown>>
+  const completedSteps = naSteps.filter((s) => s.isCompleted)
+
+  const naMeetings = (caseData.naMeetings || []) as Array<Record<string, unknown>>
+  const visits = (caseData.supervisedVisits || []) as Array<Record<string, unknown>>
+  const completedVisits = visits.filter((v) => v.isCompleted)
+  const parentingClasses = (caseData.parentingClasses || []) as Array<Record<string, unknown>>
+  const completedClasses = parentingClasses.filter((c) => c.isCompleted)
+  const milestones = (caseData.milestones || []) as Array<Record<string, unknown>>
+  const completedMilestones = milestones.filter((m) => m.isCompleted)
+  const courtDates = (caseData.courtDates || []) as Array<Record<string, unknown>>
+
+  const overallProgress = requirements.length > 0
+    ? Math.round((completedReqs.length / requirements.length) * 100)
+    : 0
+
+  const onTrackCategories = categories.filter(c => c.status === 'on-track' || c.status === 'completed')
+  const needsAttentionCategories = categories.filter(c => c.status === 'needs-attention')
+  const behindCategories = categories.filter(c => c.status === 'behind')
+
+  const summaryText = `REUNIFICATION CASE SUMMARY
+Generated: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+
+Case: ${caseData.caseNumber || 'N/A'}
+Court: ${caseData.courtName || 'Not specified'}
+Caseworker: ${caseData.caseworkerName || 'Not specified'}
+Judge: ${caseData.judgeName || 'Not specified'}
+Attorney: ${caseData.attorneyName || 'Not specified'}
+
+═══════════════════════════════
+OVERALL PROGRESS: ${overallProgress}%
+═══════════════════════════════
+
+Requirements Completed: ${completedReqs.length} of ${requirements.length}
+
+───────────────────────────────
+ACHIEVEMENTS & COMPLETED ITEMS
+───────────────────────────────
+${completedReqs.length > 0 ? completedReqs.map((r) => `✓ ${r.title} (${r.category})${r.completedAt ? ' - Completed ' + new Date(r.completedAt as string).toLocaleDateString() : ''}`).join('\n') : 'No requirements completed yet'}
+
+${completedMilestones.length > 0 ? '\nMilestones Achieved:\n' + completedMilestones.map((m) => `★ ${m.title} - ${m.completedAt ? new Date(m.completedAt as string).toLocaleDateString() : 'Date not recorded'}`).join('\n') : ''}
+
+${completedSteps.length > 0 ? '\nNA Steps Completed: ' + completedSteps.length + '/12\n' + completedSteps.map((s) => `  Step ${s.stepNumber}: ✓${s.sponsorVerified ? ' (Sponsor Verified)' : ''}`).join('\n') : ''}
+
+───────────────────────────────
+COMPLIANCE DETAILS
+───────────────────────────────
+
+Counseling: ${completedSessions.length}/${counselingSessions.length} sessions completed
+Drug Testing: ${passedTests.length} clean / ${drugTests.length} total (${failedTests.length} positive, ${pendingTests.length} pending)
+NA Meetings: ${naMeetings.length} meetings attended (${naMeetings.filter((m) => m.isVerified).length} verified)
+Supervised Visits: ${completedVisits.length}/${visits.length} completed
+Parenting Classes: ${completedClasses.length}/${parentingClasses.length} completed (${parentingClasses.filter((c) => c.hasCertificate).length} certificates earned)
+Court Dates: ${courtDates.filter((c) => c.isCompleted).length}/${courtDates.length} completed
+
+───────────────────────────────
+AREAS ON TRACK
+───────────────────────────────
+${onTrackCategories.length > 0 ? onTrackCategories.map(c => `✓ ${c.label}: ${c.progress}% - ${c.statValue}`).join('\n') : 'No categories on track yet'}
+
+───────────────────────────────
+AREAS NEEDING ATTENTION
+───────────────────────────────
+${needsAttentionCategories.length > 0 ? needsAttentionCategories.map(c => `⚠ ${c.label}: ${c.progress}% - ${c.statValue}`).join('\n') : 'None - great work!'}
+
+───────────────────────────────
+AREAS BEHIND
+───────────────────────────────
+${behindCategories.length > 0 ? behindCategories.map(c => `✗ ${c.label}: ${c.progress}% - ${c.statValue}`).join('\n') : 'None - keep it up!'}
+
+───────────────────────────────
+REMAINING REQUIREMENTS
+───────────────────────────────
+${incompleteReqs.length > 0 ? incompleteReqs.map((r) => `○ ${r.title} (${r.category})${r.dueDate ? ' - Due: ' + new Date(r.dueDate as string).toLocaleDateString() : ''}`).join('\n') : 'All requirements completed!'}`
+
+  function handleCopySummary() {
+    navigator.clipboard.writeText(summaryText).then(() => {
+      toast.success('Summary copied to clipboard!')
+    }).catch(() => {
+      toast.error('Failed to copy summary')
+    })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[80vh]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ClipboardCheck className="size-5 text-emerald-600" />
+            Case Summary Report
+          </DialogTitle>
+          <DialogDescription>
+            Comprehensive overview of your reunification progress
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          {/* Quick Stats */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 p-3 text-center">
+              <p className="text-2xl font-bold text-emerald-700">{completedReqs.length}</p>
+              <p className="text-xs text-emerald-600">Completed</p>
+            </div>
+            <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 p-3 text-center">
+              <p className="text-2xl font-bold text-amber-700">{needsAttentionCategories.length + behindCategories.length}</p>
+              <p className="text-xs text-amber-600">Needs Work</p>
+            </div>
+            <div className="rounded-lg bg-sky-50 dark:bg-sky-950/20 p-3 text-center">
+              <p className="text-2xl font-bold text-sky-700">{overallProgress}%</p>
+              <p className="text-xs text-sky-600">Overall</p>
+            </div>
+          </div>
+
+          {/* Summary text */}
+          <pre className="whitespace-pre-wrap text-xs font-mono bg-muted/50 rounded-lg p-4 max-h-96 overflow-y-auto border">
+            {summaryText}
+          </pre>
+        </div>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          <Button variant="outline" onClick={handleCopySummary} className="gap-2">
+            Copy to Clipboard
+          </Button>
+          <Button onClick={() => onOpenChange(false)} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+            Done
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function ProgressView() {
   const { activeCaseId } = useAppStore()
   const { data: caseData, isLoading } = useCase(activeCaseId)
   const [exporting, setExporting] = useState(false)
+  const [summaryOpen, setSummaryOpen] = useState(false)
 
   async function handleExport() {
     if (!activeCaseId) return
@@ -790,6 +947,14 @@ export function ProgressView() {
             </Button>
             <Button
               variant="outline"
+              className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+              onClick={() => setSummaryOpen(true)}
+            >
+              <ClipboardCheck className="size-4" />
+              Generate Summary
+            </Button>
+            <Button
+              variant="outline"
               className="gap-2"
               onClick={() => window.print()}
             >
@@ -800,6 +965,13 @@ export function ProgressView() {
         </div>
         <PrivacyNotice />
       </div>
+
+      <SummaryDialog
+        open={summaryOpen}
+        onOpenChange={setSummaryOpen}
+        caseData={caseData}
+        categories={categories}
+      />
     </div>
   )
 }

@@ -43,7 +43,7 @@ export async function POST() {
         removalDate: new Date('2024-06-15'),
         targetReunificationDate: new Date('2025-06-15'),
         caseStatus: 'active',
-        notes: 'Mother demonstrating consistent progress. Children placed with maternal grandmother. Working through substance abuse recovery program. All court-ordered services in compliance.',
+        notes: '[DEMO DATA - For exploring the app only] Mother demonstrating consistent progress. Children placed with maternal grandmother. Working through substance abuse recovery program. All court-ordered services in compliance.',
       },
     })
 

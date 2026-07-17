@@ -1,0 +1,815 @@
+     1→'use client'
+     2→
+     3→import { useState } from 'react'
+     4→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+     5→import { Badge } from '@/components/ui/badge'
+     6→import { Button } from '@/components/ui/button'
+     7→import { Input } from '@/components/ui/input'
+     8→import { Label } from '@/components/ui/label'
+     9→import { Textarea } from '@/components/ui/textarea'
+    10→import { Checkbox } from '@/components/ui/checkbox'
+    11→import { Skeleton } from '@/components/ui/skeleton'
+    12→import {
+    13→  Dialog,
+    14→  DialogContent,
+    15→  DialogDescription,
+    16→  DialogFooter,
+    17→  DialogHeader,
+    18→  DialogTitle,
+    19→  DialogTrigger,
+    20→} from '@/components/ui/dialog'
+    21→import {
+    22→  Select,
+    23→  SelectContent,
+    24→  SelectItem,
+    25→  SelectTrigger,
+    26→  SelectValue,
+    27→} from '@/components/ui/select'
+    28→import {
+    29→  Baby,
+    30→  CheckCircle,
+    31→  Clock,
+    32→  ArrowRight,
+    33→  Plus,
+    34→  Pencil,
+    35→  MapPin,
+    36→  User,
+    37→  Timer,
+    38→  FileText,
+    39→  Eye,
+    40→} from 'lucide-react'
+    41→import { useAppStore } from '@/lib/store'
+    42→import {
+    43→  useSupervisedVisits,
+    44→  useCreateItem,
+    45→  useUpdateItem,
+    46→} from '@/lib/data-hooks'
+    47→import type { SupervisedVisit } from '@/lib/types'
+    48→import { toast } from 'sonner'
+    49→
+    50→const VISIT_TYPE_COLORS: Record<string, string> = {
+    51→  supervised: 'bg-sky-100 text-sky-700 border-sky-200',
+    52→  'semi-supervised': 'bg-amber-100 text-amber-700 border-amber-200',
+    53→  unsupervised: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    54→}
+    55→
+    56→const BEHAVIOR_COLORS: Record<string, string> = {
+    57→  happy: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    58→  anxious: 'bg-amber-100 text-amber-700 border-amber-200',
+    59→  withdrawn: 'bg-slate-100 text-slate-700 border-slate-200',
+    60→  engaged: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    61→  upset: 'bg-red-100 text-red-700 border-red-200',
+    62→}
+    63→
+    64→const VISIT_TYPES = ['supervised', 'semi-supervised', 'unsupervised'] as const
+    65→const BEHAVIORS = ['happy', 'anxious', 'withdrawn', 'engaged', 'upset'] as const
+    66→
+    67→function formatDate(dateStr: string) {
+    68→  return new Date(dateStr).toLocaleDateString('en-US', {
+    69→    weekday: 'short',
+    70→    month: 'short',
+    71→    day: 'numeric',
+    72→    year: 'numeric',
+    73→  })
+    74→}
+    75→
+    76→function formatTime(dateStr: string) {
+    77→  return new Date(dateStr).toLocaleTimeString('en-US', {
+    78→    hour: 'numeric',
+    79→    minute: '2-digit',
+    80→  })
+    81→}
+    82→
+    83→function VisitTypeProgression({ visits }: { visits: SupervisedVisit[] }) {
+    84→  const completedVisits = visits.filter((v) => v.isCompleted)
+    85→  const latestVisit = completedVisits.sort(
+    86→    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    87→  )[0]
+    88→
+    89→  const currentType = latestVisit?.visitType || 'supervised'
+    90→  const currentIndex = VISIT_TYPES.indexOf(
+    91→    currentType as (typeof VISIT_TYPES)[number]
+    92→  )
+    93→
+    94→  return (
+    95→    <div className="flex items-center justify-center gap-1 sm:gap-2">
+    96→      {VISIT_TYPES.map((type, index) => {
+    97→        const isCompleted = index < currentIndex
+    98→        const isCurrent = index === currentIndex
+    99→
+   100→        return (
+   101→          <div key={type} className="flex items-center">
+   102→            <div className="flex flex-col items-center gap-1">
+   103→              <div
+   104→                className={`flex size-8 items-center justify-center rounded-full border-2 text-xs font-bold transition-all ${
+   105→                  isCompleted
+   106→                    ? 'border-emerald-500 bg-emerald-500 text-white'
+   107→                    : isCurrent
+   108→                      ? 'border-amber-500 bg-amber-500 text-white'
+   109→                      : 'border-slate-300 bg-slate-50 text-slate-400'
+   110→                }`}
+   111→              >
+   112→                {isCompleted ? '✓' : index + 1}
+   113→              </div>
+   114→              <span
+   115→                className={`text-[10px] sm:text-xs font-medium ${
+   116→                  isCompleted
+   117→                    ? 'text-emerald-600'
+   118→                    : isCurrent
+   119→                      ? 'text-amber-600'
+   120→                      : 'text-slate-400'
+   121→                }`}
+   122→              >
+   123→                {type === 'semi-supervised'
+   124→                  ? 'Semi'
+   125→                  : type.charAt(0).toUpperCase() + type.slice(1)}
+   126→              </span>
+   127→            </div>
+   128→            {index < VISIT_TYPES.length - 1 && (
+   129→              <ArrowRight
+   130→                className={`mx-1 size-4 ${
+   131→                  index < currentIndex ? 'text-emerald-500' : 'text-slate-300'
+   132→                }`}
+   133→              />
+   134→            )}
+   135→          </div>
+   136→        )
+   137→      })}
+   138→    </div>
+   139→  )
+   140→}
+   141→
+   142→function AddVisitDialog({
+   143→  open,
+   144→  onOpenChange,
+   145→}: {
+   146→  open: boolean
+   147→  onOpenChange: (open: boolean) => void
+   148→}) {
+   149→  const { activeCaseId } = useAppStore()
+   150→  const createMutation = useCreateItem('supervised-visits')
+   151→  const [form, setForm] = useState({
+   152→    date: '',
+   153→    location: '',
+   154→    supervisorName: '',
+   155→    duration: '',
+   156→    visitType: 'supervised',
+   157→    childBehavior: '',
+   158→    parentBehavior: '',
+   159→    notes: '',
+   160→  })
+   161→
+   162→  const handleSubmit = () => {
+   163→    if (!form.date) {
+   164→      toast.error('Please select a date')
+   165→      return
+   166→    }
+   167→    createMutation.mutate(
+   168→      {
+   169→        caseId: activeCaseId,
+   170→        date: new Date(form.date).toISOString(),
+   171→        location: form.location || null,
+   172→        supervisorName: form.supervisorName || null,
+   173→        duration: form.duration ? parseInt(form.duration) : null,
+   174→        visitType: form.visitType,
+   175→        childBehavior: form.childBehavior || null,
+   176→        parentBehavior: form.parentBehavior || null,
+   177→        notes: form.notes || null,
+   178→        isCompleted: false,
+   179→      },
+   180→      {
+   181→        onSuccess: () => {
+   182→          toast.success('Visit added successfully')
+   183→          onOpenChange(false)
+   184→          setForm({
+   185→            date: '',
+   186→            location: '',
+   187→            supervisorName: '',
+   188→            duration: '',
+   189→            visitType: 'supervised',
+   190→            childBehavior: '',
+   191→            parentBehavior: '',
+   192→            notes: '',
+   193→          })
+   194→        },
+   195→        onError: () => toast.error('Failed to add visit'),
+   196→      }
+   197→    )
+   198→  }
+   199→
+   200→  return (
+   201→    <Dialog open={open} onOpenChange={onOpenChange}>
+   202→      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+   203→        <DialogHeader>
+   204→          <DialogTitle className="flex items-center gap-2">
+   205→            <Baby className="size-5 text-sky-600" />
+   206→            Schedule Visit
+   207→          </DialogTitle>
+   208→          <DialogDescription>
+   209→            Add a new supervised visitation session
+   210→          </DialogDescription>
+   211→        </DialogHeader>
+   212→        <div className="grid gap-4 py-4">
+   213→          <div className="grid gap-2">
+   214→            <Label htmlFor="visit-date">Date *</Label>
+   215→            <Input
+   216→              id="visit-date"
+   217→              type="date"
+   218→              value={form.date}
+   219→              onChange={(e) => setForm({ ...form, date: e.target.value })}
+   220→            />
+   221→          </div>
+   222→          <div className="grid gap-2">
+   223→            <Label htmlFor="visit-type">Visit Type</Label>
+   224→            <Select
+   225→              value={form.visitType}
+   226→              onValueChange={(v) => setForm({ ...form, visitType: v })}
+   227→            >
+   228→              <SelectTrigger className="w-full">
+   229→                <SelectValue />
+   230→              </SelectTrigger>
+   231→              <SelectContent>
+   232→                {VISIT_TYPES.map((type) => (
+   233→                  <SelectItem key={type} value={type}>
+   234→                    {type
+   235→                      .split('-')
+   236→                      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+   237→                      .join('-')}
+   238→                  </SelectItem>
+   239→                ))}
+   240→              </SelectContent>
+   241→            </Select>
+   242→          </div>
+   243→          <div className="grid gap-2">
+   244→            <Label htmlFor="visit-location">Location</Label>
+   245→            <Input
+   246→              id="visit-location"
+   247→              placeholder="e.g., CPS Family Center"
+   248→              value={form.location}
+   249→              onChange={(e) => setForm({ ...form, location: e.target.value })}
+   250→            />
+   251→          </div>
+   252→          <div className="grid gap-2">
+   253→            <Label htmlFor="visit-supervisor">Supervisor Name</Label>
+   254→            <Input
+   255→              id="visit-supervisor"
+   256→              placeholder="e.g., Maria Santos"
+   257→              value={form.supervisorName}
+   258→              onChange={(e) =>
+   259→                setForm({ ...form, supervisorName: e.target.value })
+   260→              }
+   261→            />
+   262→          </div>
+   263→          <div className="grid gap-2">
+   264→            <Label htmlFor="visit-duration">Duration (minutes)</Label>
+   265→            <Input
+   266→              id="visit-duration"
+   267→              type="number"
+   268→              placeholder="e.g., 60"
+   269→              value={form.duration}
+   270→              onChange={(e) => setForm({ ...form, duration: e.target.value })}
+   271→            />
+   272→          </div>
+   273→          <div className="grid grid-cols-2 gap-4">
+   274→            <div className="grid gap-2">
+   275→              <Label>Child Behavior</Label>
+   276→              <Select
+   277→                value={form.childBehavior}
+   278→                onValueChange={(v) => setForm({ ...form, childBehavior: v })}
+   279→              >
+   280→                <SelectTrigger className="w-full">
+   281→                  <SelectValue placeholder="Select..." />
+   282→                </SelectTrigger>
+   283→                <SelectContent>
+   284→                  {BEHAVIORS.map((b) => (
+   285→                    <SelectItem key={b} value={b}>
+   286→                      {b.charAt(0).toUpperCase() + b.slice(1)}
+   287→                    </SelectItem>
+   288→                  ))}
+   289→                </SelectContent>
+   290→              </Select>
+   291→            </div>
+   292→            <div className="grid gap-2">
+   293→              <Label>Parent Behavior</Label>
+   294→              <Select
+   295→                value={form.parentBehavior}
+   296→                onValueChange={(v) => setForm({ ...form, parentBehavior: v })}
+   297→              >
+   298→                <SelectTrigger className="w-full">
+   299→                  <SelectValue placeholder="Select..." />
+   300→                </SelectTrigger>
+   301→                <SelectContent>
+   302→                  {BEHAVIORS.map((b) => (
+   303→                    <SelectItem key={b} value={b}>
+   304→                      {b.charAt(0).toUpperCase() + b.slice(1)}
+   305→                    </SelectItem>
+   306→                  ))}
+   307→                </SelectContent>
+   308→              </Select>
+   309→            </div>
+   310→          </div>
+   311→          <div className="grid gap-2">
+   312→            <Label htmlFor="visit-notes">Notes</Label>
+   313→            <Textarea
+   314→              id="visit-notes"
+   315→              placeholder="Any observations or notes..."
+   316→              value={form.notes}
+   317→              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+   318→              rows={3}
+   319→            />
+   320→          </div>
+   321→        </div>
+   322→        <DialogFooter>
+   323→          <Button variant="outline" onClick={() => onOpenChange(false)}>
+   324→            Cancel
+   325→          </Button>
+   326→          <Button
+   327→            className="bg-sky-600 hover:bg-sky-700 text-white"
+   328→            onClick={handleSubmit}
+   329→            disabled={createMutation.isPending}
+   330→          >
+   331→            {createMutation.isPending ? 'Adding...' : 'Add Visit'}
+   332→          </Button>
+   333→        </DialogFooter>
+   334→      </DialogContent>
+   335→    </Dialog>
+   336→  )
+   337→}
+   338→
+   339→function EditVisitDialog({
+   340→  visit,
+   341→  open,
+   342→  onOpenChange,
+   343→}: {
+   344→  visit: SupervisedVisit
+   345→  open: boolean
+   346→  onOpenChange: (open: boolean) => void
+   347→}) {
+   348→  const updateMutation = useUpdateItem('supervised-visits')
+   349→  const [form, setForm] = useState({
+   350→    date: visit.date ? new Date(visit.date).toISOString().split('T')[0] : '',
+   351→    location: visit.location || '',
+   352→    supervisorName: visit.supervisorName || '',
+   353→    duration: visit.duration?.toString() || '',
+   354→    visitType: visit.visitType || 'supervised',
+   355→    childBehavior: visit.childBehavior || '',
+   356→    parentBehavior: visit.parentBehavior || '',
+   357→    notes: visit.notes || '',
+   358→    isCompleted: visit.isCompleted,
+   359→  })
+   360→
+   361→  const handleSubmit = () => {
+   362→    updateMutation.mutate(
+   363→      {
+   364→        id: visit.id,
+   365→        date: form.date ? new Date(form.date).toISOString() : visit.date,
+   366→        location: form.location || null,
+   367→        supervisorName: form.supervisorName || null,
+   368→        duration: form.duration ? parseInt(form.duration) : null,
+   369→        visitType: form.visitType,
+   370→        childBehavior: form.childBehavior || null,
+   371→        parentBehavior: form.parentBehavior || null,
+   372→        notes: form.notes || null,
+   373→        isCompleted: form.isCompleted,
+   374→      },
+   375→      {
+   376→        onSuccess: () => {
+   377→          toast.success('Visit updated successfully')
+   378→          onOpenChange(false)
+   379→        },
+   380→        onError: () => toast.error('Failed to update visit'),
+   381→      }
+   382→    )
+   383→  }
+   384→
+   385→  return (
+   386→    <Dialog open={open} onOpenChange={onOpenChange}>
+   387→      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+   388→        <DialogHeader>
+   389→          <DialogTitle className="flex items-center gap-2">
+   390→            <Pencil className="size-5 text-sky-600" />
+   391→            Edit Visit
+   392→          </DialogTitle>
+   393→          <DialogDescription>
+   394→            Update visit details and status
+   395→          </DialogDescription>
+   396→        </DialogHeader>
+   397→        <div className="grid gap-4 py-4">
+   398→          <div className="flex items-center gap-3 rounded-lg border p-3">
+   399→            <Checkbox
+   400→              id="visit-completed"
+   401→              checked={form.isCompleted}
+   402→              onCheckedChange={(checked) =>
+   403→                setForm({ ...form, isCompleted: !!checked })
+   404→              }
+   405→            />
+   406→            <Label htmlFor="visit-completed" className="cursor-pointer font-medium">
+   407→              Mark as Completed
+   408→            </Label>
+   409→          </div>
+   410→          <div className="grid gap-2">
+   411→            <Label htmlFor="edit-visit-date">Date</Label>
+   412→            <Input
+   413→              id="edit-visit-date"
+   414→              type="date"
+   415→              value={form.date}
+   416→              onChange={(e) => setForm({ ...form, date: e.target.value })}
+   417→            />
+   418→          </div>
+   419→          <div className="grid gap-2">
+   420→            <Label>Visit Type</Label>
+   421→            <Select
+   422→              value={form.visitType}
+   423→              onValueChange={(v) => setForm({ ...form, visitType: v })}
+   424→            >
+   425→              <SelectTrigger className="w-full">
+   426→                <SelectValue />
+   427→              </SelectTrigger>
+   428→              <SelectContent>
+   429→                {VISIT_TYPES.map((type) => (
+   430→                  <SelectItem key={type} value={type}>
+   431→                    {type
+   432→                      .split('-')
+   433→                      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+   434→                      .join('-')}
+   435→                  </SelectItem>
+   436→                ))}
+   437→              </SelectContent>
+   438→            </Select>
+   439→          </div>
+   440→          <div className="grid gap-2">
+   441→            <Label htmlFor="edit-visit-location">Location</Label>
+   442→            <Input
+   443→              id="edit-visit-location"
+   444→              value={form.location}
+   445→              onChange={(e) => setForm({ ...form, location: e.target.value })}
+   446→            />
+   447→          </div>
+   448→          <div className="grid gap-2">
+   449→            <Label htmlFor="edit-visit-supervisor">Supervisor Name</Label>
+   450→            <Input
+   451→              id="edit-visit-supervisor"
+   452→              value={form.supervisorName}
+   453→              onChange={(e) =>
+   454→                setForm({ ...form, supervisorName: e.target.value })
+   455→              }
+   456→            />
+   457→          </div>
+   458→          <div className="grid gap-2">
+   459→            <Label htmlFor="edit-visit-duration">Duration (minutes)</Label>
+   460→            <Input
+   461→              id="edit-visit-duration"
+   462→              type="number"
+   463→              value={form.duration}
+   464→              onChange={(e) => setForm({ ...form, duration: e.target.value })}
+   465→            />
+   466→          </div>
+   467→          <div className="grid grid-cols-2 gap-4">
+   468→            <div className="grid gap-2">
+   469→              <Label>Child Behavior</Label>
+   470→              <Select
+   471→                value={form.childBehavior}
+   472→                onValueChange={(v) => setForm({ ...form, childBehavior: v })}
+   473→              >
+   474→                <SelectTrigger className="w-full">
+   475→                  <SelectValue placeholder="Select..." />
+   476→                </SelectTrigger>
+   477→                <SelectContent>
+   478→                  {BEHAVIORS.map((b) => (
+   479→                    <SelectItem key={b} value={b}>
+   480→                      {b.charAt(0).toUpperCase() + b.slice(1)}
+   481→                    </SelectItem>
+   482→                  ))}
+   483→                </SelectContent>
+   484→              </Select>
+   485→            </div>
+   486→            <div className="grid gap-2">
+   487→              <Label>Parent Behavior</Label>
+   488→              <Select
+   489→                value={form.parentBehavior}
+   490→                onValueChange={(v) => setForm({ ...form, parentBehavior: v })}
+   491→              >
+   492→                <SelectTrigger className="w-full">
+   493→                  <SelectValue placeholder="Select..." />
+   494→                </SelectTrigger>
+   495→                <SelectContent>
+   496→                  {BEHAVIORS.map((b) => (
+   497→                    <SelectItem key={b} value={b}>
+   498→                      {b.charAt(0).toUpperCase() + b.slice(1)}
+   499→                    </SelectItem>
+   500→                  ))}
+   501→                </SelectContent>
+   502→              </Select>
+   503→            </div>
+   504→          </div>
+   505→          <div className="grid gap-2">
+   506→            <Label htmlFor="edit-visit-notes">Notes</Label>
+   507→            <Textarea
+   508→              id="edit-visit-notes"
+   509→              value={form.notes}
+   510→              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+   511→              rows={3}
+   512→            />
+   513→          </div>
+   514→        </div>
+   515→        <DialogFooter>
+   516→          <Button variant="outline" onClick={() => onOpenChange(false)}>
+   517→            Cancel
+   518→          </Button>
+   519→          <Button
+   520→            className="bg-sky-600 hover:bg-sky-700 text-white"
+   521→            onClick={handleSubmit}
+   522→            disabled={updateMutation.isPending}
+   523→          >
+   524→            {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+   525→          </Button>
+   526→        </DialogFooter>
+   527→      </DialogContent>
+   528→    </Dialog>
+   529→  )
+   530→}
+   531→
+   532→function VisitCard({
+   533→  visit,
+   534→  onEdit,
+   535→}: {
+   536→  visit: SupervisedVisit
+   537→  onEdit: () => void
+   538→}) {
+   539→  return (
+   540→    <Card
+   541→      className={`transition-all hover:shadow-md ${
+   542→        visit.isCompleted ? 'border-l-4 border-l-emerald-400' : 'border-l-4 border-l-amber-400'
+   543→      }`}
+   544→    >
+   545→      <CardContent className="p-4 sm:p-6">
+   546→        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+   547→          <div className="flex-1 space-y-3">
+   548→            <div className="flex flex-wrap items-center gap-2">
+   549→              <span className="font-semibold text-foreground">
+   550→                {formatDate(visit.date)}
+   551→              </span>
+   552→              <span className="text-sm text-muted-foreground">
+   553→                {formatTime(visit.date)}
+   554→              </span>
+   555→              <Badge
+   556→                variant="outline"
+   557→                className={VISIT_TYPE_COLORS[visit.visitType || 'supervised'] || ''}
+   558→              >
+   559→                {visit.visitType
+   560→                  ?.split('-')
+   561→                  .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+   562→                  .join('-') || 'Supervised'}
+   563→              </Badge>
+   564→              <Badge
+   565→                variant="outline"
+   566→                className={
+   567→                  visit.isCompleted
+   568→                    ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+   569→                    : 'bg-amber-100 text-amber-700 border-amber-200'
+   570→                }
+   571→              >
+   572→                {visit.isCompleted ? 'Completed' : 'Pending'}
+   573→              </Badge>
+   574→            </div>
+   575→
+   576→            <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
+   577→              {visit.location && (
+   578→                <span className="flex items-center gap-1">
+   579→                  <MapPin className="size-3.5" />
+   580→                  {visit.location}
+   581→                </span>
+   582→              )}
+   583→              {visit.supervisorName && (
+   584→                <span className="flex items-center gap-1">
+   585→                  <User className="size-3.5" />
+   586→                  {visit.supervisorName}
+   587→                </span>
+   588→              )}
+   589→              {visit.duration && (
+   590→                <span className="flex items-center gap-1">
+   591→                  <Timer className="size-3.5" />
+   592→                  {visit.duration} min
+   593→                </span>
+   594→              )}
+   595→            </div>
+   596→
+   597→            {(visit.childBehavior || visit.parentBehavior) && (
+   598→              <div className="flex flex-wrap gap-2">
+   599→                {visit.childBehavior && (
+   600→                  <Badge
+   601→                    variant="outline"
+   602→                    className={BEHAVIOR_COLORS[visit.childBehavior] || ''}
+   603→                  >
+   604→                    <Eye className="size-3" />
+   605→                    Child: {visit.childBehavior.charAt(0).toUpperCase() + visit.childBehavior.slice(1)}
+   606→                  </Badge>
+   607→                )}
+   608→                {visit.parentBehavior && (
+   609→                  <Badge
+   610→                    variant="outline"
+   611→                    className={BEHAVIOR_COLORS[visit.parentBehavior] || ''}
+   612→                  >
+   613→                    <Eye className="size-3" />
+   614→                    Parent: {visit.parentBehavior.charAt(0).toUpperCase() + visit.parentBehavior.slice(1)}
+   615→                  </Badge>
+   616→                )}
+   617→              </div>
+   618→            )}
+   619→
+   620→            {visit.notes && (
+   621→              <p className="flex items-start gap-2 text-sm text-muted-foreground">
+   622→                <FileText className="size-3.5 mt-0.5 shrink-0" />
+   623→                {visit.notes}
+   624→              </p>
+   625→            )}
+   626→          </div>
+   627→
+   628→          <Button variant="ghost" size="sm" onClick={onEdit}>
+   629→            <Pencil className="size-4" />
+   630→            <span className="sr-only sm:not-sr-only sm:ml-1">Edit</span>
+   631→          </Button>
+   632→        </div>
+   633→      </CardContent>
+   634→    </Card>
+   635→  )
+   636→}
+   637→
+   638→export function SupervisedVisitsView() {
+   639→  const { activeCaseId } = useAppStore()
+   640→  const { data: visits, isLoading } = useSupervisedVisits(activeCaseId)
+   641→  const [addOpen, setAddOpen] = useState(false)
+   642→  const [editVisit, setEditVisit] = useState<SupervisedVisit | null>(null)
+   643→
+   644→  if (isLoading) {
+   645→    return (
+   646→      <div className="space-y-6">
+   647→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   648→          {Array.from({ length: 4 }).map((_, i) => (
+   649→            <Card key={i}>
+   650→              <CardHeader className="pb-2">
+   651→                <Skeleton className="h-4 w-24" />
+   652→                <Skeleton className="mt-1 h-8 w-16" />
+   653→              </CardHeader>
+   654→            </Card>
+   655→          ))}
+   656→        </div>
+   657→        <Card>
+   658→          <CardContent className="p-6">
+   659→            <div className="space-y-4">
+   660→              {Array.from({ length: 3 }).map((_, i) => (
+   661→                <Skeleton key={i} className="h-32 w-full" />
+   662→              ))}
+   663→            </div>
+   664→          </CardContent>
+   665→        </Card>
+   666→      </div>
+   667→    )
+   668→  }
+   669→
+   670→  const totalVisits = visits?.length || 0
+   671→  const completedVisits = visits?.filter((v) => v.isCompleted).length || 0
+   672→  const upcomingVisits = visits?.filter((v) => !v.isCompleted).length || 0
+   673→
+   674→  const sortedVisits = [...(visits || [])].sort(
+   675→    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+   676→  )
+   677→
+   678→  const completedVisitList = sortedVisits.filter((v) => v.isCompleted)
+   679→  const upcomingVisitList = sortedVisits.filter((v) => !v.isCompleted)
+   680→
+   681→  return (
+   682→    <div className="space-y-6">
+   683→      {/* Stats Row */}
+   684→      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   685→        <Card>
+   686→          <CardHeader className="pb-2">
+   687→            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+   688→              <Baby className="size-4 text-sky-600" />
+   689→              Total Visits
+   690→            </div>
+   691→          </CardHeader>
+   692→          <CardContent>
+   693→            <p className="text-3xl font-bold text-foreground">{totalVisits}</p>
+   694→          </CardContent>
+   695→        </Card>
+   696→        <Card>
+   697→          <CardHeader className="pb-2">
+   698→            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+   699→              <CheckCircle className="size-4 text-emerald-600" />
+   700→              Completed
+   701→            </div>
+   702→          </CardHeader>
+   703→          <CardContent>
+   704→            <p className="text-3xl font-bold text-emerald-600">
+   705→              {completedVisits}
+   706→            </p>
+   707→          </CardContent>
+   708→        </Card>
+   709→        <Card>
+   710→          <CardHeader className="pb-2">
+   711→            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+   712→              <Clock className="size-4 text-amber-600" />
+   713→              Upcoming
+   714→            </div>
+   715→          </CardHeader>
+   716→          <CardContent>
+   717→            <p className="text-3xl font-bold text-amber-600">
+   718→              {upcomingVisits}
+   719→            </p>
+   720→          </CardContent>
+   721→        </Card>
+   722→        <Card>
+   723→          <CardHeader className="pb-2">
+   724→            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+   725→              <ArrowRight className="size-4 text-violet-600" />
+   726→              Current Level
+   727→            </div>
+   728→          </CardHeader>
+   729→          <CardContent>
+   730→            <VisitTypeProgression visits={visits || []} />
+   731→          </CardContent>
+   732→        </Card>
+   733→      </div>
+   734→
+   735→      {/* Add Visit Button */}
+   736→      <div className="flex items-center justify-between">
+   737→        <h2 className="text-lg font-semibold text-foreground">Visit Log</h2>
+   738→        <Button
+   739→          className="bg-sky-600 hover:bg-sky-700 text-white"
+   740→          onClick={() => setAddOpen(true)}
+   741→        >
+   742→          <Plus className="size-4" />
+   743→          Schedule Visit
+   744→        </Button>
+   745→      </div>
+   746→
+   747→      {/* Visit List */}
+   748→      {sortedVisits.length === 0 ? (
+   749→        <Card>
+   750→          <CardContent className="flex flex-col items-center justify-center py-12">
+   751→            <Baby className="size-12 text-sky-300 mb-4" />
+   752→            <h3 className="text-lg font-semibold text-foreground mb-2">
+   753→              No visits scheduled yet
+   754→            </h3>
+   755→            <p className="text-sm text-muted-foreground text-center max-w-md">
+   756→              Schedule your first visit to start tracking your progress toward
+   757→              unsupervised visitation. Every visit brings you closer to your
+   758→              kids.
+   759→            </p>
+   760→          </CardContent>
+   761→        </Card>
+   762→      ) : (
+   763→        <div className="space-y-4">
+   764→          {upcomingVisitList.length > 0 && (
+   765→            <div className="space-y-3">
+   766→              <h3 className="text-sm font-medium text-amber-600 flex items-center gap-2">
+   767→                <Clock className="size-4" />
+   768→                Upcoming Visits ({upcomingVisitList.length})
+   769→              </h3>
+   770→              {upcomingVisitList.map((visit) => (
+   771→                <VisitCard
+   772→                  key={visit.id}
+   773→                  visit={visit}
+   774→                  onEdit={() => setEditVisit(visit)}
+   775→                />
+   776→              ))}
+   777→            </div>
+   778→          )}
+   779→          {completedVisitList.length > 0 && (
+   780→            <div className="space-y-3">
+   781→              <h3 className="text-sm font-medium text-emerald-600 flex items-center gap-2">
+   782→                <CheckCircle className="size-4" />
+   783→                Completed Visits ({completedVisitList.length})
+   784→              </h3>
+   785→              <div className="max-h-96 overflow-y-auto space-y-3 pr-1 scrollbar-thin">
+   786→                {completedVisitList.map((visit) => (
+   787→                  <VisitCard
+   788→                    key={visit.id}
+   789→                    visit={visit}
+   790→                    onEdit={() => setEditVisit(visit)}
+   791→                  />
+   792→                ))}
+   793→              </div>
+   794→            </div>
+   795→          )}
+   796→        </div>
+   797→      )}
+   798→
+   799→      {/* Add Visit Dialog */}
+   800→      <AddVisitDialog open={addOpen} onOpenChange={setAddOpen} />
+   801→
+   802→      {/* Edit Visit Dialog */}
+   803→      {editVisit && (
+   804→        <EditVisitDialog
+   805→          visit={editVisit}
+   806→          open={!!editVisit}
+   807→          onOpenChange={(open) => {
+   808→            if (!open) setEditVisit(null)
+   809→          }}
+   810→        />
+   811→      )}
+   812→    </div>
+   813→  )
+   814→}
+   815→
