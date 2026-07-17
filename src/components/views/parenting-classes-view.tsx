@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -453,10 +453,10 @@ export function ParentingClassesView() {
   const deleteMutation = useDeleteItem('parenting-classes')
   const [addOpen, setAddOpen] = useState(false)
   const [editClass, setEditClass] = useState<ParentingClass | null>(null)
-  const [prevTrigger, setPrevTrigger] = useState(addDialogTrigger)
+  const prevTriggerRef = useRef(addDialogTrigger)
 
-  if (addDialogTrigger !== prevTrigger && addDialogTrigger > 0) {
-    setPrevTrigger(addDialogTrigger)
+  if (addDialogTrigger !== prevTriggerRef.current && addDialogTrigger > 0) {
+    prevTriggerRef.current = addDialogTrigger
     setAddOpen(true)
   }
 

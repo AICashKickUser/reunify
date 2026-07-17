@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -129,9 +129,10 @@ export function DailyCheckinsView() {
     setFormNotes('')
   }
 
-  const [prevTrigger, setPrevTrigger] = useState(addDialogTrigger)
-  if (addDialogTrigger !== prevTrigger && addDialogTrigger > 0) {
-    setPrevTrigger(addDialogTrigger)
+  const prevTriggerRef = useRef(addDialogTrigger)
+
+  if (addDialogTrigger !== prevTriggerRef.current && addDialogTrigger > 0) {
+    prevTriggerRef.current = addDialogTrigger
     resetForm()
     setAddDialogOpen(true)
   }

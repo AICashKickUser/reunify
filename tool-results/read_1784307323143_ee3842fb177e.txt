@@ -1,0 +1,702 @@
+     1→'use client'
+     2→
+     3→import { useState, useMemo, useEffect } from 'react'
+     4→import { useAppStore } from '@/lib/store'
+     5→import {
+     6→  useNASteps,
+     7→  useCreateItem,
+     8→  useUpdateItem,
+     9→} from '@/lib/data-hooks'
+    10→import { CATEGORY_COLORS, NA_STEP_TITLES } from '@/lib/types'
+    11→import type { NAStep } from '@/lib/types'
+    12→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+    13→import { Badge } from '@/components/ui/badge'
+    14→import { Button } from '@/components/ui/button'
+    15→import { Input } from '@/components/ui/input'
+    16→import { Label } from '@/components/ui/label'
+    17→import { Textarea } from '@/components/ui/textarea'
+    18→import { Checkbox } from '@/components/ui/checkbox'
+    19→import { Progress } from '@/components/ui/progress'
+    20→import { Skeleton } from '@/components/ui/skeleton'
+    21→import {
+    22→  Dialog,
+    23→  DialogContent,
+    24→  DialogDescription,
+    25→  DialogFooter,
+    26→  DialogHeader,
+    27→  DialogTitle,
+    28→} from '@/components/ui/dialog'
+    29→import {
+    30→  Select,
+    31→  SelectContent,
+    32→  SelectItem,
+    33→  SelectTrigger,
+    34→  SelectValue,
+    35→} from '@/components/ui/select'
+    36→import {
+    37→  Footprints,
+    38→  CheckCircle2,
+    39→  Circle,
+    40→  Loader2,
+    41→  Plus,
+    42→  Pencil,
+    43→  ShieldCheck,
+    44→  Trophy,
+    45→} from 'lucide-react'
+    46→
+    47→interface StepFormData {
+    48→  stepNumber: string
+    49→  title: string
+    50→  description: string
+    51→  notes: string
+    52→  isCompleted: boolean
+    53→  completedAt: string
+    54→  sponsorName: string
+    55→  sponsorVerified: boolean
+    56→}
+    57→
+    58→interface MarkCompleteFormData {
+    59→  completedAt: string
+    60→  sponsorName: string
+    61→  sponsorVerified: boolean
+    62→  notes: string
+    63→}
+    64→
+    65→const emptyStepForm: StepFormData = {
+    66→  stepNumber: '1',
+    67→  title: '',
+    68→  description: '',
+    69→  notes: '',
+    70→  isCompleted: false,
+    71→  completedAt: '',
+    72→  sponsorName: '',
+    73→  sponsorVerified: false,
+    74→}
+    75→
+    76→const emptyCompleteForm: MarkCompleteFormData = {
+    77→  completedAt: new Date().toISOString().split('T')[0],
+    78→  sponsorName: '',
+    79→  sponsorVerified: false,
+    80→  notes: '',
+    81→}
+    82→
+    83→export function NAStepsView() {
+    84→  const { activeCaseId, addDialogTrigger } = useAppStore()
+    85→  const { data: steps, isLoading } = useNASteps(activeCaseId)
+    86→  const createMutation = useCreateItem('na-steps')
+    87→  const updateMutation = useUpdateItem('na-steps')
+    88→
+    89→  const [addOpen, setAddOpen] = useState(false)
+    90→  const [editOpen, setEditOpen] = useState(false)
+    91→  const [completeOpen, setCompleteOpen] = useState(false)
+    92→  const [editingStep, setEditingStep] = useState<NAStep | null>(null)
+    93→  const [completingStep, setCompletingStep] = useState<NAStep | null>(null)
+    94→  const [addForm, setAddForm] = useState<StepFormData>(emptyStepForm)
+    95→  const [editForm, setEditForm] = useState<StepFormData>(emptyStepForm)
+    96→  const [completeForm, setCompleteForm] = useState<MarkCompleteFormData>(emptyCompleteForm)
+    97→
+    98→  // Build step map (1-12)
+    99→  const stepMap = useMemo(() => {
+   100→    const map = new Map<number, NAStep>()
+   101→    if (steps) {
+   102→      steps.forEach((s) => map.set(s.stepNumber, s))
+   103→    }
+   104→    return map
+   105→  }, [steps])
+   106→
+   107→  const completedCount = useMemo(() => {
+   108→    if (!steps) return 0
+   109→    return steps.filter((s) => s.isCompleted).length
+   110→  }, [steps])
+   111→
+   112→  const progressPercent = useMemo(() => {
+   113→    return Math.round((completedCount / 12) * 100)
+   114→  }, [completedCount])
+   115→
+   116→  // Find current step (first incomplete)
+   117→  const currentStep = useMemo(() => {
+   118→    for (let i = 1; i <= 12; i++) {
+   119→      const step = stepMap.get(i)
+   120→      if (!step || !step.isCompleted) return i
+   121→    }
+   122→    return 13 // all complete
+   123→  }, [stepMap])
+   124→
+   125→  // Determine which steps are missing
+   126→  const missingSteps = useMemo(() => {
+   127→    const missing: number[] = []
+   128→    for (let i = 1; i <= 12; i++) {
+   129→      if (!stepMap.has(i)) missing.push(i)
+   130→    }
+   131→    return missing
+   132→  }, [stepMap])
+   133→
+   134→  function handleAddStep() {
+   135→    // Pre-fill with first missing step
+   136→    const nextMissing = missingSteps[0] || 1
+   137→    setAddForm({
+   138→      ...emptyStepForm,
+   139→      stepNumber: nextMissing.toString(),
+   140→      title: NA_STEP_TITLES[nextMissing] || '',
+   141→    })
+   142→    setAddOpen(true)
+   143→  }
+   144→
+   145→  const [prevTrigger, setPrevTrigger] = useState(addDialogTrigger)
+   146→
+   147→  useEffect(() => {
+   148→    if (addDialogTrigger > 0 && addDialogTrigger !== prevTrigger) {
+   149→      setPrevTrigger(addDialogTrigger)
+   150→      handleAddStep()
+   151→    }
+   152→  }, [addDialogTrigger, prevTrigger])
+   153→
+   154→  function handleEditStep(step: NAStep) {
+   155→    setEditingStep(step)
+   156→    setEditForm({
+   157→      stepNumber: step.stepNumber.toString(),
+   158→      title: step.title,
+   159→      description: step.description || '',
+   160→      notes: step.notes || '',
+   161→      isCompleted: step.isCompleted,
+   162→      completedAt: step.completedAt ? step.completedAt.split('T')[0] : '',
+   163→      sponsorName: step.sponsorName || '',
+   164→      sponsorVerified: step.sponsorVerified,
+   165→    })
+   166→    setEditOpen(true)
+   167→  }
+   168→
+   169→  function handleMarkComplete(step: NAStep) {
+   170→    setCompletingStep(step)
+   171→    setCompleteForm({
+   172→      completedAt: new Date().toISOString().split('T')[0],
+   173→      sponsorName: step.sponsorName || '',
+   174→      sponsorVerified: step.sponsorVerified,
+   175→      notes: step.notes || '',
+   176→    })
+   177→    setCompleteOpen(true)
+   178→  }
+   179→
+   180→  function submitAdd() {
+   181→    if (!activeCaseId) return
+   182→    const stepNum = parseInt(addForm.stepNumber)
+   183→    createMutation.mutate(
+   184→      {
+   185→        caseId: activeCaseId,
+   186→        stepNumber: stepNum,
+   187→        title: addForm.title || NA_STEP_TITLES[stepNum] || '',
+   188→        description: addForm.description || null,
+   189→        notes: addForm.notes || null,
+   190→        isCompleted: false,
+   191→        sponsorVerified: false,
+   192→      },
+   193→      {
+   194→        onSuccess: () => {
+   195→          setAddOpen(false)
+   196→        },
+   197→      }
+   198→    )
+   199→  }
+   200→
+   201→  function submitEdit() {
+   202→    if (!editingStep) return
+   203→    updateMutation.mutate(
+   204→      {
+   205→        id: editingStep.id,
+   206→        stepNumber: parseInt(editForm.stepNumber),
+   207→        title: editForm.title,
+   208→        description: editForm.description || null,
+   209→        notes: editForm.notes || null,
+   210→        isCompleted: editForm.isCompleted,
+   211→        completedAt: editForm.isCompleted && editForm.completedAt ? editForm.completedAt : null,
+   212→        sponsorName: editForm.sponsorName || null,
+   213→        sponsorVerified: editForm.sponsorVerified,
+   214→      },
+   215→      {
+   216→        onSuccess: () => {
+   217→          setEditOpen(false)
+   218→          setEditingStep(null)
+   219→        },
+   220→      }
+   221→    )
+   222→  }
+   223→
+   224→  function submitComplete() {
+   225→    if (!completingStep) return
+   226→    updateMutation.mutate(
+   227→      {
+   228→        id: completingStep.id,
+   229→        isCompleted: true,
+   230→        completedAt: completeForm.completedAt || null,
+   231→        sponsorName: completeForm.sponsorName || null,
+   232→        sponsorVerified: completeForm.sponsorVerified,
+   233→        notes: completeForm.notes || null,
+   234→      },
+   235→      {
+   236→        onSuccess: () => {
+   237→          setCompleteOpen(false)
+   238→          setCompletingStep(null)
+   239→        },
+   240→      }
+   241→    )
+   242→  }
+   243→
+   244→  const colors = CATEGORY_COLORS['na-steps']
+   245→
+   246→  if (isLoading) {
+   247→    return (
+   248→      <div className="space-y-6">
+   249→        <Card>
+   250→          <CardContent className="p-6 space-y-4">
+   251→            <Skeleton className="h-4 w-48" />
+   252→            <Skeleton className="h-3 w-full" />
+   253→            {Array.from({ length: 5 }).map((_, i) => (
+   254→              <Skeleton key={i} className="h-20 w-full" />
+   255→            ))}
+   256→          </CardContent>
+   257→        </Card>
+   258→      </div>
+   259→    )
+   260→  }
+   261→
+   262→  return (
+   263→    <div className="space-y-6">
+   264→      {/* Header */}
+   265→      <div className="flex items-center justify-between">
+   266→        <div className="flex items-center gap-2">
+   267→          <div className={`flex size-9 items-center justify-center rounded-lg ${colors.bg}`}>
+   268→            <Footprints className={`size-5 ${colors.text}`} />
+   269→          </div>
+   270→          <div>
+   271→            <h2 className="text-lg font-semibold">12 Steps Progress</h2>
+   272→            <p className="text-sm text-muted-foreground">Your journey through the NA 12 Steps</p>
+   273→          </div>
+   274→        </div>
+   275→        {missingSteps.length > 0 && (
+   276→          <Button onClick={handleAddStep} className="bg-purple-600 hover:bg-purple-700 text-white">
+   277→            <Plus className="size-4" />
+   278→            Add Missing Steps
+   279→          </Button>
+   280→        )}
+   281→      </div>
+   282→
+   283→      {/* Overall Progress */}
+   284→      <Card>
+   285→        <CardContent className="p-6">
+   286→          <div className="flex items-center justify-between mb-3">
+   287→            <div className="flex items-center gap-2">
+   288→              <Trophy className="size-5 text-purple-600" />
+   289→              <span className="font-semibold">Overall Progress</span>
+   290→            </div>
+   291→            <span className="text-sm font-medium text-purple-600">
+   292→              {completedCount}/12 Steps Completed
+   293→            </span>
+   294→          </div>
+   295→          <Progress value={progressPercent} className="h-3" />
+   296→          <p className="text-xs text-muted-foreground mt-2">
+   297→            {progressPercent === 100
+   298→              ? '🎉 Amazing! You\'ve completed all 12 steps!'
+   299→              : progressPercent >= 75
+   300→                ? 'Almost there! Keep pushing forward.'
+   301→                : progressPercent >= 50
+   302→                  ? 'Great progress! You\'re past the halfway point.'
+   303→                  : progressPercent >= 25
+   304→                    ? 'Nice work! Every step counts.'
+   305→                    : 'The journey of a thousand miles begins with a single step.'}
+   306→          </p>
+   307→        </CardContent>
+   308→      </Card>
+   309→
+   310→      {/* 12 Steps Timeline */}
+   311→      <div className="relative">
+   312→        {Array.from({ length: 12 }, (_, i) => i + 1).map((stepNum) => {
+   313→          const step = stepMap.get(stepNum)
+   314→          const isCompleted = step?.isCompleted || false
+   315→          const isCurrentStep = stepNum === currentStep && !isCompleted
+   316→          const isMissing = !step
+   317→
+   318→          return (
+   319→            <div key={stepNum} className="relative flex gap-4">
+   320→              {/* Timeline line */}
+   321→              {stepNum < 12 && (
+   322→                <div
+   323→                  className={`absolute left-[19px] top-10 h-[calc(100%-8px)] w-0.5 ${
+   324→                    isCompleted
+   325→                      ? 'bg-emerald-300 dark:bg-emerald-700'
+   326→                      : 'bg-gray-200 dark:bg-gray-700 border-dashed'
+   327→                  }`}
+   328→                  style={{
+   329→                    backgroundImage: isCompleted
+   330→                      ? 'none'
+   331→                      : 'repeating-linear-gradient(to bottom, currentColor 0, currentColor 4px, transparent 4px, transparent 8px)',
+   332→                    backgroundSize: '100% 8px',
+   333→                    backgroundColor: 'transparent',
+   334→                    color: '#d1d5db',
+   335→                  }}
+   336→                />
+   337→              )}
+   338→
+   339→              {/* Step circle */}
+   340→              <div className="relative z-10 flex shrink-0 pt-0.5">
+   341→                <div
+   342→                  className={`flex size-10 items-center justify-center rounded-full border-2 transition-colors ${
+   343→                    isCompleted
+   344→                      ? 'border-emerald-500 bg-emerald-500 text-white'
+   345→                      : isCurrentStep
+   346→                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20 text-purple-600'
+   347→                        : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-400'
+   348→                  }`}
+   349→                >
+   350→                  {isCompleted ? (
+   351→                    <CheckCircle2 className="size-5" />
+   352→                  ) : (
+   353→                    <span className="text-sm font-bold">{stepNum}</span>
+   354→                  )}
+   355→                </div>
+   356→              </div>
+   357→
+   358→              {/* Step content */}
+   359→              <div className="flex-1 pb-6">
+   360→                <Card
+   361→                  className={`transition-all ${
+   362→                    isCurrentStep
+   363→                      ? 'border-purple-300 dark:border-purple-700 shadow-md'
+   364→                      : isCompleted
+   365→                        ? 'border-emerald-200 dark:border-emerald-800'
+   366→                        : 'border-gray-200 dark:border-gray-700 opacity-60'
+   367→                  }`}
+   368→                >
+   369→                  <CardContent className="p-4">
+   370→                    <div className="flex items-start justify-between gap-3">
+   371→                      <div className="flex-1 min-w-0">
+   372→                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+   373→                          <span className="font-semibold text-sm">Step {stepNum}</span>
+   374→                          {isCompleted && (
+   375→                            <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
+   376→                              <CheckCircle2 className="size-3" />
+   377→                              Completed
+   378→                            </Badge>
+   379→                          )}
+   380→                          {isCurrentStep && (
+   381→                            <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+   382→                              <Circle className="size-3" />
+   383→                              Current Step
+   384→                            </Badge>
+   385→                          )}
+   386→                          {isMissing && (
+   387→                            <Badge variant="outline" className="text-xs">
+   388→                              Not added yet
+   389→                            </Badge>
+   390→                          )}
+   391→                          {step?.sponsorVerified && (
+   392→                            <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300">
+   393→                              <ShieldCheck className="size-3" />
+   394→                              Sponsor Verified
+   395→                            </Badge>
+   396→                          )}
+   397→                        </div>
+   398→                        <p className="text-sm text-muted-foreground leading-relaxed">
+   399→                          {step?.title || NA_STEP_TITLES[stepNum]}
+   400→                        </p>
+   401→                        {step?.completedAt && (
+   402→                          <p className="text-xs text-emerald-600 mt-1">
+   403→                            Completed: {new Date(step.completedAt).toLocaleDateString()}
+   404→                          </p>
+   405→                        )}
+   406→                        {step?.sponsorName && (
+   407→                          <p className="text-xs text-muted-foreground mt-0.5">
+   408→                            Sponsor: {step.sponsorName}
+   409→                          </p>
+   410→                        )}
+   411→                        {step?.notes && (
+   412→                          <p className="text-xs text-muted-foreground mt-1 italic">
+   413→                            {step.notes}
+   414→                          </p>
+   415→                        )}
+   416→                      </div>
+   417→                      <div className="flex gap-1 shrink-0">
+   418→                        {step && !isCompleted && (
+   419→                          <Button
+   420→                            size="sm"
+   421→                            onClick={() => handleMarkComplete(step)}
+   422→                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+   423→                          >
+   424→                            <CheckCircle2 className="size-3.5" />
+   425→                            Complete
+   426→                          </Button>
+   427→                        )}
+   428→                        {step && (
+   429→                          <Button
+   430→                            variant="ghost"
+   431→                            size="sm"
+   432→                            onClick={() => handleEditStep(step)}
+   433→                          >
+   434→                            <Pencil className="size-4" />
+   435→                          </Button>
+   436→                        )}
+   437→                      </div>
+   438→                    </div>
+   439→                  </CardContent>
+   440→                </Card>
+   441→              </div>
+   442→            </div>
+   443→          )
+   444→        })}
+   445→      </div>
+   446→
+   447→      {/* Add Step Dialog */}
+   448→      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+   449→        <DialogContent>
+   450→          <DialogHeader>
+   451→            <DialogTitle>Add NA Step</DialogTitle>
+   452→            <DialogDescription>Add a step to track your 12-step progress</DialogDescription>
+   453→          </DialogHeader>
+   454→          <div className="space-y-4">
+   455→            <div className="space-y-2">
+   456→              <Label>Step Number</Label>
+   457→              <Select
+   458→                value={addForm.stepNumber}
+   459→                onValueChange={(v) =>
+   460→                  setAddForm((f) => ({
+   461→                    ...f,
+   462→                    stepNumber: v,
+   463→                    title: NA_STEP_TITLES[parseInt(v)] || '',
+   464→                  }))
+   465→                }
+   466→              >
+   467→                <SelectTrigger className="w-full">
+   468→                  <SelectValue />
+   469→                </SelectTrigger>
+   470→                <SelectContent>
+   471→                  {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+   472→                    <SelectItem key={n} value={n.toString()} disabled={stepMap.has(n)}>
+   473→                      Step {n} {stepMap.has(n) ? '(already added)' : ''}
+   474→                    </SelectItem>
+   475→                  ))}
+   476→                </SelectContent>
+   477→              </Select>
+   478→            </div>
+   479→            <div className="space-y-2">
+   480→              <Label htmlFor="add-title">Title</Label>
+   481→              <Textarea
+   482→                id="add-title"
+   483→                value={addForm.title}
+   484→                onChange={(e) => setAddForm((f) => ({ ...f, title: e.target.value }))}
+   485→                rows={3}
+   486→                readOnly
+   487→                className="bg-muted"
+   488→              />
+   489→            </div>
+   490→            <div className="space-y-2">
+   491→              <Label htmlFor="add-desc">Description (optional)</Label>
+   492→              <Textarea
+   493→                id="add-desc"
+   494→                value={addForm.description}
+   495→                onChange={(e) => setAddForm((f) => ({ ...f, description: e.target.value }))}
+   496→                placeholder="Personal reflections on this step..."
+   497→                rows={2}
+   498→              />
+   499→            </div>
+   500→            <div className="space-y-2">
+   501→              <Label htmlFor="add-notes">Notes</Label>
+   502→              <Textarea
+   503→                id="add-notes"
+   504→                value={addForm.notes}
+   505→                onChange={(e) => setAddForm((f) => ({ ...f, notes: e.target.value }))}
+   506→                placeholder="Additional notes..."
+   507→                rows={2}
+   508→              />
+   509→            </div>
+   510→          </div>
+   511→          <DialogFooter>
+   512→            <Button variant="outline" onClick={() => setAddOpen(false)}>
+   513→              Cancel
+   514→            </Button>
+   515→            <Button
+   516→              onClick={submitAdd}
+   517→              disabled={createMutation.isPending}
+   518→              className="bg-purple-600 hover:bg-purple-700 text-white"
+   519→            >
+   520→              {createMutation.isPending && <Loader2 className="size-4 animate-spin" />}
+   521→              Add Step
+   522→            </Button>
+   523→          </DialogFooter>
+   524→        </DialogContent>
+   525→      </Dialog>
+   526→
+   527→      {/* Edit Step Dialog */}
+   528→      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+   529→        <DialogContent>
+   530→          <DialogHeader>
+   531→            <DialogTitle>Edit Step {editForm.stepNumber}</DialogTitle>
+   532→            <DialogDescription>Update step details</DialogDescription>
+   533→          </DialogHeader>
+   534→          <div className="space-y-4">
+   535→            <div className="space-y-2">
+   536→              <Label htmlFor="edit-title">Title</Label>
+   537→              <Textarea
+   538→                id="edit-title"
+   539→                value={editForm.title}
+   540→                onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
+   541→                rows={3}
+   542→              />
+   543→            </div>
+   544→            <div className="space-y-2">
+   545→              <Label htmlFor="edit-desc">Description</Label>
+   546→              <Textarea
+   547→                id="edit-desc"
+   548→                value={editForm.description}
+   549→                onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+   550→                placeholder="Personal reflections..."
+   551→                rows={2}
+   552→              />
+   553→            </div>
+   554→            <div className="space-y-2">
+   555→              <Label htmlFor="edit-notes">Notes</Label>
+   556→              <Textarea
+   557→                id="edit-notes"
+   558→                value={editForm.notes}
+   559→                onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+   560→                placeholder="Notes..."
+   561→                rows={2}
+   562→              />
+   563→            </div>
+   564→            <div className="space-y-2">
+   565→              <Label htmlFor="edit-sponsor">Sponsor Name</Label>
+   566→              <Input
+   567→                id="edit-sponsor"
+   568→                value={editForm.sponsorName}
+   569→                onChange={(e) => setEditForm((f) => ({ ...f, sponsorName: e.target.value }))}
+   570→                placeholder="Sponsor's name"
+   571→              />
+   572→            </div>
+   573→            <div className="flex items-center gap-2">
+   574→              <Checkbox
+   575→                id="edit-sponsor-verified"
+   576→                checked={editForm.sponsorVerified}
+   577→                onCheckedChange={(checked) =>
+   578→                  setEditForm((f) => ({ ...f, sponsorVerified: checked === true }))
+   579→                }
+   580→              />
+   581→              <Label htmlFor="edit-sponsor-verified" className="cursor-pointer">
+   582→                Sponsor verified
+   583→              </Label>
+   584→            </div>
+   585→            <div className="flex items-center gap-2">
+   586→              <Checkbox
+   587→                id="edit-completed"
+   588→                checked={editForm.isCompleted}
+   589→                onCheckedChange={(checked) =>
+   590→                  setEditForm((f) => ({ ...f, isCompleted: checked === true }))
+   591→                }
+   592→              />
+   593→              <Label htmlFor="edit-completed" className="cursor-pointer">
+   594→                Step completed
+   595→              </Label>
+   596→            </div>
+   597→            {editForm.isCompleted && (
+   598→              <div className="space-y-2">
+   599→                <Label htmlFor="edit-completed-at">Completed Date</Label>
+   600→                <Input
+   601→                  id="edit-completed-at"
+   602→                  type="date"
+   603→                  value={editForm.completedAt}
+   604→                  onChange={(e) => setEditForm((f) => ({ ...f, completedAt: e.target.value }))}
+   605→                />
+   606→              </div>
+   607→            )}
+   608→          </div>
+   609→          <DialogFooter>
+   610→            <Button variant="outline" onClick={() => setEditOpen(false)}>
+   611→              Cancel
+   612→            </Button>
+   613→            <Button
+   614→              onClick={submitEdit}
+   615→              disabled={updateMutation.isPending}
+   616→              className="bg-purple-600 hover:bg-purple-700 text-white"
+   617→            >
+   618→              {updateMutation.isPending && <Loader2 className="size-4 animate-spin" />}
+   619→              Save Changes
+   620→            </Button>
+   621→          </DialogFooter>
+   622→        </DialogContent>
+   623→      </Dialog>
+   624→
+   625→      {/* Mark Complete Dialog */}
+   626→      <Dialog open={completeOpen} onOpenChange={setCompleteOpen}>
+   627→        <DialogContent>
+   628→          <DialogHeader>
+   629→            <DialogTitle>Complete Step {completingStep?.stepNumber}</DialogTitle>
+   630→            <DialogDescription>
+   631→              Mark this step as completed in your recovery journey
+   632→            </DialogDescription>
+   633→          </DialogHeader>
+   634→          <div className="space-y-4">
+   635→            <div className="rounded-lg bg-purple-50 dark:bg-purple-900/20 p-3">
+   636→              <p className="text-sm text-purple-800 dark:text-purple-200 font-medium">
+   637→                {completingStep?.title || NA_STEP_TITLES[completingStep?.stepNumber || 1]}
+   638→              </p>
+   639→            </div>
+   640→            <div className="space-y-2">
+   641→              <Label htmlFor="complete-date">Completed Date</Label>
+   642→              <Input
+   643→                id="complete-date"
+   644→                type="date"
+   645→                value={completeForm.completedAt}
+   646→                onChange={(e) => setCompleteForm((f) => ({ ...f, completedAt: e.target.value }))}
+   647→              />
+   648→            </div>
+   649→            <div className="space-y-2">
+   650→              <Label htmlFor="complete-sponsor">Sponsor Name</Label>
+   651→              <Input
+   652→                id="complete-sponsor"
+   653→                value={completeForm.sponsorName}
+   654→                onChange={(e) =>
+   655→                  setCompleteForm((f) => ({ ...f, sponsorName: e.target.value }))
+   656→                }
+   657→                placeholder="Your sponsor's name"
+   658→              />
+   659→            </div>
+   660→            <div className="flex items-center gap-2">
+   661→              <Checkbox
+   662→                id="complete-verified"
+   663→                checked={completeForm.sponsorVerified}
+   664→                onCheckedChange={(checked) =>
+   665→                  setCompleteForm((f) => ({ ...f, sponsorVerified: checked === true }))
+   666→                }
+   667→              />
+   668→              <Label htmlFor="complete-verified" className="cursor-pointer">
+   669→                Sponsor verified this step
+   670→              </Label>
+   671→            </div>
+   672→            <div className="space-y-2">
+   673→              <Label htmlFor="complete-notes">Notes</Label>
+   674→              <Textarea
+   675→                id="complete-notes"
+   676→                value={completeForm.notes}
+   677→                onChange={(e) => setCompleteForm((f) => ({ ...f, notes: e.target.value }))}
+   678→                placeholder="Reflections on completing this step..."
+   679→                rows={3}
+   680→              />
+   681→            </div>
+   682→          </div>
+   683→          <DialogFooter>
+   684→            <Button variant="outline" onClick={() => setCompleteOpen(false)}>
+   685→              Cancel
+   686→            </Button>
+   687→            <Button
+   688→              onClick={submitComplete}
+   689→              disabled={updateMutation.isPending}
+   690→              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+   691→            >
+   692→              {updateMutation.isPending && <Loader2 className="size-4 animate-spin" />}
+   693→              <CheckCircle2 className="size-4" />
+   694→              Mark Complete
+   695→            </Button>
+   696→          </DialogFooter>
+   697→        </DialogContent>
+   698→      </Dialog>
+   699→    </div>
+   700→  )
+   701→}
+   702→

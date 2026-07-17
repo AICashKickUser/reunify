@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useAppStore } from '@/lib/store'
 import {
   useDrugTests,
@@ -116,10 +116,10 @@ export function DrugTestingView() {
   const [form, setForm] = useState<DrugTestFormData>(emptyForm)
   const [resultFilter, setResultFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
-  const [prevTrigger, setPrevTrigger] = useState(addDialogTrigger)
+  const prevTriggerRef = useRef(addDialogTrigger)
 
-  if (addDialogTrigger !== prevTrigger && addDialogTrigger > 0) {
-    setPrevTrigger(addDialogTrigger)
+  if (addDialogTrigger !== prevTriggerRef.current && addDialogTrigger > 0) {
+    prevTriggerRef.current = addDialogTrigger
     setForm(emptyForm)
     setAddOpen(true)
   }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useAppStore } from '@/lib/store'
 import {
   useCounselingSessions,
@@ -89,10 +89,10 @@ export function CounselingView() {
   const [form, setForm] = useState<SessionFormData>(emptyForm)
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [prevTrigger, setPrevTrigger] = useState(addDialogTrigger)
+  const prevTriggerRef = useRef(addDialogTrigger)
 
-  if (addDialogTrigger !== prevTrigger && addDialogTrigger > 0) {
-    setPrevTrigger(addDialogTrigger)
+  if (addDialogTrigger !== prevTriggerRef.current && addDialogTrigger > 0) {
+    prevTriggerRef.current = addDialogTrigger
     setForm(emptyForm)
     setAddOpen(true)
   }
