@@ -26,8 +26,11 @@ import {
   Shield,
   Loader2,
 } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import { useCase } from '@/lib/data-hooks'
+import { useSubscriptionStore } from '@/lib/subscription'
+import { ProBadge } from '@/components/pro-badge'
 import { ChartContainer } from '@/components/ui/chart'
 import {
   RadarChart,
@@ -464,11 +467,480 @@ ${incompleteReqs.length > 0 ? incompleteReqs.map((r) => `○ ${r.title} (${r.cat
   )
 }
 
+function generatePDFReport(caseData: Record<string, unknown>, categories: CategoryProgress[]) {
+  const requirements = (caseData.requirements || []) as Array<Record<string, unknown>>
+  const completedReqs = requirements.filter((r) => r.isCompleted)
+  const incompleteReqs = requirements.filter((r) => !r.isCompleted)
+
+  const counselingSessions = (caseData.counselingSessions || []) as Array<Record<string, unknown>>
+  const completedSessions = counselingSessions.filter((s) => s.isCompleted)
+
+  const drugTests = (caseData.drugTests || []) as Array<Record<string, unknown>>
+  const passedTests = drugTests.filter((t) => t.result === 'negative')
+  const failedTests = drugTests.filter((t) => t.result === 'positive')
+
+  const naSteps = (caseData.naSteps || []) as Array<Record<string, unknown>>
+  const completedSteps = naSteps.filter((s) => s.isCompleted)
+  const sponsorVerifiedCount = completedSteps.filter((s) => s.sponsorVerified).length
+
+  const naMeetings = (caseData.naMeetings || []) as Array<Record<string, unknown>>
+  const verifiedMeetings = naMeetings.filter((m) => m.isVerified)
+
+  const visits = (caseData.supervisedVisits || []) as Array<Record<string, unknown>>
+  const completedVisits = visits.filter((v) => v.isCompleted)
+  const latestVisitType = completedVisits.length > 0
+    ? (completedVisits.sort((a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime())[0]?.visitType || 'supervised')
+    : 'supervised'
+  const visitLevelLabel = latestVisitType === 'unsupervised'
+    ? 'Unsupervised'
+    : latestVisitType === 'semi-supervised'
+      ? 'Semi-Supervised'
+      : 'Supervised'
+
+  const parentingClasses = (caseData.parentingClasses || []) as Array<Record<string, unknown>>
+  const completedClasses = parentingClasses.filter((c) => c.isCompleted)
+  const certificatesEarned = parentingClasses.filter((c) => c.hasCertificate).length
+
+  const courtDates = (caseData.courtDates || []) as Array<Record<string, unknown>>
+  const completedCourtDates = courtDates.filter((c) => c.isCompleted)
+  const nextCourtDate = courtDates
+    .filter((c) => !c.isCompleted && new Date(c.date as string) > new Date())
+    .sort((a, b) => new Date(a.date as string).getTime() - new Date(b.date as string).getTime())[0]
+
+  const milestones = (caseData.milestones || []) as Array<Record<string, unknown>>
+  const completedMilestones = milestones.filter((m) => m.isCompleted)
+
+  const overallProgress = requirements.length > 0
+    ? Math.round((completedReqs.length / requirements.length) * 100)
+    : 0
+
+  // Calculate clean streak
+  const sortedTests = [...drugTests].sort(
+    (a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime()
+  )
+  let cleanStreak = 0
+  for (const test of sortedTests) {
+    if (test.result === 'negative') {
+      cleanStreak++
+    } else {
+      break
+    }
+  }
+
+  const drugPassRate = drugTests.length > 0
+    ? Math.round((passedTests.length / drugTests.length) * 100)
+    : 0
+
+  const formatDate = (d: string | null | undefined) =>
+    d ? new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Not specified'
+
+  const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  const caseNumber = caseData.caseNumber || 'N/A'
+
+  const onTrackCategories = categories.filter(c => c.status === 'on-track' || c.status === 'completed')
+  const needsAttentionCategories = categories.filter(c => c.status === 'needs-attention')
+  const behindCategories = categories.filter(c => c.status === 'behind')
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Reunification Compliance Report - Case ${caseNumber}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #1a1a1a;
+      background: #fff;
+      padding: 0;
+      line-height: 1.5;
+    }
+    .page {
+      max-width: 850px;
+      margin: 0 auto;
+      padding: 40px 50px;
+    }
+    .header {
+      text-align: center;
+      border-bottom: 3px solid #059669;
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+    }
+    .header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #064e3b;
+      margin-bottom: 4px;
+    }
+    .header .case-num {
+      font-size: 14px;
+      color: #374151;
+      font-weight: 500;
+    }
+    .header .date {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+    .section {
+      margin-bottom: 22px;
+    }
+    .section-title {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #fff;
+      background: #059669;
+      padding: 6px 14px;
+      border-radius: 3px;
+      margin-bottom: 12px;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 24px;
+    }
+    .info-item {
+      display: flex;
+      gap: 6px;
+      font-size: 12px;
+      padding: 4px 0;
+    }
+    .info-label {
+      font-weight: 600;
+      color: #374151;
+      min-width: 120px;
+    }
+    .info-value {
+      color: #1f2937;
+    }
+    .progress-section {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 6px;
+      padding: 16px 20px;
+      text-align: center;
+      margin-bottom: 22px;
+    }
+    .progress-big {
+      font-size: 48px;
+      font-weight: 800;
+      color: #059669;
+      line-height: 1;
+    }
+    .progress-label {
+      font-size: 13px;
+      color: #374151;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+    .progress-bar-container {
+      width: 100%;
+      height: 16px;
+      background: #d1fae5;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #059669, #10b981);
+      border-radius: 8px;
+      transition: width 0.3s;
+    }
+    .category-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .category-table th {
+      background: #f3f4f6;
+      font-weight: 600;
+      text-align: left;
+      padding: 8px 10px;
+      border: 1px solid #d1d5db;
+      color: #374151;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .category-table td {
+      padding: 8px 10px;
+      border: 1px solid #e5e7eb;
+      vertical-align: top;
+    }
+    .category-table tr:nth-child(even) td {
+      background: #f9fafb;
+    }
+    .status-completed { color: #059669; font-weight: 600; }
+    .status-on-track { color: #16a34a; font-weight: 600; }
+    .status-needs-attention { color: #d97706; font-weight: 600; }
+    .status-behind { color: #dc2626; font-weight: 600; }
+    .mini-bar {
+      display: inline-block;
+      width: 60px;
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+      vertical-align: middle;
+      margin-left: 6px;
+    }
+    .mini-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+    }
+    .item-list {
+      list-style: none;
+      padding: 0;
+    }
+    .item-list li {
+      padding: 5px 0;
+      font-size: 12px;
+      border-bottom: 1px solid #f3f4f6;
+      display: flex;
+      gap: 6px;
+    }
+    .item-list li:last-child { border-bottom: none; }
+    .check { color: #059669; font-weight: 700; }
+    .cross { color: #dc2626; font-weight: 700; }
+    .warn { color: #d97706; font-weight: 700; }
+    .star { color: #d97706; }
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .col-box {
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      padding: 12px;
+    }
+    .col-box h4 {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .col-box.achievements h4 { color: #059669; }
+    .col-box.attention h4 { color: #d97706; }
+    .footer {
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 2px solid #059669;
+      text-align: center;
+    }
+    .footer p {
+      font-size: 10px;
+      color: #9ca3af;
+    }
+    .footer .generated {
+      font-size: 11px;
+      color: #6b7280;
+      margin-bottom: 6px;
+    }
+    .footer .privacy {
+      font-style: italic;
+      margin-top: 8px;
+      font-size: 9px;
+      color: #9ca3af;
+    }
+    @media print {
+      body { padding: 0; }
+      .page { padding: 20px 30px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <!-- Header -->
+    <div class="header">
+      <h1>REUNIFICATION COMPLIANCE REPORT</h1>
+      <div class="case-num">Case #${caseNumber}</div>
+      <div class="date">Report Generated: ${today}</div>
+    </div>
+
+    <!-- Case Info -->
+    <div class="section">
+      <div class="section-title">Case Information</div>
+      <div class="info-grid">
+        <div class="info-item"><span class="info-label">Court:</span><span class="info-value">${caseData.courtName || 'Not specified'}</span></div>
+        <div class="info-item"><span class="info-label">Judge:</span><span class="info-value">${caseData.judgeName || 'Not specified'}</span></div>
+        <div class="info-item"><span class="info-label">Caseworker:</span><span class="info-value">${caseData.caseworkerName || 'Not specified'}${caseData.caseworkerPhone ? ' (' + caseData.caseworkerPhone + ')' : ''}</span></div>
+        <div class="info-item"><span class="info-label">Attorney:</span><span class="info-value">${caseData.attorneyName || 'Not specified'}${caseData.attorneyPhone ? ' (' + caseData.attorneyPhone + ')' : ''}</span></div>
+        <div class="info-item"><span class="info-label">Removal Date:</span><span class="info-value">${formatDate(caseData.removalDate as string | null)}</span></div>
+        <div class="info-item"><span class="info-label">Target Date:</span><span class="info-value">${formatDate(caseData.targetReunificationDate as string | null)}</span></div>
+      </div>
+    </div>
+
+    <!-- Overall Progress -->
+    <div class="progress-section">
+      <div class="progress-big">${overallProgress}%</div>
+      <div class="progress-label">Overall Reunification Progress</div>
+      <div class="progress-bar-container">
+        <div class="progress-bar-fill" style="width: ${overallProgress}%"></div>
+      </div>
+      <div style="font-size:11px; color:#374151; margin-top:6px">
+        ${completedReqs.length} of ${requirements.length} requirements completed
+      </div>
+    </div>
+
+    <!-- Compliance Breakdown -->
+    <div class="section">
+      <div class="section-title">Compliance Breakdown</div>
+      <table class="category-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Progress</th>
+            <th>Details</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Counseling</strong></td>
+            <td>${counselingSessions.length > 0 ? Math.round((completedSessions.length / counselingSessions.length) * 100) : 0}%
+              <span class="mini-bar"><span class="mini-bar-fill" style="width:${counselingSessions.length > 0 ? Math.round((completedSessions.length / counselingSessions.length) * 100) : 0}%;background:#10b981"></span></span>
+            </td>
+            <td>${completedSessions.length}/${counselingSessions.length} sessions completed</td>
+            <td class="status-${counselingSessions.length > 0 ? (completedSessions.length / counselingSessions.length >= 1 ? 'completed' : completedSessions.length / counselingSessions.length >= 0.6 ? 'on-track' : completedSessions.length / counselingSessions.length >= 0.3 ? 'needs-attention' : 'behind') : 'behind'}">
+              ${counselingSessions.length > 0 ? (completedSessions.length / counselingSessions.length >= 1 ? 'Completed' : completedSessions.length / counselingSessions.length >= 0.6 ? 'On Track' : completedSessions.length / counselingSessions.length >= 0.3 ? 'Needs Attention' : 'Behind') : 'No Data'}
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Drug Testing</strong></td>
+            <td>${drugPassRate}%
+              <span class="mini-bar"><span class="mini-bar-fill" style="width:${drugPassRate}%;background:${drugPassRate >= 80 ? '#10b981' : drugPassRate >= 50 ? '#f59e0b' : '#ef4444'}"></span></span>
+            </td>
+            <td>${passedTests.length} clean of ${drugTests.length} total (${drugPassRate}% clean rate)${cleanStreak > 0 ? ', ' + cleanStreak + ' clean streak' : ''}${failedTests.length > 0 ? ', ' + failedTests.length + ' positive' : ''}</td>
+            <td class="status-${drugTests.length > 0 ? (drugPassRate >= 100 ? 'completed' : drugPassRate >= 80 ? 'on-track' : drugPassRate >= 50 ? 'needs-attention' : 'behind') : 'behind'}">
+              ${drugTests.length > 0 ? (drugPassRate >= 100 ? 'Completed' : drugPassRate >= 80 ? 'On Track' : drugPassRate >= 50 ? 'Needs Attention' : 'Behind') : 'No Data'}
+            </td>
+          </tr>
+          <tr>
+            <td><strong>NA Steps (12-Step)</strong></td>
+            <td>${completedSteps.length}/12
+              <span class="mini-bar"><span class="mini-bar-fill" style="width:${Math.round((completedSteps.length / 12) * 100)}%;background:#8b5cf6"></span></span>
+            </td>
+            <td>${completedSteps.length}/12 steps completed${sponsorVerifiedCount > 0 ? ', ' + sponsorVerifiedCount + ' sponsor-verified' : ''}${naSteps.length > 0 && completedSteps.length < naSteps.length ? ' (' + (naSteps.length - completedSteps.length) + ' remaining)' : ''}</td>
+            <td class="status-${completedSteps.length >= 12 ? 'completed' : completedSteps.length >= 7 ? 'on-track' : completedSteps.length >= 3 ? 'needs-attention' : 'behind'}">
+              ${completedSteps.length >= 12 ? 'Completed' : completedSteps.length >= 7 ? 'On Track' : completedSteps.length >= 3 ? 'Needs Attention' : 'Behind'}
+            </td>
+          </tr>
+          <tr>
+            <td><strong>NA Meetings</strong></td>
+            <td>${naMeetings.length > 0 ? Math.round((verifiedMeetings.length / naMeetings.length) * 100) : 0}%
+              <span class="mini-bar"><span class="mini-bar-fill" style="width:${naMeetings.length > 0 ? Math.round((verifiedMeetings.length / naMeetings.length) * 100) : 0}%;background:#8b5cf6"></span></span>
+            </td>
+            <td>${naMeetings.length} attended, ${verifiedMeetings.length} verified</td>
+            <td class="status-${naMeetings.length > 0 ? (verifiedMeetings.length / naMeetings.length >= 1 ? 'completed' : verifiedMeetings.length / naMeetings.length >= 0.6 ? 'on-track' : verifiedMeetings.length / naMeetings.length >= 0.3 ? 'needs-attention' : 'behind') : 'behind'}">
+              ${naMeetings.length > 0 ? (verifiedMeetings.length / naMeetings.length >= 1 ? 'Completed' : verifiedMeetings.length / naMeetings.length >= 0.6 ? 'On Track' : verifiedMeetings.length / naMeetings.length >= 0.3 ? 'Needs Attention' : 'Behind') : 'No Data'}
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Supervised Visits</strong></td>
+            <td>${visits.length > 0 ? Math.round((completedVisits.length / visits.length) * 100) : 0}%
+              <span class="mini-bar"><span class="mini-bar-fill" style="width:${visits.length > 0 ? Math.round((completedVisits.length / visits.length) * 100) : 0}%;background:#0ea5e9"></span></span>
+            </td>
+            <td>${completedVisits.length}/${visits.length} completed, Current Level: ${visitLevelLabel}</td>
+            <td class="status-${visits.length > 0 ? (completedVisits.length / visits.length >= 1 ? 'completed' : completedVisits.length / visits.length >= 0.6 ? 'on-track' : completedVisits.length / visits.length >= 0.3 ? 'needs-attention' : 'behind') : 'behind'}">
+              ${visits.length > 0 ? (completedVisits.length / visits.length >= 1 ? 'Completed' : completedVisits.length / visits.length >= 0.6 ? 'On Track' : completedVisits.length / visits.length >= 0.3 ? 'Needs Attention' : 'Behind') : 'No Data'}
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Parenting Classes</strong></td>
+            <td>${parentingClasses.length > 0 ? Math.round((completedClasses.length / parentingClasses.length) * 100) : 0}%
+              <span class="mini-bar"><span class="mini-bar-fill" style="width:${parentingClasses.length > 0 ? Math.round((completedClasses.length / parentingClasses.length) * 100) : 0}%;background:#f43f5e"></span></span>
+            </td>
+            <td>${completedClasses.length}/${parentingClasses.length} completed, ${certificatesEarned} certificates earned</td>
+            <td class="status-${parentingClasses.length > 0 ? (completedClasses.length / parentingClasses.length >= 1 ? 'completed' : completedClasses.length / parentingClasses.length >= 0.6 ? 'on-track' : completedClasses.length / parentingClasses.length >= 0.3 ? 'needs-attention' : 'behind') : 'behind'}">
+              ${parentingClasses.length > 0 ? (completedClasses.length / parentingClasses.length >= 1 ? 'Completed' : completedClasses.length / parentingClasses.length >= 0.6 ? 'On Track' : completedClasses.length / parentingClasses.length >= 0.3 ? 'Needs Attention' : 'Behind') : 'No Data'}
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Court Dates</strong></td>
+            <td>${courtDates.length > 0 ? Math.round((completedCourtDates.length / courtDates.length) * 100) : 0}%
+              <span class="mini-bar"><span class="mini-bar-fill" style="width:${courtDates.length > 0 ? Math.round((completedCourtDates.length / courtDates.length) * 100) : 0}%;background:#64748b"></span></span>
+            </td>
+            <td>${completedCourtDates.length}/${courtDates.length} completed${nextCourtDate ? ', Next: ' + formatDate(nextCourtDate.date as string) : ', No upcoming dates'}</td>
+            <td class="status-${courtDates.length > 0 ? (completedCourtDates.length / courtDates.length >= 1 ? 'completed' : completedCourtDates.length / courtDates.length >= 0.6 ? 'on-track' : completedCourtDates.length / courtDates.length >= 0.3 ? 'needs-attention' : 'behind') : 'behind'}">
+              ${courtDates.length > 0 ? (completedCourtDates.length / courtDates.length >= 1 ? 'Completed' : completedCourtDates.length / courtDates.length >= 0.6 ? 'On Track' : completedCourtDates.length / courtDates.length >= 0.3 ? 'Needs Attention' : 'Behind') : 'No Data'}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Achievements & Areas Needing Attention -->
+    <div class="two-col">
+      <div class="col-box achievements">
+        <h4>Achievements & Completed Items</h4>
+        <ul class="item-list">
+          ${completedReqs.length > 0 ? completedReqs.map((r) => '<li><span class="check">\u2713</span> ' + r.title + ' (' + r.category + ')' + (r.completedAt ? ' \u2013 ' + formatDate(r.completedAt as string) : '') + '</li>').join('') : '<li style="color:#9ca3af">No requirements completed yet</li>'}
+          ${completedMilestones.length > 0 ? '<li style="padding-top:8px;border-top:1px solid #e5e7eb"><strong>Milestones:</strong></li>' + completedMilestones.map((m) => '<li><span class="star">\u2605</span> ' + m.title + (m.completedAt ? ' \u2013 ' + formatDate(m.completedAt as string) : '') + '</li>').join('') : ''}
+        </ul>
+      </div>
+      <div class="col-box attention">
+        <h4>Areas Needing Attention</h4>
+        <ul class="item-list">
+          ${incompleteReqs.length > 0 ? incompleteReqs.map((r) => '<li><span class="cross">\u25CB</span> ' + r.title + ' (' + r.category + ')' + (r.dueDate ? ' \u2013 Due: ' + formatDate(r.dueDate as string) : '') + '</li>').join('') : '<li style="color:#059669"><span class="check">\u2713</span> All requirements completed!</li>'}
+          ${behindCategories.length > 0 ? '<li style="padding-top:8px;border-top:1px solid #e5e7eb"><strong>Behind Schedule:</strong></li>' + behindCategories.map(c => '<li><span class="cross">\u2717</span> ' + c.label + ': ' + c.progress + '% \u2013 ' + c.statValue + '</li>').join('') : ''}
+          ${needsAttentionCategories.length > 0 ? '<li style="padding-top:8px;border-top:1px solid #e5e7eb"><strong>Needs Attention:</strong></li>' + needsAttentionCategories.map(c => '<li><span class="warn">\u26A0</span> ' + c.label + ': ' + c.progress + '% \u2013 ' + c.statValue + '</li>').join('') : ''}
+        </ul>
+      </div>
+    </div>
+
+    <!-- NA Steps Detail -->
+    ${naSteps.length > 0 ? `
+    <div class="section" style="margin-top:22px">
+      <div class="section-title">NA Steps Detail</div>
+      <table class="category-table">
+        <thead>
+          <tr><th>Step</th><th>Status</th><th>Sponsor Verified</th><th>Completed Date</th></tr>
+        </thead>
+        <tbody>
+          ${naSteps.map(s => '<tr><td>Step ' + s.stepNumber + '</td><td class="' + (s.isCompleted ? 'status-completed' : '') + '">' + (s.isCompleted ? 'Completed' : 'Incomplete') + '</td><td>' + (s.sponsorVerified ? 'Yes' + (s.sponsorName ? ' (' + s.sponsorName + ')' : '') : 'No') + '</td><td>' + (s.completedAt ? formatDate(s.completedAt as string) : '\u2014') + '</td></tr>').join('')}
+        </tbody>
+      </table>
+    </div>` : ''}
+
+    <!-- Footer -->
+    <div class="footer">
+      <p class="generated">Generated by Reunify on ${today}</p>
+      <p class="privacy">CONFIDENTIAL: This report contains sensitive case information. Store securely and share only with authorized parties such as your attorney, caseworker, or judge. All data is stored locally on the user's device and is not transmitted to any external servers.</p>
+    </div>
+  </div>
+</body>
+</html>`
+
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) {
+    toast.error('Please allow popups to generate the PDF report')
+    return
+  }
+  printWindow.document.write(html)
+  printWindow.document.close()
+  // Wait for content to render then print
+  printWindow.onload = () => {
+    setTimeout(() => {
+      printWindow.print()
+    }, 300)
+  }
+}
+
 export function ProgressView() {
   const { activeCaseId } = useAppStore()
   const { data: caseData, isLoading } = useCase(activeCaseId)
   const [exporting, setExporting] = useState(false)
   const [summaryOpen, setSummaryOpen] = useState(false)
+  const { tier, setUpgradeDialogOpen } = useSubscriptionStore()
+  const isPro = tier === 'pro'
 
   async function handleExport() {
     if (!activeCaseId) return
@@ -787,13 +1259,36 @@ export function ProgressView() {
               <p className="mt-2 text-sm text-muted-foreground">
                 {motivation.message}
               </p>
-              <Button
-                className="mt-3 bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
-                onClick={() => setSummaryOpen(true)}
-              >
-                <ClipboardCheck className="size-4" />
-                View Summary
-              </Button>
+              <div className="mt-3 flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+                <Button
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+                  onClick={() => {
+                    if (!isPro) {
+                      setUpgradeDialogOpen(true)
+                    } else {
+                      setSummaryOpen(true)
+                    }
+                  }}
+                >
+                  <ClipboardCheck className="size-4" />
+                  View Summary
+                  {!isPro && <ProBadge />}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => {
+                    if (!isPro) {
+                      setUpgradeDialogOpen(true)
+                    }
+                  }}
+                  disabled={isPro ? false : undefined}
+                >
+                  <FileText className="size-4" />
+                  PDF Report
+                  {!isPro && <ProBadge />}
+                </Button>
+              </div>
               <div className="mt-4 flex items-center gap-4 justify-center sm:justify-start">
                 <div className="text-center">
                   <p className="text-2xl font-bold text-foreground">
@@ -962,10 +1457,25 @@ export function ProgressView() {
             <Button
               variant="outline"
               className="gap-2"
+              onClick={() => {
+                if (!isPro) {
+                  setUpgradeDialogOpen(true)
+                } else if (caseData) {
+                  generatePDFReport(caseData as unknown as Record<string, unknown>, categories)
+                }
+              }}
+            >
+              <FileText className="size-4" />
+              PDF Report
+              {!isPro && <ProBadge />}
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2"
               onClick={() => window.print()}
             >
               <Printer className="size-4" />
-              Print Report
+              Print
             </Button>
           </div>
         </div>
