@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Case {
+  id                    String              @id @default(cuid())
+  caseNumber            String              @unique
+  courtName             String?
+  caseworkerName        String?
+  caseworkerPhone       String?
+  judgeName             String?
+  attorneyName          String?
+  attorneyPhone         String?
+  removalDate           DateTime?
+  targetReunificationDate DateTime?
+  caseStatus            String              @default("active") // active, closed, reunited
+  notes                 String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  requirements          CaseRequirement[]
+  counselingSessions    CounselingSession[]
+  drugTests             DrugTest[]
+  naSteps               NAStep[]
+  naMeetings            NAMeeting[]
+  supervisedVisits      SupervisedVisit[]
+  courtDates            CourtDate[]
+  parentingClasses      ParentingClass[]
+  milestones            Milestone[]
+  dailyCheckIns         DailyCheckIn[]
+}
+
+model CaseRequirement {
+  id              String   @id @default(cuid())
+  caseId          String
+  category        String   // counseling, drug-testing, na-meetings, na-steps, supervised-visits, parenting-classes, housing, employment, other
+  title           String
+  description     String?
+  frequency       String?  // daily, weekly, biweekly, monthly, as-needed, one-time
+  isCompleted     Boolean  @default(false)
+  completedAt     DateTime?
+  dueDate         DateTime?
+  notes           String?
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model CounselingSession {
+  id              String   @id @default(cuid())
+  caseId          String
+  date            DateTime
+  counselorName   String?
+  sessionType     String?  // individual, group, family, couples
+  duration        Int?     // minutes
+  notes           String?
+  isCompleted     Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model DrugTest {
+  id              String   @id @default(cuid())
+  caseId          String
+  date            DateTime
+  testType        String?  // urine, hair, blood, saliva
+  isRandom        Boolean  @default(false)
+  result          String?  // negative, positive, pending, diluted, refused
+  testingFacility String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model NAStep {
+  id              String   @id @default(cuid())
+  caseId          String
+  stepNumber      Int      // 1-12
+  title           String
+  description     String?
+  isCompleted     Boolean  @default(false)
+  completedAt     DateTime?
+  sponsorVerified Boolean  @default(false)
+  sponsorName     String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model NAMeeting {
+  id              String   @id @default(cuid())
+  caseId          String
+  date            DateTime
+  meetingName     String?
+  location        String?
+  speaker         String?
+  topic           String?
+  isVerified      Boolean  @default(false)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model SupervisedVisit {
+  id              String   @id @default(cuid())
+  caseId          String
+  date            DateTime
+  location        String?
+  supervisorName  String?
+  duration        Int?     // minutes
+  childBehavior   String?  // happy, anxious, withdrawn, engaged, upset
+  parentBehavior  String?  // engaged, distracted, affectionate, nervous
+  notes           String?
+  isCompleted     Boolean  @default(false)
+  visitType       String?  // supervised, semi-supervised, unsupervised
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model CourtDate {
+  id              String   @id @default(cuid())
+  caseId          String
+  date            DateTime
+  hearingType     String?  // emergency, adjudication, disposition, review, permanency, termination, final
+  outcome         String?
+  judgeNotes      String?
+  nextSteps       String?
+  isCompleted     Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model ParentingClass {
+  id              String   @id @default(cuid())
+  caseId          String
+  date            DateTime
+  className       String?
+  provider        String?
+  topic           String?
+  isCompleted     Boolean  @default(false)
+  hasCertificate  Boolean  @default(false)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model Milestone {
+  id              String   @id @default(cuid())
+  caseId          String
+  title           String
+  description     String?
+  category        String   // legal, recovery, family, housing, employment, education, other
+  targetDate      DateTime?
+  completedAt     DateTime?
+  isCompleted     Boolean  @default(false)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model DailyCheckIn {
+  id              String   @id @default(cuid())
+  caseId          String
+  date            DateTime
+  mood            String?  // great, good, okay, struggling, bad
+  drugTestRequired Boolean @default(false)
+  drugTestCompleted Boolean @default(false)
+  meetingsAttended Int     @default(0)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}

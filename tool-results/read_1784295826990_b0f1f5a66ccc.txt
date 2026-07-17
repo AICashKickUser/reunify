@@ -1,0 +1,837 @@
+     1→'use client'
+     2→
+     3→import { useState, useMemo } from 'react'
+     4→import { format, differenceInDays, parseISO, isPast } from 'date-fns'
+     5→import {
+     6→  ClipboardList, Plus, Edit, Trash2, Phone, User, Gavel,
+     7→  CalendarDays, StickyNote, CheckCircle2, Clock, AlertTriangle,
+     8→  ChevronRight, Loader2, Building2
+     9→} from 'lucide-react'
+    10→import { useAppStore } from '@/lib/store'
+    11→import { useCase, useRequirements, useCreateItem, useUpdateItem, useDeleteItem } from '@/lib/data-hooks'
+    12→import { CATEGORY_COLORS, type CaseRequirement } from '@/lib/types'
+    13→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+    14→import { Button } from '@/components/ui/button'
+    15→import { Badge } from '@/components/ui/badge'
+    16→import { Checkbox } from '@/components/ui/checkbox'
+    17→import { Progress } from '@/components/ui/progress'
+    18→import { Skeleton } from '@/components/ui/skeleton'
+    19→import { Separator } from '@/components/ui/separator'
+    20→import {
+    21→  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
+    22→} from '@/components/ui/accordion'
+    23→import {
+    24→  Dialog, DialogContent, DialogDescription, DialogFooter,
+    25→  DialogHeader, DialogTitle,
+    26→} from '@/components/ui/dialog'
+    27→import {
+    28→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    29→} from '@/components/ui/select'
+    30→import { Input } from '@/components/ui/input'
+    31→import { Label } from '@/components/ui/label'
+    32→import { Textarea } from '@/components/ui/textarea'
+    33→import {
+    34→  Popover, PopoverContent, PopoverTrigger,
+    35→} from '@/components/ui/popover'
+    36→import { Calendar } from '@/components/ui/calendar'
+    37→
+    38→const CATEGORIES = [
+    39→  { value: 'counseling', label: 'Counseling' },
+    40→  { value: 'drug-testing', label: 'Drug Testing' },
+    41→  { value: 'na-meetings', label: 'NA Meetings' },
+    42→  { value: 'na-steps', label: 'NA Steps' },
+    43→  { value: 'supervised-visits', label: 'Supervised Visits' },
+    44→  { value: 'parenting-classes', label: 'Parenting Classes' },
+    45→  { value: 'housing', label: 'Housing' },
+    46→  { value: 'employment', label: 'Employment' },
+    47→  { value: 'other', label: 'Other' },
+    48→] as const
+    49→
+    50→const FREQUENCY_OPTIONS = [
+    51→  { value: 'daily', label: 'Daily' },
+    52→  { value: 'weekly', label: 'Weekly' },
+    53→  { value: 'biweekly', label: 'Bi-weekly' },
+    54→  { value: 'monthly', label: 'Monthly' },
+    55→  { value: 'quarterly', label: 'Quarterly' },
+    56→  { value: 'as-needed', label: 'As Needed' },
+    57→  { value: 'one-time', label: 'One Time' },
+    58→] as const
+    59→
+    60→function getCategoryLabel(cat: string) {
+    61→  return CATEGORIES.find(c => c.value === cat)?.label ?? cat
+    62→}
+    63→
+    64→function getRequirementStatus(req: CaseRequirement): 'completed' | 'overdue' | 'pending' {
+    65→  if (req.isCompleted) return 'completed'
+    66→  if (req.dueDate && isPast(parseISO(req.dueDate))) return 'overdue'
+    67→  return 'pending'
+    68→}
+    69→
+    70→function DatePickerField({ value, onChange, label }: {
+    71→  value: Date | undefined
+    72→  onChange: (date: Date | undefined) => void
+    73→  label: string
+    74→}) {
+    75→  const [open, setOpen] = useState(false)
+    76→  return (
+    77→    <div className="space-y-2">
+    78→      <Label>{label}</Label>
+    79→      <Popover open={open} onOpenChange={setOpen}>
+    80→        <PopoverTrigger asChild>
+    81→          <Button variant="outline" className="w-full justify-start text-left font-normal">
+    82→            <CalendarDays className="mr-2 size-4" />
+    83→            {value ? format(value, 'MMM d, yyyy') : 'Pick a date'}
+    84→          </Button>
+    85→        </PopoverTrigger>
+    86→        <PopoverContent className="w-auto p-0" align="start">
+    87→          <Calendar
+    88→            mode="single"
+    89→            selected={value}
+    90→            onSelect={(d) => { onChange(d); setOpen(false) }}
+    91→            initialFocus
+    92→          />
+    93→        </PopoverContent>
+    94→      </Popover>
+    95→    </div>
+    96→  )
+    97→}
+    98→
+    99→function AddRequirementDialog({ open, onOpenChange, caseId }: {
+   100→  open: boolean
+   101→  onOpenChange: (open: boolean) => void
+   102→  caseId: string
+   103→}) {
+   104→  const [category, setCategory] = useState('')
+   105→  const [title, setTitle] = useState('')
+   106→  const [description, setDescription] = useState('')
+   107→  const [frequency, setFrequency] = useState('')
+   108→  const [dueDate, setDueDate] = useState<Date | undefined>()
+   109→  const createMutation = useCreateItem('requirements')
+   110→
+   111→  const resetForm = () => {
+   112→    setCategory('')
+   113→    setTitle('')
+   114→    setDescription('')
+   115→    setFrequency('')
+   116→    setDueDate(undefined)
+   117→  }
+   118→
+   119→  const handleSubmit = () => {
+   120→    if (!category || !title) return
+   121→    createMutation.mutate({
+   122→      caseId,
+   123→      category,
+   124→      title,
+   125→      description: description || null,
+   126→      frequency: frequency || null,
+   127→      dueDate: dueDate ? dueDate.toISOString() : null,
+   128→      isCompleted: false,
+   129→      sortOrder: 0,
+   130→    }, {
+   131→      onSuccess: () => {
+   132→        onOpenChange(false)
+   133→        resetForm()
+   134→      },
+   135→    })
+   136→  }
+   137→
+   138→  return (
+   139→    <Dialog open={open} onOpenChange={onOpenChange}>
+   140→      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+   141→        <DialogHeader>
+   142→          <DialogTitle>Add Requirement</DialogTitle>
+   143→          <DialogDescription>Add a new requirement to your case plan</DialogDescription>
+   144→        </DialogHeader>
+   145→        <div className="space-y-4">
+   146→          <div className="space-y-2">
+   147→            <Label>Category *</Label>
+   148→            <Select value={category} onValueChange={setCategory}>
+   149→              <SelectTrigger className="w-full">
+   150→                <SelectValue placeholder="Select category" />
+   151→              </SelectTrigger>
+   152→              <SelectContent>
+   153→                {CATEGORIES.map(c => (
+   154→                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+   155→                ))}
+   156→              </SelectContent>
+   157→            </Select>
+   158→          </div>
+   159→          <div className="space-y-2">
+   160→            <Label>Title *</Label>
+   161→            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Requirement title" />
+   162→          </div>
+   163→          <div className="space-y-2">
+   164→            <Label>Description</Label>
+   165→            <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the requirement..." rows={3} />
+   166→          </div>
+   167→          <div className="space-y-2">
+   168→            <Label>Frequency</Label>
+   169→            <Select value={frequency} onValueChange={setFrequency}>
+   170→              <SelectTrigger className="w-full">
+   171→                <SelectValue placeholder="Select frequency" />
+   172→              </SelectTrigger>
+   173→              <SelectContent>
+   174→                {FREQUENCY_OPTIONS.map(f => (
+   175→                  <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+   176→                ))}
+   177→              </SelectContent>
+   178→            </Select>
+   179→          </div>
+   180→          <DatePickerField value={dueDate} onChange={setDueDate} label="Due Date" />
+   181→        </div>
+   182→        <DialogFooter>
+   183→          <Button variant="outline" onClick={() => { onOpenChange(false); resetForm() }}>Cancel</Button>
+   184→          <Button
+   185→            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+   186→            onClick={handleSubmit}
+   187→            disabled={!category || !title || createMutation.isPending}
+   188→          >
+   189→            {createMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+   190→            Add Requirement
+   191→          </Button>
+   192→        </DialogFooter>
+   193→      </DialogContent>
+   194→    </Dialog>
+   195→  )
+   196→}
+   197→
+   198→function EditRequirementDialog({ open, onOpenChange, requirement }: {
+   199→  open: boolean
+   200→  onOpenChange: (open: boolean) => void
+   201→  requirement: CaseRequirement | null
+   202→}) {
+   203→  const [category, setCategory] = useState('')
+   204→  const [title, setTitle] = useState('')
+   205→  const [description, setDescription] = useState('')
+   206→  const [frequency, setFrequency] = useState('')
+   207→  const [dueDate, setDueDate] = useState<Date | undefined>()
+   208→  const updateMutation = useUpdateItem('requirements')
+   209→
+   210→  useState(() => {
+   211→    if (requirement) {
+   212→      setCategory(requirement.category)
+   213→      setTitle(requirement.title)
+   214→      setDescription(requirement.description ?? '')
+   215→      setFrequency(requirement.frequency ?? '')
+   216→      setDueDate(requirement.dueDate ? parseISO(requirement.dueDate) : undefined)
+   217→    }
+   218→  })
+   219→
+   220→  // Sync form when requirement changes
+   221→  const syncForm = (req: CaseRequirement) => {
+   222→    setCategory(req.category)
+   223→    setTitle(req.title)
+   224→    setDescription(req.description ?? '')
+   225→    setFrequency(req.frequency ?? '')
+   226→    setDueDate(req.dueDate ? parseISO(req.dueDate) : undefined)
+   227→  }
+   228→
+   229→  // Use effect alternative - sync on open
+   230→  if (requirement && open && category !== requirement.category) {
+   231→    syncForm(requirement)
+   232→  }
+   233→
+   234→  const handleSubmit = () => {
+   235→    if (!requirement || !category || !title) return
+   236→    updateMutation.mutate({
+   237→      id: requirement.id,
+   238→      category,
+   239→      title,
+   240→      description: description || null,
+   241→      frequency: frequency || null,
+   242→      dueDate: dueDate ? dueDate.toISOString() : null,
+   243→    }, {
+   244→      onSuccess: () => {
+   245→        onOpenChange(false)
+   246→      },
+   247→    })
+   248→  }
+   249→
+   250→  return (
+   251→    <Dialog open={open} onOpenChange={onOpenChange}>
+   252→      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+   253→        <DialogHeader>
+   254→          <DialogTitle>Edit Requirement</DialogTitle>
+   255→          <DialogDescription>Update requirement details</DialogDescription>
+   256→        </DialogHeader>
+   257→        <div className="space-y-4">
+   258→          <div className="space-y-2">
+   259→            <Label>Category *</Label>
+   260→            <Select value={category} onValueChange={setCategory}>
+   261→              <SelectTrigger className="w-full">
+   262→                <SelectValue placeholder="Select category" />
+   263→              </SelectTrigger>
+   264→              <SelectContent>
+   265→                {CATEGORIES.map(c => (
+   266→                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+   267→                ))}
+   268→              </SelectContent>
+   269→            </Select>
+   270→          </div>
+   271→          <div className="space-y-2">
+   272→            <Label>Title *</Label>
+   273→            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Requirement title" />
+   274→          </div>
+   275→          <div className="space-y-2">
+   276→            <Label>Description</Label>
+   277→            <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the requirement..." rows={3} />
+   278→          </div>
+   279→          <div className="space-y-2">
+   280→            <Label>Frequency</Label>
+   281→            <Select value={frequency} onValueChange={setFrequency}>
+   282→              <SelectTrigger className="w-full">
+   283→                <SelectValue placeholder="Select frequency" />
+   284→              </SelectTrigger>
+   285→              <SelectContent>
+   286→                {FREQUENCY_OPTIONS.map(f => (
+   287→                  <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+   288→                ))}
+   289→              </SelectContent>
+   290→            </Select>
+   291→          </div>
+   292→          <DatePickerField value={dueDate} onChange={setDueDate} label="Due Date" />
+   293→        </div>
+   294→        <DialogFooter>
+   295→          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+   296→          <Button
+   297→            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+   298→            onClick={handleSubmit}
+   299→            disabled={!category || !title || updateMutation.isPending}
+   300→          >
+   301→            {updateMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
+   302→            Save Changes
+   303→          </Button>
+   304→        </DialogFooter>
+   305→      </DialogContent>
+   306→    </Dialog>
+   307→  )
+   308→}
+   309→
+   310→function EditCaseDialog({ open, onOpenChange, caseData }: {
+   311→  open: boolean
+   312→  onOpenChange: (open: boolean) => void
+   313→  caseData: NonNullable<ReturnType<typeof useCase>['data']>
+   314→}) {
+   315→  const [caseNumber, setCaseNumber] = useState(caseData.caseNumber)
+   316→  const [courtName, setCourtName] = useState(caseData.courtName ?? '')
+   317→  const [caseworkerName, setCaseworkerName] = useState(caseData.caseworkerName ?? '')
+   318→  const [caseworkerPhone, setCaseworkerPhone] = useState(caseData.caseworkerPhone ?? '')
+   319→  const [attorneyName, setAttorneyName] = useState(caseData.attorneyName ?? '')
+   320→  const [attorneyPhone, setAttorneyPhone] = useState(caseData.attorneyPhone ?? '')
+   321→  const [judgeName, setJudgeName] = useState(caseData.judgeName ?? '')
+   322→  const [removalDate, setRemovalDate] = useState<Date | undefined>(
+   323→    caseData.removalDate ? parseISO(caseData.removalDate) : undefined
+   324→  )
+   325→  const [targetDate, setTargetDate] = useState<Date | undefined>(
+   326→    caseData.targetReunificationDate ? parseISO(caseData.targetReunificationDate) : undefined
+   327→  )
+   328→
+   329→  const updateMutation = useUpdateItem('cases')
+   330→
+   331→  const handleSubmit = () => {
+   332→    updateMutation.mutate({
+   333→      id: caseData.id,
+   334→      caseNumber,
+   335→      courtName: courtName || null,
+   336→      caseworkerName: caseworkerName || null,
+   337→      caseworkerPhone: caseworkerPhone || null,
+   338→      attorneyName: attorneyName || null,
+   339→      attorneyPhone: attorneyPhone || null,
+   340→      judgeName: judgeName || null,
+   341→      removalDate: removalDate ? removalDate.toISOString() : null,
+   342→      targetReunificationDate: targetDate ? targetDate.toISOString() : null,
+   343→    }, {
+   344→      onSuccess: () => {
+   345→        onOpenChange(false)
+   346→      },
+   347→    })
+   348→  }
+   349→
+   350→  return (
+   351→    <Dialog open={open} onOpenChange={onOpenChange}>
+   352→      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+   353→        <DialogHeader>
+   354→          <DialogTitle>Edit Case Details</DialogTitle>
+   355→          <DialogDescription>Update your case information</DialogDescription>
+   356→        </DialogHeader>
+   357→        <div className="space-y-4">
+   358→          <div className="space-y-2">
+   359→            <Label>Case Number</Label>
+   360→            <Input value={caseNumber} onChange={e => setCaseNumber(e.target.value)} />
+   361→          </div>
+   362→          <div className="space-y-2">
+   363→            <Label>Court Name</Label>
+   364→            <Input value={courtName} onChange={e => setCourtName(e.target.value)} />
+   365→          </div>
+   366→          <div className="grid grid-cols-2 gap-4">
+   367→            <div className="space-y-2">
+   368→              <Label>Caseworker Name</Label>
+   369→              <Input value={caseworkerName} onChange={e => setCaseworkerName(e.target.value)} />
+   370→            </div>
+   371→            <div className="space-y-2">
+   372→              <Label>Caseworker Phone</Label>
+   373→              <Input value={caseworkerPhone} onChange={e => setCaseworkerPhone(e.target.value)} />
+   374→            </div>
+   375→          </div>
+   376→          <div className="grid grid-cols-2 gap-4">
+   377→            <div className="space-y-2">
+   378→              <Label>Attorney Name</Label>
+   379→              <Input value={attorneyName} onChange={e => setAttorneyName(e.target.value)} />
+   380→            </div>
+   381→            <div className="space-y-2">
+   382→              <Label>Attorney Phone</Label>
+   383→              <Input value={attorneyPhone} onChange={e => setAttorneyPhone(e.target.value)} />
+   384→            </div>
+   385→          </div>
+   386→          <div className="space-y-2">
+   387→            <Label>Judge</Label>
+   388→            <Input value={judgeName} onChange={e => setJudgeName(e.target.value)} />
+   389→          </div>
+   390→          <DatePickerField value={removalDate} onChange={setRemovalDate} label="Removal Date" />
+   391→          <DatePickerField value={targetDate} onChange={setTargetDate} label="Target Reunification Date" />
+   392→        </div>
+   393→        <DialogFooter>
+   394→          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+   395→          <Button
+   396→            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+   397→            onClick={handleSubmit}
+   398→            disabled={updateMutation.isPending}
+   399→          >
+   400→            {updateMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
+   401→            Save Changes
+   402→          </Button>
+   403→        </DialogFooter>
+   404→      </DialogContent>
+   405→    </Dialog>
+   406→  )
+   407→}
+   408→
+   409→function CaseInfoCard({ caseData }: { caseData: NonNullable<ReturnType<typeof useCase>['data']> }) {
+   410→  const [editOpen, setEditOpen] = useState(false)
+   411→
+   412→  const removalDate = caseData.removalDate ? parseISO(caseData.removalDate) : null
+   413→  const targetDate = caseData.targetReunificationDate ? parseISO(caseData.targetReunificationDate) : null
+   414→  const now = new Date()
+   415→
+   416→  const daysElapsed = removalDate ? differenceInDays(now, removalDate) : null
+   417→  const daysRemaining = targetDate ? differenceInDays(targetDate, now) : null
+   418→
+   419→  return (
+   420→    <>
+   421→      <Card>
+   422→        <CardHeader className="pb-3">
+   423→          <div className="flex items-center justify-between">
+   424→            <CardTitle className="flex items-center gap-2 text-lg">
+   425→              <ClipboardList className="size-5 text-emerald-600" />
+   426→              Case Information
+   427→            </CardTitle>
+   428→            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+   429→              <Edit className="size-3.5 mr-1" />
+   430→              Edit
+   431→            </Button>
+   432→          </div>
+   433→        </CardHeader>
+   434→        <CardContent className="space-y-4">
+   435→          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   436→            <div className="flex items-start gap-2">
+   437→              <Building2 className="size-4 text-muted-foreground mt-0.5 shrink-0" />
+   438→              <div>
+   439→                <p className="text-xs text-muted-foreground">Case Number</p>
+   440→                <p className="text-sm font-medium">{caseData.caseNumber}</p>
+   441→              </div>
+   442→            </div>
+   443→            <div className="flex items-start gap-2">
+   444→              <Building2 className="size-4 text-muted-foreground mt-0.5 shrink-0" />
+   445→              <div>
+   446→                <p className="text-xs text-muted-foreground">Court</p>
+   447→                <p className="text-sm font-medium">{caseData.courtName || '—'}</p>
+   448→              </div>
+   449→            </div>
+   450→            <div className="flex items-start gap-2">
+   451→              <User className="size-4 text-muted-foreground mt-0.5 shrink-0" />
+   452→              <div>
+   453→                <p className="text-xs text-muted-foreground">Caseworker</p>
+   454→                <p className="text-sm font-medium">
+   455→                  {caseData.caseworkerName || '—'}
+   456→                  {caseData.caseworkerPhone && (
+   457→                    <span className="text-muted-foreground ml-1">({caseData.caseworkerPhone})</span>
+   458→                  )}
+   459→                </p>
+   460→              </div>
+   461→            </div>
+   462→            <div className="flex items-start gap-2">
+   463→              <User className="size-4 text-muted-foreground mt-0.5 shrink-0" />
+   464→              <div>
+   465→                <p className="text-xs text-muted-foreground">Attorney</p>
+   466→                <p className="text-sm font-medium">
+   467→                  {caseData.attorneyName || '—'}
+   468→                  {caseData.attorneyPhone && (
+   469→                    <span className="text-muted-foreground ml-1">({caseData.attorneyPhone})</span>
+   470→                  )}
+   471→                </p>
+   472→              </div>
+   473→            </div>
+   474→            <div className="flex items-start gap-2">
+   475→              <Gavel className="size-4 text-muted-foreground mt-0.5 shrink-0" />
+   476→              <div>
+   477→                <p className="text-xs text-muted-foreground">Judge</p>
+   478→                <p className="text-sm font-medium">{caseData.judgeName || '—'}</p>
+   479→              </div>
+   480→            </div>
+   481→          </div>
+   482→
+   483→          <Separator />
+   484→
+   485→          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+   486→            {removalDate && (
+   487→              <div className="flex items-start gap-2">
+   488→                <CalendarDays className="size-4 text-muted-foreground mt-0.5 shrink-0" />
+   489→                <div>
+   490→                  <p className="text-xs text-muted-foreground">Removal Date</p>
+   491→                  <p className="text-sm font-medium">{format(removalDate, 'MMM d, yyyy')}</p>
+   492→                </div>
+   493→              </div>
+   494→            )}
+   495→            {targetDate && (
+   496→              <div className="flex items-start gap-2">
+   497→                <CalendarDays className="size-4 text-muted-foreground mt-0.5 shrink-0" />
+   498→                <div>
+   499→                  <p className="text-xs text-muted-foreground">Target Reunification</p>
+   500→                  <p className="text-sm font-medium">{format(targetDate, 'MMM d, yyyy')}</p>
+   501→                </div>
+   502→              </div>
+   503→            )}
+   504→            {daysElapsed !== null && (
+   505→              <div className="flex items-start gap-2">
+   506→                <Clock className="size-4 text-amber-600 mt-0.5 shrink-0" />
+   507→                <div>
+   508→                  <p className="text-xs text-muted-foreground">Days Elapsed</p>
+   509→                  <p className="text-sm font-medium">{daysElapsed} days</p>
+   510→                </div>
+   511→              </div>
+   512→            )}
+   513→            {daysRemaining !== null && (
+   514→              <div className="flex items-start gap-2">
+   515→                <AlertTriangle className={`size-4 mt-0.5 shrink-0 ${daysRemaining < 30 ? 'text-red-500' : 'text-emerald-600'}`} />
+   516→                <div>
+   517→                  <p className="text-xs text-muted-foreground">Days Remaining</p>
+   518→                  <p className={`text-sm font-medium ${daysRemaining < 30 ? 'text-red-600' : ''}`}>
+   519→                    {daysRemaining > 0 ? `${daysRemaining} days` : 'Past due'}
+   520→                  </p>
+   521→                </div>
+   522→              </div>
+   523→            )}
+   524→          </div>
+   525→        </CardContent>
+   526→      </Card>
+   527→
+   528→      <EditCaseDialog open={editOpen} onOpenChange={setEditOpen} caseData={caseData} />
+   529→    </>
+   530→  )
+   531→}
+   532→
+   533→function ProgressOverview({ requirements }: { requirements: CaseRequirement[] }) {
+   534→  const total = requirements.length
+   535→  const completed = requirements.filter(r => r.isCompleted).length
+   536→  const percentage = total > 0 ? Math.round((completed / total) * 100) : 0
+   537→
+   538→  const categoryBreakdown = useMemo(() => {
+   539→    const categories = CATEGORIES.map(c => c.value)
+   540→    return categories.map(cat => {
+   541→      const catReqs = requirements.filter(r => r.category === cat)
+   542→      const catCompleted = catReqs.filter(r => r.isCompleted).length
+   543→      const catTotal = catReqs.length
+   544→      const catPercent = catTotal > 0 ? Math.round((catCompleted / catTotal) * 100) : 0
+   545→      return { category: cat, label: getCategoryLabel(cat), completed: catCompleted, total: catTotal, percent: catPercent }
+   546→    }).filter(c => c.total > 0)
+   547→  }, [requirements])
+   548→
+   549→  return (
+   550→    <Card>
+   551→      <CardHeader className="pb-3">
+   552→        <CardTitle className="text-lg flex items-center gap-2">
+   553→          <CheckCircle2 className="size-5 text-emerald-600" />
+   554→          Progress Overview
+   555→        </CardTitle>
+   556→      </CardHeader>
+   557→      <CardContent className="space-y-4">
+   558→        <div className="space-y-2">
+   559→          <div className="flex items-center justify-between text-sm">
+   560→            <span className="text-muted-foreground">{completed} of {total} requirements completed</span>
+   561→            <span className="font-semibold text-emerald-700">{percentage}%</span>
+   562→          </div>
+   563→          <Progress value={percentage} className="h-3" />
+   564→        </div>
+   565→
+   566→        {categoryBreakdown.length > 0 && (
+   567→          <div className="space-y-3 pt-2">
+   568→            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">By Category</p>
+   569→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   570→              {categoryBreakdown.map(cb => {
+   571→                const colors = CATEGORY_COLORS[cb.category] || CATEGORY_COLORS['other']
+   572→                return (
+   573→                  <div key={cb.category} className={`rounded-lg border p-3 ${colors.bg} ${colors.border}`}>
+   574→                    <div className="flex items-center justify-between mb-1.5">
+   575→                      <span className={`text-xs font-medium ${colors.text}`}>{cb.label}</span>
+   576→                      <span className={`text-xs ${colors.text}`}>{cb.completed}/{cb.total}</span>
+   577→                    </div>
+   578→                    <Progress value={cb.percent} className="h-1.5" />
+   579→                  </div>
+   580→                )
+   581→              })}
+   582→            </div>
+   583→          </div>
+   584→        )}
+   585→      </CardContent>
+   586→    </Card>
+   587→  )
+   588→}
+   589→
+   590→function RequirementItem({
+   591→  req,
+   592→  onEdit,
+   593→  onDelete,
+   594→  onToggleComplete,
+   595→}: {
+   596→  req: CaseRequirement
+   597→  onEdit: () => void
+   598→  onDelete: () => void
+   599→  onToggleComplete: () => void
+   600→}) {
+   601→  const status = getRequirementStatus(req)
+   602→  const colors = CATEGORY_COLORS[req.category] || CATEGORY_COLORS['other']
+   603→
+   604→  return (
+   605→    <div className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+   606→      req.isCompleted ? 'bg-muted/50 opacity-75' : 'bg-background'
+   607→    } ${status === 'overdue' ? 'border-red-200 bg-red-50/50' : 'border-border'}`}>
+   608→      <Checkbox
+   609→        checked={req.isCompleted}
+   610→        onCheckedChange={onToggleComplete}
+   611→        className="mt-0.5"
+   612→      />
+   613→      <div className="flex-1 min-w-0 space-y-1">
+   614→        <div className="flex items-start justify-between gap-2">
+   615→          <p className={`text-sm font-medium ${req.isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+   616→            {req.title}
+   617→          </p>
+   618→          <div className="flex items-center gap-1 shrink-0">
+   619→            {status === 'completed' && (
+   620→              <CheckCircle2 className="size-4 text-emerald-600" />
+   621→            )}
+   622→            {status === 'pending' && (
+   623→              <Clock className="size-4 text-amber-500" />
+   624→            )}
+   625→            {status === 'overdue' && (
+   626→              <AlertTriangle className="size-4 text-red-500" />
+   627→            )}
+   628→          </div>
+   629→        </div>
+   630→        {req.description && (
+   631→          <p className="text-xs text-muted-foreground line-clamp-2">{req.description}</p>
+   632→        )}
+   633→        <div className="flex items-center flex-wrap gap-1.5">
+   634→          {req.frequency && (
+   635→            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${colors.text} ${colors.border} ${colors.bg}`}>
+   636→              {req.frequency}
+   637→            </Badge>
+   638→          )}
+   639→          {req.dueDate && (
+   640→            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${
+   641→              status === 'overdue' ? 'text-red-600 border-red-200 bg-red-50' : ''
+   642→            }`}>
+   643→              <CalendarDays className="size-2.5 mr-0.5" />
+   644→              {format(parseISO(req.dueDate), 'MMM d, yyyy')}
+   645→            </Badge>
+   646→          )}
+   647→          {req.notes && (
+   648→            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+   649→              <StickyNote className="size-2.5 mr-0.5" />
+   650→              Notes
+   651→            </Badge>
+   652→          )}
+   653→        </div>
+   654→      </div>
+   655→      <div className="flex items-center gap-1 shrink-0">
+   656→        <Button variant="ghost" size="icon" className="size-7" onClick={onEdit}>
+   657→          <Edit className="size-3.5" />
+   658→        </Button>
+   659→        <Button variant="ghost" size="icon" className="size-7 text-destructive hover:text-destructive" onClick={onDelete}>
+   660→          <Trash2 className="size-3.5" />
+   661→        </Button>
+   662→      </div>
+   663→    </div>
+   664→  )
+   665→}
+   666→
+   667→function RequirementsList({ requirements }: { requirements: CaseRequirement[] }) {
+   668→  const [addOpen, setAddOpen] = useState(false)
+   669→  const [editReq, setEditReq] = useState<CaseRequirement | null>(null)
+   670→  const { activeCaseId } = useAppStore()
+   671→  const updateMutation = useUpdateItem('requirements')
+   672→  const deleteMutation = useDeleteItem('requirements')
+   673→
+   674→  const groupedRequirements = useMemo(() => {
+   675→    const groups: Record<string, CaseRequirement[]> = {}
+   676→    for (const req of requirements) {
+   677→      if (!groups[req.category]) groups[req.category] = []
+   678→      groups[req.category].push(req)
+   679→    }
+   680→    // Sort by defined category order
+   681→    const orderedCategories = CATEGORIES.map(c => c.value).filter(c => groups[c])
+   682→    return orderedCategories.map(cat => ({
+   683→      category: cat,
+   684→      label: getCategoryLabel(cat),
+   685→      items: groups[cat]!.sort((a, b) => a.sortOrder - b.sortOrder),
+   686→    }))
+   687→  }, [requirements])
+   688→
+   689→  const handleToggleComplete = (req: CaseRequirement) => {
+   690→    updateMutation.mutate({
+   691→      id: req.id,
+   692→      isCompleted: !req.isCompleted,
+   693→      completedAt: !req.isCompleted ? new Date().toISOString() : null,
+   694→    })
+   695→  }
+   696→
+   697→  const handleDelete = (id: string) => {
+   698→    deleteMutation.mutate(id)
+   699→  }
+   700→
+   701→  return (
+   702→    <Card>
+   703→      <CardHeader className="pb-3">
+   704→        <div className="flex items-center justify-between">
+   705→          <CardTitle className="text-lg flex items-center gap-2">
+   706→            <ClipboardList className="size-5 text-emerald-600" />
+   707→            Requirements
+   708→          </CardTitle>
+   709→          <Button
+   710→            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+   711→            size="sm"
+   712→            onClick={() => setAddOpen(true)}
+   713→          >
+   714→            <Plus className="size-3.5 mr-1" />
+   715→            Add Requirement
+   716→          </Button>
+   717→        </div>
+   718→      </CardHeader>
+   719→      <CardContent>
+   720→        {groupedRequirements.length === 0 ? (
+   721→          <div className="text-center py-8">
+   722→            <ClipboardList className="size-10 text-muted-foreground/50 mx-auto mb-2" />
+   723→            <p className="text-sm text-muted-foreground">No requirements yet</p>
+   724→            <p className="text-xs text-muted-foreground mt-1">Add your first requirement to get started</p>
+   725→            <Button
+   726→              className="mt-3 bg-emerald-600 hover:bg-emerald-700 text-white"
+   727→              size="sm"
+   728→              onClick={() => setAddOpen(true)}
+   729→            >
+   730→              <Plus className="size-3.5 mr-1" />
+   731→              Add Requirement
+   732→            </Button>
+   733→          </div>
+   734→        ) : (
+   735→          <Accordion type="multiple" defaultValue={groupedRequirements.map(g => g.category)} className="w-full">
+   736→            {groupedRequirements.map(group => {
+   737→              const colors = CATEGORY_COLORS[group.category] || CATEGORY_COLORS['other']
+   738→              const completedCount = group.items.filter(r => r.isCompleted).length
+   739→              return (
+   740→                <AccordionItem key={group.category} value={group.category}>
+   741→                  <AccordionTrigger className="hover:no-underline">
+   742→                    <div className="flex items-center gap-2">
+   743→                      <Badge className={`${colors.bg} ${colors.text} ${colors.border} border`}>
+   744→                        {group.label}
+   745→                      </Badge>
+   746→                      <span className="text-xs text-muted-foreground">
+   747→                        {completedCount}/{group.items.length} completed
+   748→                      </span>
+   749→                    </div>
+   750→                  </AccordionTrigger>
+   751→                  <AccordionContent>
+   752→                    <div className="space-y-2">
+   753→                      {group.items.map(req => (
+   754→                        <RequirementItem
+   755→                          key={req.id}
+   756→                          req={req}
+   757→                          onEdit={() => setEditReq(req)}
+   758→                          onDelete={() => handleDelete(req.id)}
+   759→                          onToggleComplete={() => handleToggleComplete(req)}
+   760→                        />
+   761→                      ))}
+   762→                    </div>
+   763→                  </AccordionContent>
+   764→                </AccordionItem>
+   765→              )
+   766→            })}
+   767→          </Accordion>
+   768→        )}
+   769→      </CardContent>
+   770→
+   771→      {activeCaseId && (
+   772→        <AddRequirementDialog
+   773→          open={addOpen}
+   774→          onOpenChange={setAddOpen}
+   775→          caseId={activeCaseId}
+   776→        />
+   777→      )}
+   778→      <EditRequirementDialog
+   779→        open={!!editReq}
+   780→        onOpenChange={(open) => { if (!open) setEditReq(null) }}
+   781→        requirement={editReq}
+   782→      />
+   783→    </Card>
+   784→  )
+   785→}
+   786→
+   787→export function CasePlanView() {
+   788→  const { activeCaseId } = useAppStore()
+   789→  const { data: caseData, isLoading: caseLoading } = useCase(activeCaseId)
+   790→  const { data: requirements, isLoading: reqLoading } = useRequirements(activeCaseId)
+   791→
+   792→  if (caseLoading || reqLoading) {
+   793→    return (
+   794→      <div className="space-y-6">
+   795→        <div className="grid gap-4">
+   796→          <Card>
+   797→            <CardContent className="p-6 space-y-4">
+   798→              <Skeleton className="h-6 w-48" />
+   799→              <div className="grid grid-cols-3 gap-4">
+   800→                <Skeleton className="h-12" />
+   801→                <Skeleton className="h-12" />
+   802→                <Skeleton className="h-12" />
+   803→              </div>
+   804→            </CardContent>
+   805→          </Card>
+   806→          <Card>
+   807→            <CardContent className="p-6 space-y-4">
+   808→              <Skeleton className="h-6 w-36" />
+   809→              <Skeleton className="h-4 w-full" />
+   810→              <Skeleton className="h-4 w-3/4" />
+   811→            </CardContent>
+   812→          </Card>
+   813→        </div>
+   814→      </div>
+   815→    )
+   816→  }
+   817→
+   818→  if (!caseData) {
+   819→    return (
+   820→      <Card>
+   821→        <CardContent className="p-6 text-center">
+   822→          <ClipboardList className="size-10 text-muted-foreground/50 mx-auto mb-2" />
+   823→          <p className="text-sm text-muted-foreground">No case data available</p>
+   824→        </CardContent>
+   825→      </Card>
+   826→    )
+   827→  }
+   828→
+   829→  return (
+   830→    <div className="space-y-6">
+   831→      <CaseInfoCard caseData={caseData} />
+   832→      <ProgressOverview requirements={requirements ?? []} />
+   833→      <RequirementsList requirements={requirements ?? []} />
+   834→    </div>
+   835→  )
+   836→}
+   837→

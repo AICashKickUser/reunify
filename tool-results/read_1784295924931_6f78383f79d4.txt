@@ -1,0 +1,739 @@
+     1→'use client'
+     2→
+     3→import { useState, useMemo } from 'react'
+     4→import { useAppStore } from '@/lib/store'
+     5→import {
+     6→  useDrugTests,
+     7→  useCreateItem,
+     8→  useUpdateItem,
+     9→} from '@/lib/data-hooks'
+    10→import { CATEGORY_COLORS } from '@/lib/types'
+    11→import type { DrugTest } from '@/lib/types'
+    12→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+    13→import { Badge } from '@/components/ui/badge'
+    14→import { Button } from '@/components/ui/button'
+    15→import { Input } from '@/components/ui/input'
+    16→import { Label } from '@/components/ui/label'
+    17→import { Textarea } from '@/components/ui/textarea'
+    18→import { Checkbox } from '@/components/ui/checkbox'
+    19→import { Skeleton } from '@/components/ui/skeleton'
+    20→import {
+    21→  Dialog,
+    22→  DialogContent,
+    23→  DialogDescription,
+    24→  DialogFooter,
+    25→  DialogHeader,
+    26→  DialogTitle,
+    27→} from '@/components/ui/dialog'
+    28→import {
+    29→  Select,
+    30→  SelectContent,
+    31→  SelectItem,
+    32→  SelectTrigger,
+    33→  SelectValue,
+    34→} from '@/components/ui/select'
+    35→import {
+    36→  Tooltip,
+    37→  TooltipTrigger,
+    38→  TooltipContent,
+    39→} from '@/components/ui/tooltip'
+    40→import {
+    41→  TestTube2,
+    42→  CheckCircle2,
+    43→  AlertTriangle,
+    44→  Clock,
+    45→  TrendingUp,
+    46→  Flame,
+    47→  Plus,
+    48→  Pencil,
+    49→  Loader2,
+    50→  Shuffle,
+    51→  CalendarCheck,
+    52→} from 'lucide-react'
+    53→
+    54→const TEST_TYPES = ['urine', 'hair', 'blood', 'saliva'] as const
+    55→const RESULT_OPTIONS = ['negative', 'positive', 'pending', 'diluted', 'refused'] as const
+    56→
+    57→const TEST_TYPE_LABELS: Record<string, string> = {
+    58→  urine: 'Urine',
+    59→  hair: 'Hair',
+    60→  blood: 'Blood',
+    61→  saliva: 'Saliva',
+    62→}
+    63→
+    64→const RESULT_LABELS: Record<string, string> = {
+    65→  negative: 'Negative',
+    66→  positive: 'Positive',
+    67→  pending: 'Pending',
+    68→  diluted: 'Diluted',
+    69→  refused: 'Refused',
+    70→}
+    71→
+    72→const RESULT_COLORS: Record<string, string> = {
+    73→  negative: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+    74→  positive: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+    75→  pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+    76→  diluted: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+    77→  refused: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300',
+    78→}
+    79→
+    80→// Calendar cell colors
+    81→const CALENDAR_COLORS: Record<string, string> = {
+    82→  negative: 'bg-emerald-500',
+    83→  positive: 'bg-red-500',
+    84→  pending: 'bg-amber-400',
+    85→  diluted: 'bg-yellow-400',
+    86→  refused: 'bg-gray-400',
+    87→}
+    88→
+    89→interface DrugTestFormData {
+    90→  date: string
+    91→  testType: string
+    92→  isRandom: boolean
+    93→  result: string
+    94→  testingFacility: string
+    95→  notes: string
+    96→}
+    97→
+    98→const emptyForm: DrugTestFormData = {
+    99→  date: new Date().toISOString().split('T')[0],
+   100→  testType: 'urine',
+   101→  isRandom: false,
+   102→  result: 'pending',
+   103→  testingFacility: '',
+   104→  notes: '',
+   105→}
+   106→
+   107→export function DrugTestingView() {
+   108→  const { activeCaseId } = useAppStore()
+   109→  const { data: tests, isLoading } = useDrugTests(activeCaseId)
+   110→  const createMutation = useCreateItem('drug-tests')
+   111→  const updateMutation = useUpdateItem('drug-tests')
+   112→
+   113→  const [addOpen, setAddOpen] = useState(false)
+   114→  const [editOpen, setEditOpen] = useState(false)
+   115→  const [editingTest, setEditingTest] = useState<DrugTest | null>(null)
+   116→  const [form, setForm] = useState<DrugTestFormData>(emptyForm)
+   117→  const [resultFilter, setResultFilter] = useState<string>('all')
+   118→  const [typeFilter, setTypeFilter] = useState<string>('all')
+   119→
+   120→  // Stats
+   121→  const stats = useMemo(() => {
+   122→    if (!tests) return { total: 0, negative: 0, positive: 0, pending: 0, passRate: 0, cleanStreak: 0 }
+   123→    const total = tests.length
+   124→    const negative = tests.filter((t) => t.result === 'negative').length
+   125→    const positive = tests.filter((t) => t.result === 'positive').length
+   126→    const pending = tests.filter((t) => t.result === 'pending').length
+   127→    const completed = tests.filter((t) => t.result !== 'pending').length
+   128→    const passRate = completed > 0 ? Math.round((negative / completed) * 100) : 0
+   129→
+   130→    // Calculate clean streak (consecutive negative days from most recent)
+   131→    const sortedByDate = [...tests]
+   132→      .filter((t) => t.result !== 'pending')
+   133→      .sort((a, b) => b.date.localeCompare(a.date))
+   134→    let cleanStreak = 0
+   135→    for (const t of sortedByDate) {
+   136→      if (t.result === 'negative') cleanStreak++
+   137→      else break
+   138→    }
+   139→
+   140→    return { total, negative, positive, pending, passRate, cleanStreak }
+   141→  }, [tests])
+   142→
+   143→  // Clean streak calendar (last 30 days)
+   144→  const calendarDays = useMemo(() => {
+   145→    const days: { date: string; result: string | null; label: string }[] = []
+   146→    const today = new Date()
+   147→    const testMap = new Map<string, string>()
+   148→    if (tests) {
+   149→      tests.forEach((t) => {
+   150→        const dateKey = t.date.split('T')[0]
+   151→        // If multiple tests on same day, worst result wins
+   152→        const priority: Record<string, number> = { positive: 4, refused: 3, diluted: 2, pending: 1, negative: 0 }
+   153→        const existing = testMap.get(dateKey)
+   154→        if (!existing || (priority[t.result || ''] ?? 0) > (priority[existing] ?? 0)) {
+   155→          testMap.set(dateKey, t.result || 'pending')
+   156→        }
+   157→      })
+   158→    }
+   159→
+   160→    for (let i = 29; i >= 0; i--) {
+   161→      const d = new Date(today)
+   162→      d.setDate(d.getDate() - i)
+   163→      const dateKey = d.toISOString().split('T')[0]
+   164→      const result = testMap.get(dateKey) || null
+   165→      days.push({
+   166→        date: dateKey,
+   167→        result,
+   168→        label: result
+   169→          ? `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}: ${RESULT_LABELS[result] || result}`
+   170→          : `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}: No test`,
+   171→      })
+   172→    }
+   173→    return days
+   174→  }, [tests])
+   175→
+   176→  // Filtered tests
+   177→  const filteredTests = useMemo(() => {
+   178→    if (!tests) return []
+   179→    let filtered = [...tests]
+   180→    if (resultFilter !== 'all') {
+   181→      filtered = filtered.filter((t) => t.result === resultFilter)
+   182→    }
+   183→    if (typeFilter !== 'all') {
+   184→      filtered = filtered.filter((t) => t.testType === typeFilter)
+   185→    }
+   186→    filtered.sort((a, b) => b.date.localeCompare(a.date))
+   187→    return filtered
+   188→  }, [tests, resultFilter, typeFilter])
+   189→
+   190→  function handleAdd() {
+   191→    setForm(emptyForm)
+   192→    setAddOpen(true)
+   193→  }
+   194→
+   195→  function handleEdit(test: DrugTest) {
+   196→    setEditingTest(test)
+   197→    setForm({
+   198→      date: test.date ? test.date.split('T')[0] : '',
+   199→      testType: test.testType || 'urine',
+   200→      isRandom: test.isRandom,
+   201→      result: test.result || 'pending',
+   202→      testingFacility: test.testingFacility || '',
+   203→      notes: test.notes || '',
+   204→    })
+   205→    setEditOpen(true)
+   206→  }
+   207→
+   208→  function submitAdd() {
+   209→    if (!activeCaseId) return
+   210→    createMutation.mutate(
+   211→      {
+   212→        caseId: activeCaseId,
+   213→        date: form.date,
+   214→        testType: form.testType,
+   215→        isRandom: form.isRandom,
+   216→        result: form.result,
+   217→        testingFacility: form.testingFacility || null,
+   218→        notes: form.notes || null,
+   219→      },
+   220→      {
+   221→        onSuccess: () => {
+   222→          setAddOpen(false)
+   223→          setForm(emptyForm)
+   224→        },
+   225→      }
+   226→    )
+   227→  }
+   228→
+   229→  function submitEdit() {
+   230→    if (!editingTest) return
+   231→    updateMutation.mutate(
+   232→      {
+   233→        id: editingTest.id,
+   234→        date: form.date,
+   235→        testType: form.testType,
+   236→        isRandom: form.isRandom,
+   237→        result: form.result,
+   238→        testingFacility: form.testingFacility || null,
+   239→        notes: form.notes || null,
+   240→      },
+   241→      {
+   242→        onSuccess: () => {
+   243→          setEditOpen(false)
+   244→          setEditingTest(null)
+   245→        },
+   246→      }
+   247→    )
+   248→  }
+   249→
+   250→  const colors = CATEGORY_COLORS['drug-testing']
+   251→
+   252→  if (isLoading) {
+   253→    return (
+   254→      <div className="space-y-6">
+   255→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   256→          {Array.from({ length: 6 }).map((_, i) => (
+   257→            <Card key={i}>
+   258→              <CardContent className="p-4">
+   259→                <Skeleton className="h-4 w-20 mb-2" />
+   260→                <Skeleton className="h-8 w-12" />
+   261→              </CardContent>
+   262→            </Card>
+   263→          ))}
+   264→        </div>
+   265→        <Card>
+   266→          <CardContent className="p-6 space-y-4">
+   267→            <Skeleton className="h-24 w-full" />
+   268→            {Array.from({ length: 3 }).map((_, i) => (
+   269→              <Skeleton key={i} className="h-16 w-full" />
+   270→            ))}
+   271→          </CardContent>
+   272→        </Card>
+   273→      </div>
+   274→    )
+   275→  }
+   276→
+   277→  return (
+   278→    <div className="space-y-6">
+   279→      {/* Header */}
+   280→      <div className="flex items-center justify-between">
+   281→        <div className="flex items-center gap-2">
+   282→          <div className={`flex size-9 items-center justify-center rounded-lg ${colors.bg}`}>
+   283→            <TestTube2 className={`size-5 ${colors.text}`} />
+   284→          </div>
+   285→          <div>
+   286→            <h2 className="text-lg font-semibold">Drug Testing</h2>
+   287→            <p className="text-sm text-muted-foreground">Track your drug tests and clean streak</p>
+   288→          </div>
+   289→        </div>
+   290→        <Button onClick={handleAdd} className="bg-amber-600 hover:bg-amber-700 text-white">
+   291→          <Plus className="size-4" />
+   292→          Add Test
+   293→        </Button>
+   294→      </div>
+   295→
+   296→      {/* Stats */}
+   297→      <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+   298→        <Card>
+   299→          <CardContent className="p-4">
+   300→            <div className="flex items-center gap-3">
+   301→              <div className="flex size-9 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-900/20">
+   302→                <TestTube2 className="size-4 text-amber-600" />
+   303→              </div>
+   304→              <div>
+   305→                <p className="text-xs text-muted-foreground">Total Tests</p>
+   306→                <p className="text-xl font-bold">{stats.total}</p>
+   307→              </div>
+   308→            </div>
+   309→          </CardContent>
+   310→        </Card>
+   311→        <Card>
+   312→          <CardContent className="p-4">
+   313→            <div className="flex items-center gap-3">
+   314→              <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
+   315→                <CheckCircle2 className="size-4 text-emerald-600" />
+   316→              </div>
+   317→              <div>
+   318→                <p className="text-xs text-muted-foreground">Negative</p>
+   319→                <p className="text-xl font-bold text-emerald-600">{stats.negative}</p>
+   320→              </div>
+   321→            </div>
+   322→          </CardContent>
+   323→        </Card>
+   324→        <Card>
+   325→          <CardContent className="p-4">
+   326→            <div className="flex items-center gap-3">
+   327→              <div className="flex size-9 items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20">
+   328→                <AlertTriangle className="size-4 text-red-600" />
+   329→              </div>
+   330→              <div>
+   331→                <p className="text-xs text-muted-foreground">Positive</p>
+   332→                <p className="text-xl font-bold text-red-600">{stats.positive}</p>
+   333→              </div>
+   334→            </div>
+   335→          </CardContent>
+   336→        </Card>
+   337→        <Card>
+   338→          <CardContent className="p-4">
+   339→            <div className="flex items-center gap-3">
+   340→              <div className="flex size-9 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-900/20">
+   341→                <Clock className="size-4 text-amber-600" />
+   342→              </div>
+   343→              <div>
+   344→                <p className="text-xs text-muted-foreground">Pending</p>
+   345→                <p className="text-xl font-bold text-amber-600">{stats.pending}</p>
+   346→              </div>
+   347→            </div>
+   348→          </CardContent>
+   349→        </Card>
+   350→        <Card>
+   351→          <CardContent className="p-4">
+   352→            <div className="flex items-center gap-3">
+   353→              <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
+   354→                <TrendingUp className="size-4 text-emerald-600" />
+   355→              </div>
+   356→              <div>
+   357→                <p className="text-xs text-muted-foreground">Pass Rate</p>
+   358→                <p className="text-xl font-bold">{stats.passRate}%</p>
+   359→              </div>
+   360→            </div>
+   361→          </CardContent>
+   362→        </Card>
+   363→        <Card>
+   364→          <CardContent className="p-4">
+   365→            <div className="flex items-center gap-3">
+   366→              <div className="flex size-9 items-center justify-center rounded-lg bg-orange-50 dark:bg-orange-900/20">
+   367→                <Flame className="size-4 text-orange-600" />
+   368→              </div>
+   369→              <div>
+   370→                <p className="text-xs text-muted-foreground">Clean Streak</p>
+   371→                <p className="text-xl font-bold text-orange-600">{stats.cleanStreak} days</p>
+   372→              </div>
+   373→            </div>
+   374→          </CardContent>
+   375→        </Card>
+   376→      </div>
+   377→
+   378→      {/* Clean Streak Calendar */}
+   379→      <Card>
+   380→        <CardHeader className="pb-3">
+   381→          <CardTitle className="text-base flex items-center gap-2">
+   382→            <CalendarCheck className="size-4 text-emerald-600" />
+   383→            30-Day Clean Streak
+   384→          </CardTitle>
+   385→        </CardHeader>
+   386→        <CardContent>
+   387→          <div className="flex flex-wrap gap-1.5">
+   388→            {calendarDays.map((day) => (
+   389→              <Tooltip key={day.date}>
+   390→                <TooltipTrigger asChild>
+   391→                  <div
+   392→                    className={`size-6 rounded-sm transition-colors cursor-default ${
+   393→                      day.result
+   394→                        ? CALENDAR_COLORS[day.result] || 'bg-gray-400'
+   395→                        : 'bg-gray-100 dark:bg-gray-800'
+   396→                    }`}
+   397→                  />
+   398→                </TooltipTrigger>
+   399→                <TooltipContent side="top">
+   400→                  <p>{day.label}</p>
+   401→                </TooltipContent>
+   402→              </Tooltip>
+   403→            ))}
+   404→          </div>
+   405→          <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+   406→            <div className="flex items-center gap-1.5">
+   407→              <div className="size-3 rounded-sm bg-emerald-500" />
+   408→              Negative
+   409→            </div>
+   410→            <div className="flex items-center gap-1.5">
+   411→              <div className="size-3 rounded-sm bg-red-500" />
+   412→              Positive
+   413→            </div>
+   414→            <div className="flex items-center gap-1.5">
+   415→              <div className="size-3 rounded-sm bg-amber-400" />
+   416→              Pending
+   417→            </div>
+   418→            <div className="flex items-center gap-1.5">
+   419→              <div className="size-3 rounded-sm bg-yellow-400" />
+   420→              Diluted
+   421→            </div>
+   422→            <div className="flex items-center gap-1.5">
+   423→              <div className="size-3 rounded-sm bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700" />
+   424→              No test
+   425→            </div>
+   426→          </div>
+   427→        </CardContent>
+   428→      </Card>
+   429→
+   430→      {/* Filters */}
+   431→      <div className="flex flex-wrap gap-3">
+   432→        <Select value={resultFilter} onValueChange={setResultFilter}>
+   433→          <SelectTrigger className="w-[150px]">
+   434→            <SelectValue placeholder="Result" />
+   435→          </SelectTrigger>
+   436→          <SelectContent>
+   437→            <SelectItem value="all">All Results</SelectItem>
+   438→            {RESULT_OPTIONS.map((r) => (
+   439→              <SelectItem key={r} value={r}>
+   440→                {RESULT_LABELS[r]}
+   441→              </SelectItem>
+   442→            ))}
+   443→          </SelectContent>
+   444→        </Select>
+   445→        <Select value={typeFilter} onValueChange={setTypeFilter}>
+   446→          <SelectTrigger className="w-[150px]">
+   447→            <SelectValue placeholder="Test Type" />
+   448→          </SelectTrigger>
+   449→          <SelectContent>
+   450→            <SelectItem value="all">All Types</SelectItem>
+   451→            {TEST_TYPES.map((t) => (
+   452→              <SelectItem key={t} value={t}>
+   453→                {TEST_TYPE_LABELS[t]}
+   454→              </SelectItem>
+   455→            ))}
+   456→          </SelectContent>
+   457→        </Select>
+   458→      </div>
+   459→
+   460→      {/* Test History */}
+   461→      {filteredTests.length === 0 ? (
+   462→        <Card>
+   463→          <CardContent className="py-12 text-center">
+   464→            <TestTube2 className="mx-auto size-12 text-muted-foreground/30 mb-4" />
+   465→            <h3 className="text-lg font-medium mb-2">No Drug Tests Yet</h3>
+   466→            <p className="text-muted-foreground text-sm max-w-md mx-auto">
+   467→              Every clean test is proof of your commitment. Add your first drug test to start building your clean streak.
+   468→            </p>
+   469→            <Button onClick={handleAdd} className="mt-4 bg-amber-600 hover:bg-amber-700 text-white">
+   470→              <Plus className="size-4" />
+   471→              Add First Test
+   472→            </Button>
+   473→          </CardContent>
+   474→        </Card>
+   475→      ) : (
+   476→        <div className="space-y-2">
+   477→          {filteredTests.map((test) => (
+   478→            <Card key={test.id} className="transition-colors hover:shadow-md">
+   479→              <CardContent className="p-4">
+   480→                <div className="flex items-center justify-between gap-3">
+   481→                  <div className="flex items-center gap-3 flex-1 min-w-0">
+   482→                    <div
+   483→                      className={`size-3 rounded-full shrink-0 ${
+   484→                        test.result === 'negative'
+   485→                          ? 'bg-emerald-500'
+   486→                          : test.result === 'positive'
+   487→                            ? 'bg-red-500'
+   488→                            : test.result === 'pending'
+   489→                              ? 'bg-amber-400'
+   490→                              : test.result === 'diluted'
+   491→                                ? 'bg-yellow-400'
+   492→                                : 'bg-gray-400'
+   493→                      }`}
+   494→                    />
+   495→                    <div className="flex-1 min-w-0">
+   496→                      <div className="flex items-center gap-2 flex-wrap">
+   497→                        <span className="text-sm font-medium">
+   498→                          {test.date ? new Date(test.date).toLocaleDateString() : 'No date'}
+   499→                        </span>
+   500→                        <Badge className={RESULT_COLORS[test.result || 'pending']}>
+   501→                          {RESULT_LABELS[test.result || 'pending']}
+   502→                        </Badge>
+   503→                        <Badge variant="outline" className="text-xs">
+   504→                          {TEST_TYPE_LABELS[test.testType || 'urine']}
+   505→                        </Badge>
+   506→                        {test.isRandom && (
+   507→                          <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300">
+   508→                            <Shuffle className="size-3" />
+   509→                            Random
+   510→                          </Badge>
+   511→                        )}
+   512→                      </div>
+   513→                      {(test.testingFacility || test.notes) && (
+   514→                        <p className="text-sm text-muted-foreground mt-0.5 truncate">
+   515→                          {[test.testingFacility, test.notes].filter(Boolean).join(' — ')}
+   516→                        </p>
+   517→                      )}
+   518→                    </div>
+   519→                  </div>
+   520→                  <Button
+   521→                    variant="ghost"
+   522→                    size="sm"
+   523→                    onClick={() => handleEdit(test)}
+   524→                    className="shrink-0"
+   525→                  >
+   526→                    <Pencil className="size-4" />
+   527→                  </Button>
+   528→                </div>
+   529→              </CardContent>
+   530→            </Card>
+   531→          ))}
+   532→        </div>
+   533→      )}
+   534→
+   535→      {/* Add Dialog */}
+   536→      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+   537→        <DialogContent>
+   538→          <DialogHeader>
+   539→            <DialogTitle>Add Drug Test</DialogTitle>
+   540→            <DialogDescription>Record a new drug test result</DialogDescription>
+   541→          </DialogHeader>
+   542→          <div className="space-y-4">
+   543→            <div className="space-y-2">
+   544→              <Label htmlFor="add-date">Date</Label>
+   545→              <Input
+   546→                id="add-date"
+   547→                type="date"
+   548→                value={form.date}
+   549→                onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+   550→              />
+   551→            </div>
+   552→            <div className="space-y-2">
+   553→              <Label>Test Type</Label>
+   554→              <Select
+   555→                value={form.testType}
+   556→                onValueChange={(v) => setForm((f) => ({ ...f, testType: v }))}
+   557→              >
+   558→                <SelectTrigger className="w-full">
+   559→                  <SelectValue />
+   560→                </SelectTrigger>
+   561→                <SelectContent>
+   562→                  {TEST_TYPES.map((t) => (
+   563→                    <SelectItem key={t} value={t}>
+   564→                      {TEST_TYPE_LABELS[t]}
+   565→                    </SelectItem>
+   566→                  ))}
+   567→                </SelectContent>
+   568→              </Select>
+   569→            </div>
+   570→            <div className="flex items-center gap-2">
+   571→              <Checkbox
+   572→                id="add-random"
+   573→                checked={form.isRandom}
+   574→                onCheckedChange={(checked) =>
+   575→                  setForm((f) => ({ ...f, isRandom: checked === true }))
+   576→                }
+   577→              />
+   578→              <Label htmlFor="add-random" className="cursor-pointer">
+   579→                Random test
+   580→              </Label>
+   581→            </div>
+   582→            <div className="space-y-2">
+   583→              <Label>Result</Label>
+   584→              <Select
+   585→                value={form.result}
+   586→                onValueChange={(v) => setForm((f) => ({ ...f, result: v }))}
+   587→              >
+   588→                <SelectTrigger className="w-full">
+   589→                  <SelectValue />
+   590→                </SelectTrigger>
+   591→                <SelectContent>
+   592→                  {RESULT_OPTIONS.map((r) => (
+   593→                    <SelectItem key={r} value={r}>
+   594→                      {RESULT_LABELS[r]}
+   595→                    </SelectItem>
+   596→                  ))}
+   597→                </SelectContent>
+   598→              </Select>
+   599→            </div>
+   600→            <div className="space-y-2">
+   601→              <Label htmlFor="add-facility">Testing Facility</Label>
+   602→              <Input
+   603→                id="add-facility"
+   604→                value={form.testingFacility}
+   605→                onChange={(e) => setForm((f) => ({ ...f, testingFacility: e.target.value }))}
+   606→                placeholder="Lab name or facility"
+   607→              />
+   608→            </div>
+   609→            <div className="space-y-2">
+   610→              <Label htmlFor="add-notes">Notes</Label>
+   611→              <Textarea
+   612→                id="add-notes"
+   613→                value={form.notes}
+   614→                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+   615→                placeholder="Additional notes..."
+   616→                rows={3}
+   617→              />
+   618→            </div>
+   619→          </div>
+   620→          <DialogFooter>
+   621→            <Button variant="outline" onClick={() => setAddOpen(false)}>
+   622→              Cancel
+   623→            </Button>
+   624→            <Button
+   625→              onClick={submitAdd}
+   626→              disabled={createMutation.isPending}
+   627→              className="bg-amber-600 hover:bg-amber-700 text-white"
+   628→            >
+   629→              {createMutation.isPending && <Loader2 className="size-4 animate-spin" />}
+   630→              Add Test
+   631→            </Button>
+   632→          </DialogFooter>
+   633→        </DialogContent>
+   634→      </Dialog>
+   635→
+   636→      {/* Edit Dialog */}
+   637→      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+   638→        <DialogContent>
+   639→          <DialogHeader>
+   640→            <DialogTitle>Edit Drug Test</DialogTitle>
+   641→            <DialogDescription>Update drug test details</DialogDescription>
+   642→          </DialogHeader>
+   643→          <div className="space-y-4">
+   644→            <div className="space-y-2">
+   645→              <Label htmlFor="edit-date">Date</Label>
+   646→              <Input
+   647→                id="edit-date"
+   648→                type="date"
+   649→                value={form.date}
+   650→                onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+   651→              />
+   652→            </div>
+   653→            <div className="space-y-2">
+   654→              <Label>Test Type</Label>
+   655→              <Select
+   656→                value={form.testType}
+   657→                onValueChange={(v) => setForm((f) => ({ ...f, testType: v }))}
+   658→              >
+   659→                <SelectTrigger className="w-full">
+   660→                  <SelectValue />
+   661→                </SelectTrigger>
+   662→                <SelectContent>
+   663→                  {TEST_TYPES.map((t) => (
+   664→                    <SelectItem key={t} value={t}>
+   665→                      {TEST_TYPE_LABELS[t]}
+   666→                    </SelectItem>
+   667→                  ))}
+   668→                </SelectContent>
+   669→              </Select>
+   670→            </div>
+   671→            <div className="flex items-center gap-2">
+   672→              <Checkbox
+   673→                id="edit-random"
+   674→                checked={form.isRandom}
+   675→                onCheckedChange={(checked) =>
+   676→                  setForm((f) => ({ ...f, isRandom: checked === true }))
+   677→                }
+   678→              />
+   679→              <Label htmlFor="edit-random" className="cursor-pointer">
+   680→                Random test
+   681→              </Label>
+   682→            </div>
+   683→            <div className="space-y-2">
+   684→              <Label>Result</Label>
+   685→              <Select
+   686→                value={form.result}
+   687→                onValueChange={(v) => setForm((f) => ({ ...f, result: v }))}
+   688→              >
+   689→                <SelectTrigger className="w-full">
+   690→                  <SelectValue />
+   691→                </SelectTrigger>
+   692→                <SelectContent>
+   693→                  {RESULT_OPTIONS.map((r) => (
+   694→                    <SelectItem key={r} value={r}>
+   695→                      {RESULT_LABELS[r]}
+   696→                    </SelectItem>
+   697→                  ))}
+   698→                </SelectContent>
+   699→              </Select>
+   700→            </div>
+   701→            <div className="space-y-2">
+   702→              <Label htmlFor="edit-facility">Testing Facility</Label>
+   703→              <Input
+   704→                id="edit-facility"
+   705→                value={form.testingFacility}
+   706→                onChange={(e) => setForm((f) => ({ ...f, testingFacility: e.target.value }))}
+   707→                placeholder="Lab name or facility"
+   708→              />
+   709→            </div>
+   710→            <div className="space-y-2">
+   711→              <Label htmlFor="edit-notes">Notes</Label>
+   712→              <Textarea
+   713→                id="edit-notes"
+   714→                value={form.notes}
+   715→                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+   716→                placeholder="Additional notes..."
+   717→                rows={3}
+   718→              />
+   719→            </div>
+   720→          </div>
+   721→          <DialogFooter>
+   722→            <Button variant="outline" onClick={() => setEditOpen(false)}>
+   723→              Cancel
+   724→            </Button>
+   725→            <Button
+   726→              onClick={submitEdit}
+   727→              disabled={updateMutation.isPending}
+   728→              className="bg-amber-600 hover:bg-amber-700 text-white"
+   729→            >
+   730→              {updateMutation.isPending && <Loader2 className="size-4 animate-spin" />}
+   731→              Save Changes
+   732→            </Button>
+   733→          </DialogFooter>
+   734→        </DialogContent>
+   735→      </Dialog>
+   736→    </div>
+   737→  )
+   738→}
+   739→
