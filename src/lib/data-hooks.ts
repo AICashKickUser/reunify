@@ -261,6 +261,34 @@ export function useCreateCase() {
   })
 }
 
+// Delete case and all related data
+export function useDeleteCase() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (caseId: string) => {
+      const res = await fetch(`/api/cases/${caseId}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Failed to delete case')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cases'] })
+      queryClient.invalidateQueries({ queryKey: ['case'] })
+      queryClient.invalidateQueries({ queryKey: ['requirements'] })
+      queryClient.invalidateQueries({ queryKey: ['counseling'] })
+      queryClient.invalidateQueries({ queryKey: ['drug-tests'] })
+      queryClient.invalidateQueries({ queryKey: ['na-steps'] })
+      queryClient.invalidateQueries({ queryKey: ['na-meetings'] })
+      queryClient.invalidateQueries({ queryKey: ['supervised-visits'] })
+      queryClient.invalidateQueries({ queryKey: ['court-dates'] })
+      queryClient.invalidateQueries({ queryKey: ['parenting-classes'] })
+      queryClient.invalidateQueries({ queryKey: ['milestones'] })
+      queryClient.invalidateQueries({ queryKey: ['daily-checkins'] })
+    },
+  })
+}
+
 // Seed database
 export function useSeedDatabase() {
   const queryClient = useQueryClient()

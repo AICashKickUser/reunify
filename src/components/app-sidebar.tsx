@@ -14,6 +14,7 @@ import {
   BarChart3,
   FolderHeart,
   CalendarCheck,
+  Trash2,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -37,7 +38,20 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useAppStore, type ViewType } from '@/lib/store'
-import { useCases } from '@/lib/data-hooks'
+import { useCases, useDeleteCase } from '@/lib/data-hooks'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 
 interface NavItem {
   view: ViewType
@@ -93,6 +107,7 @@ const NAV_GROUPS: NavGroup[] = [
 export function AppSidebar() {
   const { activeView, setActiveView, activeCaseId, setActiveCaseId } = useAppStore()
   const { data: cases } = useCases()
+  const deleteMutation = useDeleteCase()
 
   return (
     <Sidebar collapsible="icon" className="border-r-sidebar-border">
@@ -171,7 +186,52 @@ export function AppSidebar() {
 
       <SidebarFooter className="p-3">
         <SidebarSeparator />
-        <div className="group-data-[collapsible=icon]:hidden">
+        {activeCaseId && (
+          <div className="group-data-[collapsible=icon]:hidden mt-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full gap-2 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                  size="sm"
+                >
+                  <Trash2 className="size-4" />
+                  Start Fresh
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear All Data?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete your current case and all associated
+                    data (sessions, tests, visits, milestones, etc.). This action
+                    cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-white hover:bg-destructive/90"
+                    onClick={() => {
+                      deleteMutation.mutate(activeCaseId, {
+                        onSuccess: () => {
+                          setActiveCaseId(null)
+                          toast.success('Case deleted. You can start fresh!')
+                        },
+                        onError: () => {
+                          toast.error('Failed to delete case. Please try again.')
+                        },
+                      })
+                    }}
+                  >
+                    Delete & Start Fresh
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
+        <div className="group-data-[collapsible=icon]:hidden mt-2">
           <p className="text-[10px] text-muted-foreground text-center leading-tight">
             Every step brings you closer
             <br />

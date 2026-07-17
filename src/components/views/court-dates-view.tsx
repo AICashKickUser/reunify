@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { format, parseISO, isPast, isFuture, differenceInDays } from 'date-fns'
 import {
   Scale, Plus, Edit, CalendarDays, Clock, CheckCircle2,
@@ -470,10 +470,10 @@ function CourtDateTimeline({ courtDates }: { courtDates: CourtDate[] }) {
   const [addOpen, setAddOpen] = useState(false)
   const [editDate, setEditDate] = useState<CourtDate | null>(null)
   const { activeCaseId, addDialogTrigger } = useAppStore()
-  const [prevTrigger, setPrevTrigger] = useState(addDialogTrigger)
+  const prevTriggerRef = useRef(addDialogTrigger)
 
-  if (addDialogTrigger !== prevTrigger && addDialogTrigger > 0) {
-    setPrevTrigger(addDialogTrigger)
+  if (addDialogTrigger !== prevTriggerRef.current && addDialogTrigger > 0) {
+    prevTriggerRef.current = addDialogTrigger
     setAddOpen(true)
   }
 

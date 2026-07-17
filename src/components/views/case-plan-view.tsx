@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { format, differenceInDays, parseISO, isPast } from 'date-fns'
 import {
   ClipboardList, Plus, Edit, Trash2, Phone, User, Gavel,
@@ -676,10 +676,10 @@ function RequirementsList({ requirements }: { requirements: CaseRequirement[] })
   const updateMutation = useUpdateItem('requirements')
   const deleteMutation = useDeleteItem('requirements')
   const resetMutation = useResetCase()
-  const [prevTrigger, setPrevTrigger] = useState(addDialogTrigger)
+  const prevTriggerRef = useRef(addDialogTrigger)
 
-  if (addDialogTrigger !== prevTrigger && addDialogTrigger > 0) {
-    setPrevTrigger(addDialogTrigger)
+  if (addDialogTrigger !== prevTriggerRef.current && addDialogTrigger > 0) {
+    prevTriggerRef.current = addDialogTrigger
     setAddOpen(true)
   }
 

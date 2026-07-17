@@ -787,6 +787,13 @@ export function ProgressView() {
               <p className="mt-2 text-sm text-muted-foreground">
                 {motivation.message}
               </p>
+              <Button
+                className="mt-3 bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+                onClick={() => setSummaryOpen(true)}
+              >
+                <ClipboardCheck className="size-4" />
+                View Summary
+              </Button>
               <div className="mt-4 flex items-center gap-4 justify-center sm:justify-start">
                 <div className="text-center">
                   <p className="text-2xl font-bold text-foreground">
@@ -934,6 +941,13 @@ export function ProgressView() {
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+              onClick={() => setSummaryOpen(true)}
+            >
+              <ClipboardCheck className="size-4" />
+              Summary
+            </Button>
+            <Button
               className="gap-2"
               onClick={handleExport}
               disabled={exporting || !activeCaseId}
@@ -944,14 +958,6 @@ export function ProgressView() {
                 <Download className="size-4" />
               )}
               {exporting ? 'Exporting...' : 'Export Case Data'}
-            </Button>
-            <Button
-              variant="outline"
-              className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
-              onClick={() => setSummaryOpen(true)}
-            >
-              <ClipboardCheck className="size-4" />
-              Generate Summary
             </Button>
             <Button
               variant="outline"

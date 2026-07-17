@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useAppStore } from '@/lib/store'
 import {
   useNAMeetings,
@@ -77,10 +77,10 @@ export function NAMeetingsView() {
   const [editingMeeting, setEditingMeeting] = useState<NAMeeting | null>(null)
   const [form, setForm] = useState<MeetingFormData>(emptyForm)
   const [verifiedFilter, setVerifiedFilter] = useState<string>('all')
-  const [prevTrigger, setPrevTrigger] = useState(addDialogTrigger)
+  const prevTriggerRef = useRef(addDialogTrigger)
 
-  if (addDialogTrigger !== prevTrigger && addDialogTrigger > 0) {
-    setPrevTrigger(addDialogTrigger)
+  if (addDialogTrigger !== prevTriggerRef.current && addDialogTrigger > 0) {
+    prevTriggerRef.current = addDialogTrigger
     setForm(emptyForm)
     setAddOpen(true)
   }

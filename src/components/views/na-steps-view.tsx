@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useAppStore } from '@/lib/store'
 import {
   useNASteps,
@@ -142,12 +142,12 @@ export function NAStepsView() {
     setAddOpen(true)
   }
 
-  useEffect(() => {
-    if (addDialogTrigger > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      handleAddStep()
-    }
-  }, [addDialogTrigger])
+  const prevTriggerRef = useRef(addDialogTrigger)
+
+  if (addDialogTrigger !== prevTriggerRef.current && addDialogTrigger > 0) {
+    prevTriggerRef.current = addDialogTrigger
+    handleAddStep()
+  }
 
   function handleEditStep(step: NAStep) {
     setEditingStep(step)
