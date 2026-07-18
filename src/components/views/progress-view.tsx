@@ -25,6 +25,7 @@ import {
   Download,
   Shield,
   Loader2,
+  Lock,
 } from 'lucide-react'
 import { FileText } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
@@ -1280,9 +1281,10 @@ export function ProgressView() {
                   onClick={() => {
                     if (!isPro) {
                       setUpgradeDialogOpen(true)
+                    } else if (caseData) {
+                      generatePDFReport(caseData as unknown as Record<string, unknown>, categories)
                     }
                   }}
-                  disabled={isPro ? false : undefined}
                 >
                   <FileText className="size-4" />
                   PDF Report
@@ -1350,8 +1352,24 @@ export function ProgressView() {
         </div>
       </div>
 
-      {/* Charts */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* Charts — Pro Feature */}
+      <div className="relative">
+        {!isPro && (
+          <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center gap-3 p-6">
+            <Lock className="size-8 text-muted-foreground" />
+            <p className="text-sm font-medium text-foreground">Detailed Charts</p>
+            <p className="text-xs text-muted-foreground text-center">Upgrade to Pro to see radar and comparison charts</p>
+            <Button
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+              onClick={() => setUpgradeDialogOpen(true)}
+            >
+              <Sparkles className="size-3.5" />
+              Upgrade to Pro
+            </Button>
+          </div>
+        )}
+        <div className={`grid gap-6 lg:grid-cols-2 ${!isPro ? 'pointer-events-none' : ''}`}>
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Progress Radar</CardTitle>
@@ -1404,6 +1422,7 @@ export function ProgressView() {
             </ChartContainer>
           </CardContent>
         </Card>
+        </div>
       </div>
 
       {/* Timeline Summary */}
@@ -1437,15 +1456,28 @@ export function ProgressView() {
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Button
               className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
-              onClick={() => setSummaryOpen(true)}
+              onClick={() => {
+                if (!isPro) {
+                  setUpgradeDialogOpen(true)
+                } else {
+                  setSummaryOpen(true)
+                }
+              }}
             >
               <ClipboardCheck className="size-4" />
               Summary
+              {!isPro && <ProBadge />}
             </Button>
             <Button
               className="gap-2"
-              onClick={handleExport}
-              disabled={exporting || !activeCaseId}
+              onClick={() => {
+                if (!isPro) {
+                  setUpgradeDialogOpen(true)
+                } else {
+                  handleExport()
+                }
+              }}
+              disabled={exporting && isPro}
             >
               {exporting ? (
                 <Loader2 className="size-4 animate-spin" />
@@ -1453,6 +1485,7 @@ export function ProgressView() {
                 <Download className="size-4" />
               )}
               {exporting ? 'Exporting...' : 'Export Case Data'}
+              {!isPro && <ProBadge />}
             </Button>
             <Button
               variant="outline"
