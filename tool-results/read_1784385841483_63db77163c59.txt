@@ -1,0 +1,932 @@
+     1→'use client'
+     2→
+     3→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+     4→import { Badge } from '@/components/ui/badge'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Progress } from '@/components/ui/progress'
+     7→import { Skeleton } from '@/components/ui/skeleton'
+     8→import { Separator } from '@/components/ui/separator'
+     9→import {
+    10→  Heart,
+    11→  TestTube2,
+    12→  Footprints,
+    13→  Users,
+    14→  Baby,
+    15→  GraduationCap,
+    16→  Scale,
+    17→  ClipboardCheck,
+    18→  Printer,
+    19→  TrendingUp,
+    20→  CheckCircle,
+    21→  AlertTriangle,
+    22→  CircleDot,
+    23→  ArrowRight,
+    24→  Sparkles,
+    25→  Download,
+    26→  Shield,
+    27→  Loader2,
+    28→} from 'lucide-react'
+    29→import { FileText } from 'lucide-react'
+    30→import { useAppStore } from '@/lib/store'
+    31→import { useCase } from '@/lib/data-hooks'
+    32→import { useSubscriptionStore } from '@/lib/subscription'
+    33→import { ProBadge } from '@/components/pro-badge'
+    34→import { ChartContainer } from '@/components/ui/chart'
+    35→import {
+    36→  RadarChart,
+    37→  PolarGrid,
+    38→  PolarAngleAxis,
+    39→  PolarRadiusAxis,
+    40→  Radar,
+    41→  ResponsiveContainer,
+    42→  BarChart,
+    43→  Bar,
+    44→  XAxis,
+    45→  YAxis,
+    46→  CartesianGrid,
+    47→  Tooltip,
+    48→} from 'recharts'
+    49→import { toast } from 'sonner'
+    50→import { useState } from 'react'
+    51→import {
+    52→  Dialog,
+    53→  DialogContent,
+    54→  DialogDescription,
+    55→  DialogFooter,
+    56→  DialogHeader,
+    57→  DialogTitle,
+    58→} from '@/components/ui/dialog'
+    59→
+    60→interface CategoryProgress {
+    61→  key: string
+    62→  label: string
+    63→  icon: React.ReactNode
+    64→  progress: number
+    65→  statLabel: string
+    66→  statValue: string
+    67→  status: 'completed' | 'on-track' | 'needs-attention' | 'behind'
+    68→  color: string
+    69→}
+    70→
+    71→function getMotivationalMessage(progress: number): {
+    72→  title: string
+    73→  message: string
+    74→} {
+    75→  if (progress >= 90) {
+    76→    return {
+    77→      title: 'Almost there! 🌟',
+    78→      message:
+    79→        "You're so close to completing your case plan! Keep pushing forward — your kids are waiting for you.",
+    80→    }
+    81→  }
+    82→  if (progress >= 70) {
+    83→    return {
+    84→      title: 'Great momentum! 💪',
+    85→      message:
+    86→        "You're making incredible progress. The finish line is in sight — stay focused and consistent.",
+    87→    }
+    88→  }
+    89→  if (progress >= 50) {
+    90→    return {
+    91→      title: 'Halfway there! 🎯',
+    92→      message:
+    93→        "You've come a long way. Every step counts, and you're proving your commitment every day.",
+    94→    }
+    95→  }
+    96→  if (progress >= 25) {
+    97→    return {
+    98→      title: 'Keep going! 🌱',
+    99→      message:
+   100→        "You're building a foundation for your family's future. Small steps lead to big changes.",
+   101→    }
+   102→  }
+   103→  return {
+   104→    title: 'Your journey starts now 🚀',
+   105→    message:
+   106→      "Every journey begins with a single step. You've taken the first step by being here. Stay strong and keep showing up.",
+   107→  }
+   108→}
+   109→
+   110→function getStatusColor(status: string): string {
+   111→  switch (status) {
+   112→    case 'completed':
+   113→      return 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20'
+   114→    case 'on-track':
+   115→      return 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20'
+   116→    case 'needs-attention':
+   117→      return 'border-amber-400 bg-amber-50 dark:bg-amber-950/20'
+   118→    case 'behind':
+   119→      return 'border-red-400 bg-red-50 dark:bg-red-950/20'
+   120→    default:
+   121→      return 'border-slate-300 bg-slate-50 dark:bg-slate-950/20'
+   122→  }
+   123→}
+   124→
+   125→function getStatusBadge(status: string) {
+   126→  switch (status) {
+   127→    case 'completed':
+   128→      return (
+   129→        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
+   130→          <CheckCircle className="size-3" />
+   131→          Completed
+   132→        </Badge>
+   133→      )
+   134→    case 'on-track':
+   135→      return (
+   136→        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
+   137→          <TrendingUp className="size-3" />
+   138→          On Track
+   139→        </Badge>
+   140→      )
+   141→    case 'needs-attention':
+   142→      return (
+   143→        <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">
+   144→          <AlertTriangle className="size-3" />
+   145→          Needs Attention
+   146→        </Badge>
+   147→      )
+   148→    case 'behind':
+   149→      return (
+   150→        <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100">
+   151→          <CircleDot className="size-3" />
+   152→          Behind
+   153→        </Badge>
+   154→      )
+   155→    default:
+   156→      return null
+   157→  }
+   158→}
+   159→
+   160→function CircularProgress({
+   161→  value,
+   162→  size = 180,
+   163→  strokeWidth = 12,
+   164→}: {
+   165→  value: number
+   166→  size?: number
+   167→  strokeWidth?: number
+   168→}) {
+   169→  const radius = (size - strokeWidth) / 2
+   170→  const circumference = 2 * Math.PI * radius
+   171→  const offset = circumference - (value / 100) * circumference
+   172→
+   173→  return (
+   174→    <div className="relative inline-flex items-center justify-center">
+   175→      <svg width={size} height={size} className="-rotate-90">
+   176→        <circle
+   177→          cx={size / 2}
+   178→          cy={size / 2}
+   179→          r={radius}
+   180→          fill="none"
+   181→          stroke="currentColor"
+   182→          strokeWidth={strokeWidth}
+   183→          className="text-slate-200 dark:text-slate-700"
+   184→        />
+   185→        <circle
+   186→          cx={size / 2}
+   187→          cy={size / 2}
+   188→          r={radius}
+   189→          fill="none"
+   190→          stroke="currentColor"
+   191→          strokeWidth={strokeWidth}
+   192→          strokeDasharray={circumference}
+   193→          strokeDashoffset={offset}
+   194→          strokeLinecap="round"
+   195→          className="text-emerald-500 transition-all duration-1000 ease-out"
+   196→        />
+   197→      </svg>
+   198→      <div className="absolute flex flex-col items-center justify-center">
+   199→        <span className="text-4xl font-bold text-foreground">{value}%</span>
+   200→        <span className="text-xs text-muted-foreground">Overall</span>
+   201→      </div>
+   202→    </div>
+   203→  )
+   204→}
+   205→
+   206→function TimelineSummary({
+   207→  milestones,
+   208→  caseData,
+   209→}: {
+   210→  milestones: { title: string; isCompleted: boolean; completedAt: string | null; category: string }[]
+   211→  caseData: { removalDate: string | null; targetReunificationDate: string | null }
+   212→}) {
+   213→  const keyMilestones = milestones
+   214→    .filter(
+   215→      (m) =>
+   216→        m.category === 'legal' ||
+   217→        m.category === 'recovery' ||
+   218→        m.category === 'family' ||
+   219→        m.title.toLowerCase().includes('first') ||
+   220→        m.title.toLowerCase().includes('removal') ||
+   221→        m.title.toLowerCase().includes('reunification')
+   222→    )
+   223→    .slice(0, 8)
+   224→
+   225→  const timelineItems = [
+   226→    ...(caseData.removalDate
+   227→      ? [
+   228→          {
+   229→            title: 'Removal Date',
+   230→            date: caseData.removalDate,
+   231→            isCompleted: true,
+   232→          },
+   233→        ]
+   234→      : []),
+   235→    ...keyMilestones.map((m) => ({
+   236→      title: m.title,
+   237→      date: m.completedAt || '',
+   238→      isCompleted: m.isCompleted,
+   239→    })),
+   240→    ...(caseData.targetReunificationDate
+   241→      ? [
+   242→          {
+   243→            title: 'Reunification Target',
+   244→            date: caseData.targetReunificationDate,
+   245→            isCompleted: false,
+   246→          },
+   247→        ]
+   248→      : []),
+   249→  ].slice(0, 10)
+   250→
+   251→  return (
+   252→    <div className="space-y-0">
+   253→      {timelineItems.map((item, index) => (
+   254→        <div key={index} className="flex gap-3">
+   255→          <div className="flex flex-col items-center">
+   256→            <div
+   257→              className={`flex size-6 items-center justify-center rounded-full border-2 ${
+   258→                item.isCompleted
+   259→                  ? 'border-emerald-500 bg-emerald-500'
+   260→                  : 'border-slate-300 bg-background'
+   261→              }`}
+   262→            >
+   263→              {item.isCompleted && (
+   264→                <CheckCircle className="size-3.5 text-white" />
+   265→              )}
+   266→            </div>
+   267→            {index < timelineItems.length - 1 && (
+   268→              <div
+   269→                className={`w-0.5 flex-1 min-h-6 ${
+   270→                  item.isCompleted ? 'bg-emerald-300' : 'bg-slate-200'
+   271→                }`}
+   272→              />
+   273→            )}
+   274→          </div>
+   275→          <div className="pb-6 flex-1">
+   276→            <p
+   277→              className={`text-sm font-medium ${
+   278→                item.isCompleted
+   279→                  ? 'text-emerald-700 dark:text-emerald-400'
+   280→                  : 'text-muted-foreground'
+   281→              }`}
+   282→            >
+   283→              {item.title}
+   284→            </p>
+   285→            {item.date && (
+   286→              <p className="text-xs text-muted-foreground">
+   287→                {new Date(item.date).toLocaleDateString('en-US', {
+   288→                  month: 'short',
+   289→                  day: 'numeric',
+   290→                  year: 'numeric',
+   291→                })}
+   292→              </p>
+   293→            )}
+   294→          </div>
+   295→        </div>
+   296→      ))}
+   297→    </div>
+   298→  )
+   299→}
+   300→
+   301→function PrivacyNotice() {
+   302→  return (
+   303→    <Card className="border-emerald-200 dark:border-emerald-800">
+   304→      <CardContent className="p-4">
+   305→        <div className="flex items-start gap-3">
+   306→          <Shield className="size-5 text-emerald-600 mt-0.5 shrink-0" />
+   307→          <div className="space-y-1">
+   308→            <p className="text-sm font-medium">Your Data is Private</p>
+   309→            <p className="text-xs text-muted-foreground">
+   310→              All case data is stored locally on your device. Reunify does not
+   311→              send your information to any external servers. Exported files
+   312→              contain your complete case data — store them securely and only
+   313→              share with trusted parties like your attorney.
+   314→            </p>
+   315→          </div>
+   316→        </div>
+   317→      </CardContent>
+   318→    </Card>
+   319→  )
+   320→}
+   321→
+   322→function SummaryDialog({ open, onOpenChange, caseData, categories }: {
+   323→  open: boolean
+   324→  onOpenChange: (open: boolean) => void
+   325→  caseData: Record<string, unknown>
+   326→  categories: CategoryProgress[]
+   327→}) {
+   328→  const requirements = (caseData.requirements || []) as Array<Record<string, unknown>>
+   329→  const completedReqs = requirements.filter((r) => r.isCompleted)
+   330→  const incompleteReqs = requirements.filter((r) => !r.isCompleted)
+   331→
+   332→  const counselingSessions = (caseData.counselingSessions || []) as Array<Record<string, unknown>>
+   333→  const completedSessions = counselingSessions.filter((s) => s.isCompleted)
+   334→
+   335→  const drugTests = (caseData.drugTests || []) as Array<Record<string, unknown>>
+   336→  const passedTests = drugTests.filter((t) => t.result === 'negative')
+   337→  const failedTests = drugTests.filter((t) => t.result === 'positive')
+   338→  const pendingTests = drugTests.filter((t) => t.result === 'pending' || !t.result)
+   339→
+   340→  const naSteps = (caseData.naSteps || []) as Array<Record<string, unknown>>
+   341→  const completedSteps = naSteps.filter((s) => s.isCompleted)
+   342→
+   343→  const naMeetings = (caseData.naMeetings || []) as Array<Record<string, unknown>>
+   344→  const visits = (caseData.supervisedVisits || []) as Array<Record<string, unknown>>
+   345→  const completedVisits = visits.filter((v) => v.isCompleted)
+   346→  const parentingClasses = (caseData.parentingClasses || []) as Array<Record<string, unknown>>
+   347→  const completedClasses = parentingClasses.filter((c) => c.isCompleted)
+   348→  const milestones = (caseData.milestones || []) as Array<Record<string, unknown>>
+   349→  const completedMilestones = milestones.filter((m) => m.isCompleted)
+   350→  const courtDates = (caseData.courtDates || []) as Array<Record<string, unknown>>
+   351→
+   352→  const overallProgress = requirements.length > 0
+   353→    ? Math.round((completedReqs.length / requirements.length) * 100)
+   354→    : 0
+   355→
+   356→  const onTrackCategories = categories.filter(c => c.status === 'on-track' || c.status === 'completed')
+   357→  const needsAttentionCategories = categories.filter(c => c.status === 'needs-attention')
+   358→  const behindCategories = categories.filter(c => c.status === 'behind')
+   359→
+   360→  const summaryText = `REUNIFICATION CASE SUMMARY
+   361→Generated: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+   362→
+   363→Case: ${caseData.caseNumber || 'N/A'}
+   364→Court: ${caseData.courtName || 'Not specified'}
+   365→Caseworker: ${caseData.caseworkerName || 'Not specified'}
+   366→Judge: ${caseData.judgeName || 'Not specified'}
+   367→Attorney: ${caseData.attorneyName || 'Not specified'}
+   368→
+   369→═══════════════════════════════
+   370→OVERALL PROGRESS: ${overallProgress}%
+   371→═══════════════════════════════
+   372→
+   373→Requirements Completed: ${completedReqs.length} of ${requirements.length}
+   374→
+   375→───────────────────────────────
+   376→ACHIEVEMENTS & COMPLETED ITEMS
+   377→───────────────────────────────
+   378→${completedReqs.length > 0 ? completedReqs.map((r) => `✓ ${r.title} (${r.category})${r.completedAt ? ' - Completed ' + new Date(r.completedAt as string).toLocaleDateString() : ''}`).join('\n') : 'No requirements completed yet'}
+   379→
+   380→${completedMilestones.length > 0 ? '\nMilestones Achieved:\n' + completedMilestones.map((m) => `★ ${m.title} - ${m.completedAt ? new Date(m.completedAt as string).toLocaleDateString() : 'Date not recorded'}`).join('\n') : ''}
+   381→
+   382→${completedSteps.length > 0 ? '\nNA Steps Completed: ' + completedSteps.length + '/12\n' + completedSteps.map((s) => `  Step ${s.stepNumber}: ✓${s.sponsorVerified ? ' (Sponsor Verified)' : ''}`).join('\n') : ''}
+   383→
+   384→───────────────────────────────
+   385→COMPLIANCE DETAILS
+   386→───────────────────────────────
+   387→
+   388→Counseling: ${completedSessions.length}/${counselingSessions.length} sessions completed
+   389→Drug Testing: ${passedTests.length} clean / ${drugTests.length} total (${failedTests.length} positive, ${pendingTests.length} pending)
+   390→NA Meetings: ${naMeetings.length} meetings attended (${naMeetings.filter((m) => m.isVerified).length} verified)
+   391→Supervised Visits: ${completedVisits.length}/${visits.length} completed
+   392→Parenting Classes: ${completedClasses.length}/${parentingClasses.length} completed (${parentingClasses.filter((c) => c.hasCertificate).length} certificates earned)
+   393→Court Dates: ${courtDates.filter((c) => c.isCompleted).length}/${courtDates.length} completed
+   394→
+   395→───────────────────────────────
+   396→AREAS ON TRACK
+   397→───────────────────────────────
+   398→${onTrackCategories.length > 0 ? onTrackCategories.map(c => `✓ ${c.label}: ${c.progress}% - ${c.statValue}`).join('\n') : 'No categories on track yet'}
+   399→
+   400→───────────────────────────────
+   401→AREAS NEEDING ATTENTION
+   402→───────────────────────────────
+   403→${needsAttentionCategories.length > 0 ? needsAttentionCategories.map(c => `⚠ ${c.label}: ${c.progress}% - ${c.statValue}`).join('\n') : 'None - great work!'}
+   404→
+   405→───────────────────────────────
+   406→AREAS BEHIND
+   407→───────────────────────────────
+   408→${behindCategories.length > 0 ? behindCategories.map(c => `✗ ${c.label}: ${c.progress}% - ${c.statValue}`).join('\n') : 'None - keep it up!'}
+   409→
+   410→───────────────────────────────
+   411→REMAINING REQUIREMENTS
+   412→───────────────────────────────
+   413→${incompleteReqs.length > 0 ? incompleteReqs.map((r) => `○ ${r.title} (${r.category})${r.dueDate ? ' - Due: ' + new Date(r.dueDate as string).toLocaleDateString() : ''}`).join('\n') : 'All requirements completed!'}`
+   414→
+   415→  function handleCopySummary() {
+   416→    navigator.clipboard.writeText(summaryText).then(() => {
+   417→      toast.success('Summary copied to clipboard!')
+   418→    }).catch(() => {
+   419→      toast.error('Failed to copy summary')
+   420→    })
+   421→  }
+   422→
+   423→  return (
+   424→    <Dialog open={open} onOpenChange={onOpenChange}>
+   425→      <DialogContent className="max-w-2xl max-h-[80vh]">
+   426→        <DialogHeader>
+   427→          <DialogTitle className="flex items-center gap-2">
+   428→            <ClipboardCheck className="size-5 text-emerald-600" />
+   429→            Case Summary Report
+   430→          </DialogTitle>
+   431→          <DialogDescription>
+   432→            Comprehensive overview of your reunification progress
+   433→          </DialogDescription>
+   434→        </DialogHeader>
+   435→        <div className="space-y-4">
+   436→          {/* Quick Stats */}
+   437→          <div className="grid grid-cols-3 gap-3">
+   438→            <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 p-3 text-center">
+   439→              <p className="text-2xl font-bold text-emerald-700">{completedReqs.length}</p>
+   440→              <p className="text-xs text-emerald-600">Completed</p>
+   441→            </div>
+   442→            <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 p-3 text-center">
+   443→              <p className="text-2xl font-bold text-amber-700">{needsAttentionCategories.length + behindCategories.length}</p>
+   444→              <p className="text-xs text-amber-600">Needs Work</p>
+   445→            </div>
+   446→            <div className="rounded-lg bg-sky-50 dark:bg-sky-950/20 p-3 text-center">
+   447→              <p className="text-2xl font-bold text-sky-700">{overallProgress}%</p>
+   448→              <p className="text-xs text-sky-600">Overall</p>
+   449→            </div>
+   450→          </div>
+   451→
+   452→          {/* Summary text */}
+   453→          <pre className="whitespace-pre-wrap text-xs font-mono bg-muted/50 rounded-lg p-4 max-h-96 overflow-y-auto border">
+   454→            {summaryText}
+   455→          </pre>
+   456→        </div>
+   457→        <DialogFooter className="flex-col sm:flex-row gap-2">
+   458→          <Button variant="outline" onClick={handleCopySummary} className="gap-2">
+   459→            Copy to Clipboard
+   460→          </Button>
+   461→          <Button onClick={() => onOpenChange(false)} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+   462→            Done
+   463→          </Button>
+   464→        </DialogFooter>
+   465→      </DialogContent>
+   466→    </Dialog>
+   467→  )
+   468→}
+   469→
+   470→function generatePDFReport(caseData: Record<string, unknown>, categories: CategoryProgress[]) {
+   471→  const requirements = (caseData.requirements || []) as Array<Record<string, unknown>>
+   472→  const completedReqs = requirements.filter((r) => r.isCompleted)
+   473→  const incompleteReqs = requirements.filter((r) => !r.isCompleted)
+   474→
+   475→  const counselingSessions = (caseData.counselingSessions || []) as Array<Record<string, unknown>>
+   476→  const completedSessions = counselingSessions.filter((s) => s.isCompleted)
+   477→
+   478→  const drugTests = (caseData.drugTests || []) as Array<Record<string, unknown>>
+   479→  const passedTests = drugTests.filter((t) => t.result === 'negative')
+   480→  const failedTests = drugTests.filter((t) => t.result === 'positive')
+   481→
+   482→  const naSteps = (caseData.naSteps || []) as Array<Record<string, unknown>>
+   483→  const completedSteps = naSteps.filter((s) => s.isCompleted)
+   484→  const sponsorVerifiedCount = completedSteps.filter((s) => s.sponsorVerified).length
+   485→
+   486→  const naMeetings = (caseData.naMeetings || []) as Array<Record<string, unknown>>
+   487→  const verifiedMeetings = naMeetings.filter((m) => m.isVerified)
+   488→
+   489→  const visits = (caseData.supervisedVisits || []) as Array<Record<string, unknown>>
+   490→  const completedVisits = visits.filter((v) => v.isCompleted)
+   491→  const latestVisitType = completedVisits.length > 0
+   492→    ? (completedVisits.sort((a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime())[0]?.visitType || 'supervised')
+   493→    : 'supervised'
+   494→  const visitLevelLabel = latestVisitType === 'unsupervised'
+   495→    ? 'Unsupervised'
+   496→    : latestVisitType === 'semi-supervised'
+   497→      ? 'Semi-Supervised'
+   498→      : 'Supervised'
+   499→
+   500→  const parentingClasses = (caseData.parentingClasses || []) as Array<Record<string, unknown>>
+   501→  const completedClasses = parentingClasses.filter((c) => c.isCompleted)
+   502→  const certificatesEarned = parentingClasses.filter((c) => c.hasCertificate).length
+   503→
+   504→  const courtDates = (caseData.courtDates || []) as Array<Record<string, unknown>>
+   505→  const completedCourtDates = courtDates.filter((c) => c.isCompleted)
+   506→  const nextCourtDate = courtDates
+   507→    .filter((c) => !c.isCompleted && new Date(c.date as string) > new Date())
+   508→    .sort((a, b) => new Date(a.date as string).getTime() - new Date(b.date as string).getTime())[0]
+   509→
+   510→  const milestones = (caseData.milestones || []) as Array<Record<string, unknown>>
+   511→  const completedMilestones = milestones.filter((m) => m.isCompleted)
+   512→
+   513→  const overallProgress = requirements.length > 0
+   514→    ? Math.round((completedReqs.length / requirements.length) * 100)
+   515→    : 0
+   516→
+   517→  // Calculate clean streak
+   518→  const sortedTests = [...drugTests].sort(
+   519→    (a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime()
+   520→  )
+   521→  let cleanStreak = 0
+   522→  for (const test of sortedTests) {
+   523→    if (test.result === 'negative') {
+   524→      cleanStreak++
+   525→    } else {
+   526→      break
+   527→    }
+   528→  }
+   529→
+   530→  const drugPassRate = drugTests.length > 0
+   531→    ? Math.round((passedTests.length / drugTests.length) * 100)
+   532→    : 0
+   533→
+   534→  const formatDate = (d: string | null | undefined) =>
+   535→    d ? new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Not specified'
+   536→
+   537→  const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+   538→  const caseNumber = caseData.caseNumber || 'N/A'
+   539→
+   540→  const onTrackCategories = categories.filter(c => c.status === 'on-track' || c.status === 'completed')
+   541→  const needsAttentionCategories = categories.filter(c => c.status === 'needs-attention')
+   542→  const behindCategories = categories.filter(c => c.status === 'behind')
+   543→
+   544→  const html = `<!DOCTYPE html>
+   545→<html lang="en">
+   546→<head>
+   547→  <meta charset="UTF-8">
+   548→  <title>Reunification Compliance Report - Case ${caseNumber}</title>
+   549→  <style>
+   550→    * { margin: 0; padding: 0; box-sizing: border-box; }
+   551→    body {
+   552→      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+   553→      color: #1a1a1a;
+   554→      background: #fff;
+   555→      padding: 0;
+   556→      line-height: 1.5;
+   557→    }
+   558→    .page {
+   559→      max-width: 850px;
+   560→      margin: 0 auto;
+   561→      padding: 40px 50px;
+   562→    }
+   563→    .header {
+   564→      text-align: center;
+   565→      border-bottom: 3px solid #059669;
+   566→      padding-bottom: 20px;
+   567→      margin-bottom: 24px;
+   568→    }
+   569→    .header h1 {
+   570→      font-size: 22px;
+   571→      font-weight: 700;
+   572→      letter-spacing: 2px;
+   573→      color: #064e3b;
+   574→      margin-bottom: 4px;
+   575→    }
+   576→    .header .case-num {
+   577→      font-size: 14px;
+   578→      color: #374151;
+   579→      font-weight: 500;
+   580→    }
+   581→    .header .date {
+   582→      font-size: 12px;
+   583→      color: #6b7280;
+   584→      margin-top: 4px;
+   585→    }
+   586→    .section {
+   587→      margin-bottom: 22px;
+   588→    }
+   589→    .section-title {
+   590→      font-size: 14px;
+   591→      font-weight: 700;
+   592→      text-transform: uppercase;
+   593→      letter-spacing: 1px;
+   594→      color: #fff;
+   595→      background: #059669;
+   596→      padding: 6px 14px;
+   597→      border-radius: 3px;
+   598→      margin-bottom: 12px;
+   599→    }
+   600→    .info-grid {
+   601→      display: grid;
+   602→      grid-template-columns: 1fr 1fr;
+   603→      gap: 8px 24px;
+   604→    }
+   605→    .info-item {
+   606→      display: flex;
+   607→      gap: 6px;
+   608→      font-size: 12px;
+   609→      padding: 4px 0;
+   610→    }
+   611→    .info-label {
+   612→      font-weight: 600;
+   613→      color: #374151;
+   614→      min-width: 120px;
+   615→    }
+   616→    .info-value {
+   617→      color: #1f2937;
+   618→    }
+   619→    .progress-section {
+   620→      background: #f0fdf4;
+   621→      border: 1px solid #bbf7d0;
+   622→      border-radius: 6px;
+   623→      padding: 16px 20px;
+   624→      text-align: center;
+   625→      margin-bottom: 22px;
+   626→    }
+   627→    .progress-big {
+   628→      font-size: 48px;
+   629→      font-weight: 800;
+   630→      color: #059669;
+   631→      line-height: 1;
+   632→    }
+   633→    .progress-label {
+   634→      font-size: 13px;
+   635→      color: #374151;
+   636→      font-weight: 600;
+   637→      margin-top: 4px;
+   638→    }
+   639→    .progress-bar-container {
+   640→      width: 100%;
+   641→      height: 16px;
+   642→      background: #d1fae5;
+   643→      border-radius: 8px;
+   644→      overflow: hidden;
+   645→      margin-top: 10px;
+   646→    }
+   647→    .progress-bar-fill {
+   648→      height: 100%;
+   649→      background: linear-gradient(90deg, #059669, #10b981);
+   650→      border-radius: 8px;
+   651→      transition: width 0.3s;
+   652→    }
+   653→    .category-table {
+   654→      width: 100%;
+   655→      border-collapse: collapse;
+   656→      font-size: 12px;
+   657→    }
+   658→    .category-table th {
+   659→      background: #f3f4f6;
+   660→      font-weight: 600;
+   661→      text-align: left;
+   662→      padding: 8px 10px;
+   663→      border: 1px solid #d1d5db;
+   664→      color: #374151;
+   665→      font-size: 11px;
+   666→      text-transform: uppercase;
+   667→      letter-spacing: 0.5px;
+   668→    }
+   669→    .category-table td {
+   670→      padding: 8px 10px;
+   671→      border: 1px solid #e5e7eb;
+   672→      vertical-align: top;
+   673→    }
+   674→    .category-table tr:nth-child(even) td {
+   675→      background: #f9fafb;
+   676→    }
+   677→    .status-completed { color: #059669; font-weight: 600; }
+   678→    .status-on-track { color: #16a34a; font-weight: 600; }
+   679→    .status-needs-attention { color: #d97706; font-weight: 600; }
+   680→    .status-behind { color: #dc2626; font-weight: 600; }
+   681→    .mini-bar {
+   682→      display: inline-block;
+   683→      width: 60px;
+   684→      height: 8px;
+   685→      background: #e5e7eb;
+   686→      border-radius: 4px;
+   687→      overflow: hidden;
+   688→      vertical-align: middle;
+   689→      margin-left: 6px;
+   690→    }
+   691→    .mini-bar-fill {
+   692→      height: 100%;
+   693→      border-radius: 4px;
+   694→    }
+   695→    .item-list {
+   696→      list-style: none;
+   697→      padding: 0;
+   698→    }
+   699→    .item-list li {
+   700→      padding: 5px 0;
+   701→      font-size: 12px;
+   702→      border-bottom: 1px solid #f3f4f6;
+   703→      display: flex;
+   704→      gap: 6px;
+   705→    }
+   706→    .item-list li:last-child { border-bottom: none; }
+   707→    .check { color: #059669; font-weight: 700; }
+   708→    .cross { color: #dc2626; font-weight: 700; }
+   709→    .warn { color: #d97706; font-weight: 700; }
+   710→    .star { color: #d97706; }
+   711→    .two-col {
+   712→      display: grid;
+   713→      grid-template-columns: 1fr 1fr;
+   714→      gap: 16px;
+   715→    }
+   716→    .col-box {
+   717→      border: 1px solid #e5e7eb;
+   718→      border-radius: 4px;
+   719→      padding: 12px;
+   720→    }
+   721→    .col-box h4 {
+   722→      font-size: 12px;
+   723→      font-weight: 700;
+   724→      text-transform: uppercase;
+   725→      letter-spacing: 0.5px;
+   726→      margin-bottom: 8px;
+   727→      padding-bottom: 4px;
+   728→      border-bottom: 1px solid #e5e7eb;
+   729→    }
+   730→    .col-box.achievements h4 { color: #059669; }
+   731→    .col-box.attention h4 { color: #d97706; }
+   732→    .footer {
+   733→      margin-top: 32px;
+   734→      padding-top: 16px;
+   735→      border-top: 2px solid #059669;
+   736→      text-align: center;
+   737→    }
+   738→    .footer p {
+   739→      font-size: 10px;
+   740→      color: #9ca3af;
+   741→    }
+   742→    .footer .generated {
+   743→      font-size: 11px;
+   744→      color: #6b7280;
+   745→      margin-bottom: 6px;
+   746→    }
+   747→    .footer .privacy {
+   748→      font-style: italic;
+   749→      margin-top: 8px;
+   750→      font-size: 9px;
+   751→      color: #9ca3af;
+   752→    }
+   753→    @media print {
+   754→      body { padding: 0; }
+   755→      .page { padding: 20px 30px; }
+   756→    }
+   757→  </style>
+   758→</head>
+   759→<body>
+   760→  <div class="page">
+   761→    <!-- Header -->
+   762→    <div class="header">
+   763→      <h1>REUNIFICATION COMPLIANCE REPORT</h1>
+   764→      <div class="case-num">Case #${caseNumber}</div>
+   765→      <div class="date">Report Generated: ${today}</div>
+   766→    </div>
+   767→
+   768→    <!-- Case Info -->
+   769→    <div class="section">
+   770→      <div class="section-title">Case Information</div>
+   771→      <div class="info-grid">
+   772→        <div class="info-item"><span class="info-label">Court:</span><span class="info-value">${caseData.courtName || 'Not specified'}</span></div>
+   773→        <div class="info-item"><span class="info-label">Judge:</span><span class="info-value">${caseData.judgeName || 'Not specified'}</span></div>
+   774→        <div class="info-item"><span class="info-label">Caseworker:</span><span class="info-value">${caseData.caseworkerName || 'Not specified'}${caseData.caseworkerPhone ? ' (' + caseData.caseworkerPhone + ')' : ''}</span></div>
+   775→        <div class="info-item"><span class="info-label">Attorney:</span><span class="info-value">${caseData.attorneyName || 'Not specified'}${caseData.attorneyPhone ? ' (' + caseData.attorneyPhone + ')' : ''}</span></div>
+   776→        <div class="info-item"><span class="info-label">Removal Date:</span><span class="info-value">${formatDate(caseData.removalDate as string | null)}</span></div>
+   777→        <div class="info-item"><span class="info-label">Target Date:</span><span class="info-value">${formatDate(caseData.targetReunificationDate as string | null)}</span></div>
+   778→      </div>
+   779→    </div>
+   780→
+   781→    <!-- Overall Progress -->
+   782→    <div class="progress-section">
+   783→      <div class="progress-big">${overallProgress}%</div>
+   784→      <div class="progress-label">Overall Reunification Progress</div>
+   785→      <div class="progress-bar-container">
+   786→        <div class="progress-bar-fill" style="width: ${overallProgress}%"></div>
+   787→      </div>
+   788→      <div style="font-size:11px; color:#374151; margin-top:6px">
+   789→        ${completedReqs.length} of ${requirements.length} requirements completed
+   790→      </div>
+   791→    </div>
+   792→
+   793→    <!-- Compliance Breakdown -->
+   794→    <div class="section">
+   795→      <div class="section-title">Compliance Breakdown</div>
+   796→      <table class="category-table">
+   797→        <thead>
+   798→          <tr>
+   799→            <th>Category</th>
+   800→            <th>Progress</th>
+   801→            <th>Details</th>
+   802→            <th>Status</th>
+   803→          </tr>
+   804→        </thead>
+   805→        <tbody>
+   806→          <tr>
+   807→            <td><strong>Counseling</strong></td>
+   808→            <td>${counselingSessions.length > 0 ? Math.round((completedSessions.length / counselingSessions.length) * 100) : 0}%
+   809→              <span class="mini-bar"><span class="mini-bar-fill" style="width:${counselingSessions.length > 0 ? Math.round((completedSessions.length / counselingSessions.length) * 100) : 0}%;background:#10b981"></span></span>
+   810→            </td>
+   811→            <td>${completedSessions.length}/${counselingSessions.length} sessions completed</td>
+   812→            <td class="status-${counselingSessions.length > 0 ? (completedSessions.length / counselingSessions.length >= 1 ? 'completed' : completedSessions.length / counselingSessions.length >= 0.6 ? 'on-track' : completedSessions.length / counselingSessions.length >= 0.3 ? 'needs-attention' : 'behind') : 'behind'}">
+   813→              ${counselingSessions.length > 0 ? (completedSessions.length / counselingSessions.length >= 1 ? 'Completed' : completedSessions.length / counselingSessions.length >= 0.6 ? 'On Track' : completedSessions.length / counselingSessions.length >= 0.3 ? 'Needs Attention' : 'Behind') : 'No Data'}
+   814→            </td>
+   815→          </tr>
+   816→          <tr>
+   817→            <td><strong>Drug Testing</strong></td>
+   818→            <td>${drugPassRate}%
+   819→              <span class="mini-bar"><span class="mini-bar-fill" style="width:${drugPassRate}%;background:${drugPassRate >= 80 ? '#10b981' : drugPassRate >= 50 ? '#f59e0b' : '#ef4444'}"></span></span>
+   820→            </td>
+   821→            <td>${passedTests.length} clean of ${drugTests.length} total (${drugPassRate}% clean rate)${cleanStreak > 0 ? ', ' + cleanStreak + ' clean streak' : ''}${failedTests.length > 0 ? ', ' + failedTests.length + ' positive' : ''}</td>
+   822→            <td class="status-${drugTests.length > 0 ? (drugPassRate >= 100 ? 'completed' : drugPassRate >= 80 ? 'on-track' : drugPassRate >= 50 ? 'needs-attention' : 'behind') : 'behind'}">
+   823→              ${drugTests.length > 0 ? (drugPassRate >= 100 ? 'Completed' : drugPassRate >= 80 ? 'On Track' : drugPassRate >= 50 ? 'Needs Attention' : 'Behind') : 'No Data'}
+   824→            </td>
+   825→          </tr>
+   826→          <tr>
+   827→            <td><strong>NA Steps (12-Step)</strong></td>
+   828→            <td>${completedSteps.length}/12
+   829→              <span class="mini-bar"><span class="mini-bar-fill" style="width:${Math.round((completedSteps.length / 12) * 100)}%;background:#8b5cf6"></span></span>
+   830→            </td>
+   831→            <td>${completedSteps.length}/12 steps completed${sponsorVerifiedCount > 0 ? ', ' + sponsorVerifiedCount + ' sponsor-verified' : ''}${naSteps.length > 0 && completedSteps.length < naSteps.length ? ' (' + (naSteps.length - completedSteps.length) + ' remaining)' : ''}</td>
+   832→            <td class="status-${completedSteps.length >= 12 ? 'completed' : completedSteps.length >= 7 ? 'on-track' : completedSteps.length >= 3 ? 'needs-attention' : 'behind'}">
+   833→              ${completedSteps.length >= 12 ? 'Completed' : completedSteps.length >= 7 ? 'On Track' : completedSteps.length >= 3 ? 'Needs Attention' : 'Behind'}
+   834→            </td>
+   835→          </tr>
+   836→          <tr>
+   837→            <td><strong>NA Meetings</strong></td>
+   838→            <td>${naMeetings.length > 0 ? Math.round((verifiedMeetings.length / naMeetings.length) * 100) : 0}%
+   839→              <span class="mini-bar"><span class="mini-bar-fill" style="width:${naMeetings.length > 0 ? Math.round((verifiedMeetings.length / naMeetings.length) * 100) : 0}%;background:#8b5cf6"></span></span>
+   840→            </td>
+   841→            <td>${naMeetings.length} attended, ${verifiedMeetings.length} verified</td>
+   842→            <td class="status-${naMeetings.length > 0 ? (verifiedMeetings.length / naMeetings.length >= 1 ? 'completed' : verifiedMeetings.length / naMeetings.length >= 0.6 ? 'on-track' : verifiedMeetings.length / naMeetings.length >= 0.3 ? 'needs-attention' : 'behind') : 'behind'}">
+   843→              ${naMeetings.length > 0 ? (verifiedMeetings.length / naMeetings.length >= 1 ? 'Completed' : verifiedMeetings.length / naMeetings.length >= 0.6 ? 'On Track' : verifiedMeetings.length / naMeetings.length >= 0.3 ? 'Needs Attention' : 'Behind') : 'No Data'}
+   844→            </td>
+   845→          </tr>
+   846→          <tr>
+   847→            <td><strong>Supervised Visits</strong></td>
+   848→            <td>${visits.length > 0 ? Math.round((completedVisits.length / visits.length) * 100) : 0}%
+   849→              <span class="mini-bar"><span class="mini-bar-fill" style="width:${visits.length > 0 ? Math.round((completedVisits.length / visits.length) * 100) : 0}%;background:#0ea5e9"></span></span>
+   850→            </td>
+   851→            <td>${completedVisits.length}/${visits.length} completed, Current Level: ${visitLevelLabel}</td>
+   852→            <td class="status-${visits.length > 0 ? (completedVisits.length / visits.length >= 1 ? 'completed' : completedVisits.length / visits.length >= 0.6 ? 'on-track' : completedVisits.length / visits.length >= 0.3 ? 'needs-attention' : 'behind') : 'behind'}">
+   853→              ${visits.length > 0 ? (completedVisits.length / visits.length >= 1 ? 'Completed' : completedVisits.length / visits.length >= 0.6 ? 'On Track' : completedVisits.length / visits.length >= 0.3 ? 'Needs Attention' : 'Behind') : 'No Data'}
+   854→            </td>
+   855→          </tr>
+   856→          <tr>
+   857→            <td><strong>Parenting Classes</strong></td>
+   858→            <td>${parentingClasses.length > 0 ? Math.round((completedClasses.length / parentingClasses.length) * 100) : 0}%
+   859→              <span class="mini-bar"><span class="mini-bar-fill" style="width:${parentingClasses.length > 0 ? Math.round((completedClasses.length / parentingClasses.length) * 100) : 0}%;background:#f43f5e"></span></span>
+   860→            </td>
+   861→            <td>${completedClasses.length}/${parentingClasses.length} completed, ${certificatesEarned} certificates earned</td>
+   862→            <td class="status-${parentingClasses.length > 0 ? (completedClasses.length / parentingClasses.length >= 1 ? 'completed' : completedClasses.length / parentingClasses.length >= 0.6 ? 'on-track' : completedClasses.length / parentingClasses.length >= 0.3 ? 'needs-attention' : 'behind') : 'behind'}">
+   863→              ${parentingClasses.length > 0 ? (completedClasses.length / parentingClasses.length >= 1 ? 'Completed' : completedClasses.length / parentingClasses.length >= 0.6 ? 'On Track' : completedClasses.length / parentingClasses.length >= 0.3 ? 'Needs Attention' : 'Behind') : 'No Data'}
+   864→            </td>
+   865→          </tr>
+   866→          <tr>
+   867→            <td><strong>Court Dates</strong></td>
+   868→            <td>${courtDates.length > 0 ? Math.round((completedCourtDates.length / courtDates.length) * 100) : 0}%
+   869→              <span class="mini-bar"><span class="mini-bar-fill" style="width:${courtDates.length > 0 ? Math.round((completedCourtDates.length / courtDates.length) * 100) : 0}%;background:#64748b"></span></span>
+   870→            </td>
+   871→            <td>${completedCourtDates.length}/${courtDates.length} completed${nextCourtDate ? ', Next: ' + formatDate(nextCourtDate.date as string) : ', No upcoming dates'}</td>
+   872→            <td class="status-${courtDates.length > 0 ? (completedCourtDates.length / courtDates.length >= 1 ? 'completed' : completedCourtDates.length / courtDates.length >= 0.6 ? 'on-track' : completedCourtDates.length / courtDates.length >= 0.3 ? 'needs-attention' : 'behind') : 'behind'}">
+   873→              ${courtDates.length > 0 ? (completedCourtDates.length / courtDates.length >= 1 ? 'Completed' : completedCourtDates.length / courtDates.length >= 0.6 ? 'On Track' : completedCourtDates.length / courtDates.length >= 0.3 ? 'Needs Attention' : 'Behind') : 'No Data'}
+   874→            </td>
+   875→          </tr>
+   876→        </tbody>
+   877→      </table>
+   878→    </div>
+   879→
+   880→    <!-- Achievements & Areas Needing Attention -->
+   881→    <div class="two-col">
+   882→      <div class="col-box achievements">
+   883→        <h4>Achievements & Completed Items</h4>
+   884→        <ul class="item-list">
+   885→          ${completedReqs.length > 0 ? completedReqs.map((r) => '<li><span class="check">\u2713</span> ' + r.title + ' (' + r.category + ')' + (r.completedAt ? ' \u2013 ' + formatDate(r.completedAt as string) : '') + '</li>').join('') : '<li style="color:#9ca3af">No requirements completed yet</li>'}
+   886→          ${completedMilestones.length > 0 ? '<li style="padding-top:8px;border-top:1px solid #e5e7eb"><strong>Milestones:</strong></li>' + completedMilestones.map((m) => '<li><span class="star">\u2605</span> ' + m.title + (m.completedAt ? ' \u2013 ' + formatDate(m.completedAt as string) : '') + '</li>').join('') : ''}
+   887→        </ul>
+   888→      </div>
+   889→      <div class="col-box attention">
+   890→        <h4>Areas Needing Attention</h4>
+   891→        <ul class="item-list">
+   892→          ${incompleteReqs.length > 0 ? incompleteReqs.map((r) => '<li><span class="cross">\u25CB</span> ' + r.title + ' (' + r.category + ')' + (r.dueDate ? ' \u2013 Due: ' + formatDate(r.dueDate as string) : '') + '</li>').join('') : '<li style="color:#059669"><span class="check">\u2713</span> All requirements completed!</li>'}
+   893→          ${behindCategories.length > 0 ? '<li style="padding-top:8px;border-top:1px solid #e5e7eb"><strong>Behind Schedule:</strong></li>' + behindCategories.map(c => '<li><span class="cross">\u2717</span> ' + c.label + ': ' + c.progress + '% \u2013 ' + c.statValue + '</li>').join('') : ''}
+   894→          ${needsAttentionCategories.length > 0 ? '<li style="padding-top:8px;border-top:1px solid #e5e7eb"><strong>Needs Attention:</strong></li>' + needsAttentionCategories.map(c => '<li><span class="warn">\u26A0</span> ' + c.label + ': ' + c.progress + '% \u2013 ' + c.statValue + '</li>').join('') : ''}
+   895→        </ul>
+   896→      </div>
+   897→    </div>
+   898→
+   899→    <!-- NA Steps Detail -->
+   900→    ${naSteps.length > 0 ? `
+   901→    <div class="section" style="margin-top:22px">
+   902→      <div class="section-title">NA Steps Detail</div>
+   903→      <table class="category-table">
+   904→        <thead>
+   905→          <tr><th>Step</th><th>Status</th><th>Sponsor Verified</th><th>Completed Date</th></tr>
+   906→        </thead>
+   907→        <tbody>
+   908→          ${naSteps.map(s => '<tr><td>Step ' + s.stepNumber + '</td><td class="' + (s.isCompleted ? 'status-completed' : '') + '">' + (s.isCompleted ? 'Completed' : 'Incomplete') + '</td><td>' + (s.sponsorVerified ? 'Yes' + (s.sponsorName ? ' (' + s.sponsorName + ')' : '') : 'No') + '</td><td>' + (s.completedAt ? formatDate(s.completedAt as string) : '\u2014') + '</td></tr>').join('')}
+   909→        </tbody>
+   910→      </table>
+   911→    </div>` : ''}
+   912→
+   913→    <!-- Footer -->
+   914→    <div class="footer">
+   915→      <p class="generated">Generated by Reunify on ${today}</p>
+   916→      <p class="privacy">CONFIDENTIAL: This report contains sensitive case information. Store securely and share only with authorized parties such as your attorney, caseworker, or judge. All data is stored locally on the user's device and is not transmitted to any external servers.</p>
+   917→    </div>
+   918→  </div>
+   919→</body>
+   920→</html>`
+   921→
+   922→  const printWindow = window.open('', '_blank')
+   923→  if (!printWindow) {
+   924→    toast.error('Please allow popups to generate the PDF report')
+   925→    return
+   926→  }
+   927→  printWindow.document.write(html)
+   928→  printWindow.document.close()
+   929→  // Wait for content to render then print
+   930→  printWindow.onload = () => {
+
+[showing lines 1-930 of 1494; use offset=931 with limit to continue reading]

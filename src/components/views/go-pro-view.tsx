@@ -35,20 +35,16 @@ export function GoProView() {
         window.location.href = data.url
       } else if (data.error) {
         if (res.status === 503) {
-          // Stripe not configured yet — fall back to free trial
-          setTier('pro')
-          toast.success('Free trial activated! 🎉', {
-            description: 'Payment integration coming soon. Enjoy Pro features for free!',
+          toast.error('Payment setup in progress', {
+            description: 'We\'re setting up payment processing. Please try again soon!',
           })
         } else {
           toast.error('Something went wrong', { description: data.error })
         }
       }
     } catch {
-      // Network error — fall back to free trial
-      setTier('pro')
-      toast.success('Free trial activated! 🎉', {
-        description: 'Payment integration coming soon. Enjoy Pro features for free!',
+      toast.error('Connection error', {
+        description: 'Please check your internet connection and try again.',
       })
     } finally {
       setUpgrading(false)

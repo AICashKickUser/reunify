@@ -206,19 +206,14 @@ export default function Home() {
               description: 'Your 7-day free trial has started. Enjoy all Pro features!',
             })
           } else {
-            // Still activate as fallback
-            setTier('pro')
-            setSubscriptionData({ tier: 'pro', stripeSessionId: sessionId })
-            toast.success('Welcome to Reunify Pro! 🎉', {
-              description: 'Your subscription is being processed. Pro features are now active!',
+            toast.info('Subscription is being processed', {
+              description: 'Your payment is being verified. Pro features will unlock shortly!',
             })
           }
         })
         .catch(() => {
-          setTier('pro')
-          setSubscriptionData({ tier: 'pro', stripeSessionId: sessionId })
-          toast.success('Welcome to Reunify Pro! 🎉', {
-            description: 'Your subscription is being processed.',
+          toast.info('Subscription is being processed', {
+            description: 'Your payment is being verified. Pro features will unlock shortly!',
           })
         })
 
