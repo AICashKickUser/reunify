@@ -176,7 +176,7 @@ function ActiveView() {
 }
 
 export default function Home() {
-  const { activeCaseId } = useAppStore()
+  const { activeCaseId, activeView } = useAppStore()
   const { setTier, setSubscriptionData } = useSubscriptionStore()
 
   // Handle Stripe checkout return
@@ -236,7 +236,13 @@ export default function Home() {
           <AppHeader />
           <main className="flex-1">
             <div className="p-4 md:p-6">
-              {activeCaseId ? <ActiveView /> : <WelcomeScreen />}
+              {activeView === 'go-pro' ? (
+                <ActiveView />
+              ) : activeCaseId ? (
+                <ActiveView />
+              ) : (
+                <WelcomeScreen />
+              )}
             </div>
           </main>
           <footer className="border-t bg-background py-3 px-4 mt-auto">
