@@ -326,6 +326,9 @@ function SummaryDialog({ open, onOpenChange, caseData, categories }: {
   caseData: Record<string, unknown>
   categories: CategoryProgress[]
 }) {
+  const { tier, setUpgradeDialogOpen } = useSubscriptionStore()
+  const isPro = tier === 'pro'
+
   const requirements = (caseData.requirements || []) as Array<Record<string, unknown>>
   const completedReqs = requirements.filter((r) => r.isCompleted)
   const incompleteReqs = requirements.filter((r) => !r.isCompleted)
@@ -358,7 +361,8 @@ function SummaryDialog({ open, onOpenChange, caseData, categories }: {
   const needsAttentionCategories = categories.filter(c => c.status === 'needs-attention')
   const behindCategories = categories.filter(c => c.status === 'behind')
 
-  const summaryText = `REUNIFICATION CASE SUMMARY
+  // Full Pro summary text
+  const proSummaryText = `REUNIFICATION CASE SUMMARY
 Generated: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
 
 Case: ${caseData.caseNumber || 'N/A'}
@@ -413,8 +417,23 @@ REMAINING REQUIREMENTS
 ───────────────────────────────
 ${incompleteReqs.length > 0 ? incompleteReqs.map((r) => `○ ${r.title} (${r.category})${r.dueDate ? ' - Due: ' + new Date(r.dueDate as string).toLocaleDateString() : ''}`).join('\n') : 'All requirements completed!'}`
 
+  // Basic free summary (minimal)
+  const basicSummaryText = `BASIC CASE OVERVIEW
+Case: ${caseData.caseNumber || 'N/A'}
+Court: ${caseData.courtName || 'Not specified'}
+
+Overall Progress: ${overallProgress}%
+Requirements: ${completedReqs.length} of ${requirements.length} completed
+
+Counseling: ${completedSessions.length} sessions
+Drug Tests: ${passedTests.length} clean / ${drugTests.length} total
+NA Steps: ${completedSteps.length}/12
+Visits: ${completedVisits.length} completed
+Classes: ${completedClasses.length} completed`
+
   function handleCopySummary() {
-    navigator.clipboard.writeText(summaryText).then(() => {
+    const textToCopy = isPro ? proSummaryText : basicSummaryText
+    navigator.clipboard.writeText(textToCopy).then(() => {
       toast.success('Summary copied to clipboard!')
     }).catch(() => {
       toast.error('Failed to copy summary')
@@ -423,38 +442,100 @@ ${incompleteReqs.length > 0 ? incompleteReqs.map((r) => `○ ${r.title} (${r.cat
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh]">
+      <DialogContent className="max-w-2xl max-h-[85vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ClipboardCheck className="size-5 text-emerald-600" />
             Case Summary Report
           </DialogTitle>
           <DialogDescription>
-            Comprehensive overview of your reunification progress
+            {isPro
+              ? 'Professional compliance summary for your judge, attorney, or caseworker'
+              : 'Basic case overview — upgrade to Pro for the full professional report'}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          {/* Quick Stats */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 p-3 text-center">
-              <p className="text-2xl font-bold text-emerald-700">{completedReqs.length}</p>
-              <p className="text-xs text-emerald-600">Completed</p>
+
+        {isPro ? (
+          /* ===== PRO FULL SUMMARY ===== */
+          <div className="space-y-4">
+            {/* Quick Stats */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 p-3 text-center">
+                <p className="text-2xl font-bold text-emerald-700">{completedReqs.length}</p>
+                <p className="text-xs text-emerald-600">Completed</p>
+              </div>
+              <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 p-3 text-center">
+                <p className="text-2xl font-bold text-amber-700">{needsAttentionCategories.length + behindCategories.length}</p>
+                <p className="text-xs text-amber-600">Needs Work</p>
+              </div>
+              <div className="rounded-lg bg-sky-50 dark:bg-sky-950/20 p-3 text-center">
+                <p className="text-2xl font-bold text-sky-700">{overallProgress}%</p>
+                <p className="text-xs text-sky-600">Overall</p>
+              </div>
             </div>
-            <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 p-3 text-center">
-              <p className="text-2xl font-bold text-amber-700">{needsAttentionCategories.length + behindCategories.length}</p>
-              <p className="text-xs text-amber-600">Needs Work</p>
+
+            <pre className="whitespace-pre-wrap text-xs font-mono bg-muted/50 rounded-lg p-4 max-h-96 overflow-y-auto border">
+              {proSummaryText}
+            </pre>
+          </div>
+        ) : (
+          /* ===== FREE BASIC SUMMARY + PRO PREVIEW ===== */
+          <div className="space-y-4">
+            {/* Quick Stats */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 p-3 text-center">
+                <p className="text-2xl font-bold text-emerald-700">{completedReqs.length}</p>
+                <p className="text-xs text-emerald-600">Completed</p>
+              </div>
+              <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 p-3 text-center">
+                <p className="text-2xl font-bold text-amber-700">{needsAttentionCategories.length + behindCategories.length}</p>
+                <p className="text-xs text-amber-600">Needs Work</p>
+              </div>
+              <div className="rounded-lg bg-sky-50 dark:bg-sky-950/20 p-3 text-center">
+                <p className="text-2xl font-bold text-sky-700">{overallProgress}%</p>
+                <p className="text-xs text-sky-600">Overall</p>
+              </div>
             </div>
-            <div className="rounded-lg bg-sky-50 dark:bg-sky-950/20 p-3 text-center">
-              <p className="text-2xl font-bold text-sky-700">{overallProgress}%</p>
-              <p className="text-xs text-sky-600">Overall</p>
+
+            {/* Basic summary */}
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Basic Overview</p>
+              <pre className="whitespace-pre-wrap text-xs font-mono bg-muted/50 rounded-lg p-4 max-h-32 overflow-y-auto border">
+                {basicSummaryText}
+              </pre>
+            </div>
+
+            {/* Pro preview - blurred with CTA */}
+            <div className="relative">
+              <div className="absolute inset-0 z-10 bg-background/70 backdrop-blur-md rounded-lg flex flex-col items-center justify-center gap-3 p-6">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="size-5 text-amber-500" />
+                  <span className="font-bold text-foreground">Pro Report Preview</span>
+                </div>
+                <p className="text-xs text-muted-foreground text-center max-w-sm">
+                  The Pro report includes achievements, compliance details, areas on track vs. needing attention, remaining requirements, and professional formatting for court.
+                </p>
+                <Button
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+                  onClick={() => {
+                    onOpenChange(false)
+                    setUpgradeDialogOpen(true)
+                  }}
+                >
+                  <Sparkles className="size-4" />
+                  Upgrade to Pro — $4.99/mo
+                </Button>
+              </div>
+              <div className="pointer-events-none select-none">
+                <p className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Pro Report Includes:</p>
+                <pre className="whitespace-pre-wrap text-xs font-mono bg-muted/50 rounded-lg p-4 max-h-40 overflow-hidden border">
+                  {proSummaryText.slice(0, 600)}...
+                </pre>
+              </div>
             </div>
           </div>
+        )}
 
-          {/* Summary text */}
-          <pre className="whitespace-pre-wrap text-xs font-mono bg-muted/50 rounded-lg p-4 max-h-96 overflow-y-auto border">
-            {summaryText}
-          </pre>
-        </div>
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button variant="outline" onClick={handleCopySummary} className="gap-2">
             Copy to Clipboard

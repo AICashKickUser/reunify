@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { FolderHeart, Eye, Loader2, FileText, ArrowRight } from 'lucide-react'
 import { CreateCaseDialog } from '@/components/create-case-dialog'
 import { UpgradeDialog } from '@/components/upgrade-dialog'
+import { OnboardingDialog } from '@/components/onboarding-dialog'
 import { useSubscriptionStore } from '@/lib/subscription'
 import { toast } from 'sonner'
 
@@ -253,6 +254,7 @@ export default function Home() {
         </div>
       </SidebarInset>
       <UpgradeDialog />
+      <OnboardingDialog />
     </SidebarProvider>
   )
 }
