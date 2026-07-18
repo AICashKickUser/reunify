@@ -24,3 +24,22 @@ Stage Summary:
 - Build passes successfully
 - Project is now ready for Vercel deployment
 - User needs to: (1) push to GitHub, (2) create free PostgreSQL DB, (3) deploy on Vercel with DATABASE_URL env var
+---
+Task ID: stripe-checkout-fix
+Agent: Main Agent
+Task: Fix Stripe checkout "Failed to create checkout session" error and Go Pro view not showing
+
+Work Log:
+- Created /api/stripe/config diagnostic endpoint to check if Stripe env vars are configured
+- Improved /api/stripe/checkout error handling to return detailed error messages (which env vars are missing, what type of Stripe error occurred)
+- Updated GoProView to check Stripe config on load and show warning if not configured
+- Updated UpgradeDialog with better error messages including detail field
+- Fixed critical bug: Go Pro view was inaccessible without an active case (page.tsx only rendered ActiveView when activeCaseId was set)
+- Added activeView check so 'go-pro' view always renders regardless of case status
+- Lint passes, code committed locally
+
+Stage Summary:
+- Root cause of "Failed to create checkout session": Stripe environment variables not set correctly on Vercel
+- New /api/stripe/config endpoint returns diagnostic info about which env vars are missing
+- Go Pro view now always accessible from sidebar even without an active case
+- Code needs to be pushed to GitHub (requires new PAT from user) for Vercel deployment
