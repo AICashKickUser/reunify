@@ -43,3 +43,30 @@ Stage Summary:
 - New /api/stripe/config endpoint returns diagnostic info about which env vars are missing
 - Go Pro view now always accessible from sidebar even without an active case
 - Code needs to be pushed to GitHub (requires new PAT from user) for Vercel deployment
+---
+Task ID: google-play-twa
+Agent: Main Agent
+Task: Build Android TWA for Google Play Store
+
+Work Log:
+- Installed Android SDK (platform-34, build-tools-34.0.0, platform-tools) to /tmp/android-sdk
+- Installed @bubblewrap/cli and @bubblewrap/core npm packages
+- Generated Android signing keystore (reunify-key.jks) with alias "reunify"
+- Created TWA project from web manifest using @bubblewrap/core programmatically
+- Downloaded and installed JDK 17 (required by Gradle, JDK 21 JRE-only lacked compiler)
+- Built release APK (1.1MB) and AAB (1.2MB) successfully
+- Signed APK with apksigner using the keystore
+- Created Digital Asset Links file (public/.well-known/assetlinks.json) for TWA verification
+- Generated feature graphic and phone screenshots for Play Store listing
+- All artifacts saved to /home/z/my-project/android-build/
+- Pushed assetlinks.json to GitHub/Vercel for domain verification
+
+Stage Summary:
+- AAB file: /home/z/my-project/android-build/reunify-1.0.0.aab (1.2MB, upload this to Play Console)
+- APK file: /home/z/my-project/android-build/reunify-1.0.0.apk (1.1MB, for testing)
+- Keystore: /home/z/my-project/android-build/reunify-key.jks (password: reunify123, alias: reunify)
+- SHA-256 fingerprint: 4F:87:6C:A7:EF:9A:86:D5:72:E8:B7:5B:52:30:0C:17:59:D9:22:1C:E0:0D:AD:79:8F:02:70:09:6B:21:9E:90
+- Package ID: com.aicashkick.reunify
+- Feature graphic: /home/z/my-project/android-build/feature-graphic.png
+- Phone screenshots: /home/z/my-project/android-build/screenshot-phone-{1,2}.png
+- Digital Asset Links deployed at: https://reunify-six.vercel.app/.well-known/assetlinks.json
