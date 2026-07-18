@@ -39,10 +39,14 @@ export function UpgradeDialog() {
       } else if (data.error) {
         if (res.status === 503) {
           toast.error('Payment setup in progress', {
-            description: 'We\'re setting up payment processing. Please try again soon!',
+            description: data.detail || 'We\'re setting up payment processing. Please try again soon!',
+            duration: 8000,
           })
         } else {
-          toast.error('Something went wrong', { description: data.error })
+          toast.error(data.error, {
+            description: data.detail || 'Please try again or contact support.',
+            duration: 8000,
+          })
         }
       }
     } catch {

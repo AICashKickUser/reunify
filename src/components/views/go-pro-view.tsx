@@ -1,18 +1,46 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Crown, Check, Sparkles, ExternalLink, AlertCircle } from 'lucide-react'
+import { Crown, Check, Sparkles, ExternalLink, AlertCircle, AlertTriangle } from 'lucide-react'
 import { useSubscriptionStore, PRO_FEATURES, PRO_PRICE_MONTHLY, PRO_PRICE_YEARLY, BillingPeriod } from '@/lib/subscription'
 import { toast } from 'sonner'
+
+interface StripeConfig {
+  configured: boolean
+  details: {
+    stripeKey: string
+    monthlyPrice: string
+    yearlyPrice: string
+    publicUrl: string
+  }
+  missing: string[]
+}
 
 export function GoProView() {
   const { tier, setTier, setSubscriptionData, stripeSessionId, cancelAtPeriodEnd, currentPeriodEnd, isTrial, trialEnd } = useSubscriptionStore()
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('yearly')
   const [upgrading, setUpgrading] = useState(false)
   const [managing, setManaging] = useState(false)
+  const [stripeConfig, setStripeConfig] = useState<StripeConfig | null>(null)
+  const [configLoading, setConfigLoading] = useState(true)
+
+  useEffect(() => {
+    async function checkConfig() {
+      try {
+        const res = await fetch('/api/stripe/config')
+        const data = await res.json()
+        setStripeConfig(data)
+      } catch {
+        setStripeConfig({ configured: false, details: { stripeKey: 'ERROR', monthlyPrice: 'ERROR', yearlyPrice: 'ERROR', publicUrl: 'ERROR' }, missing: ['Could not check config'] })
+      } finally {
+        setConfigLoading(false)
+      }
+    }
+    checkConfig()
+  }, [])
 
   const isPro = tier === 'pro'
   const price = billingPeriod === 'monthly' ? PRO_PRICE_MONTHLY : PRO_PRICE_YEARLY
@@ -20,6 +48,15 @@ export function GoProView() {
   const savingsPercent = Math.round((1 - PRO_PRICE_YEARLY / (PRO_PRICE_MONTHLY * 12)) * 100)
 
   async function handleUpgrade() {
+    // If config isn't ready, check first
+    if (stripeConfig && !stripeConfig.configured) {
+      toast.error('Payment not set up yet', {
+        description: `Missing: ${stripeConfig.missing.join(', ')}. These need to be configured in the server environment.`,
+        duration: 8000,
+      })
+      return
+    }
+
     setUpgrading(true)
     try {
       const res = await fetch('/api/stripe/checkout', {
@@ -36,10 +73,14 @@ export function GoProView() {
       } else if (data.error) {
         if (res.status === 503) {
           toast.error('Payment setup in progress', {
-            description: 'We\'re setting up payment processing. Please try again soon!',
+            description: data.detail || 'We\'re setting up payment processing. Please try again soon!',
+            duration: 8000,
           })
         } else {
-          toast.error('Something went wrong', { description: data.error })
+          toast.error(data.error, {
+            description: data.detail || 'Please try again or contact support.',
+            duration: 8000,
+          })
         }
       }
     } catch {
@@ -155,6 +196,33 @@ export function GoProView() {
         </p>
       </div>
 
+      {/* Config Warning */}
+      {!configLoading && stripeConfig && !stripeConfig.configured && (
+        <Card className="border-orange-300 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="size-5 text-orange-600 shrink-0 mt-0.5" />
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-orange-800 dark:text-orange-300">
+                  Payment setup incomplete
+                </p>
+                <p className="text-xs text-orange-700 dark:text-orange-400">
+                  The following environment variables need to be set in your Vercel dashboard:
+                </p>
+                <ul className="text-xs text-orange-700 dark:text-orange-400 list-disc pl-4 space-y-1">
+                  {stripeConfig.missing.map((m) => (
+                    <li key={m}>{m}</li>
+                  ))}
+                </ul>
+                <p className="text-xs text-orange-600 dark:text-orange-500 mt-2">
+                  Go to Vercel → Your Project → Settings → Environment Variables to add these.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Billing Toggle */}
       <div className="flex items-center justify-center gap-2">
         <button
@@ -221,7 +289,7 @@ export function GoProView() {
         <Button
           className="w-full max-w-sm h-12 bg-emerald-600 hover:bg-emerald-700 text-white text-base font-semibold gap-2"
           onClick={handleUpgrade}
-          disabled={upgrading}
+          disabled={upgrading || (!configLoading && stripeConfig !== null && !stripeConfig.configured)}
         >
           {upgrading ? (
             <span className="animate-pulse">Redirecting to checkout...</span>
