@@ -244,9 +244,16 @@ export default function Home() {
             </div>
           </main>
           <footer className="border-t bg-background py-3 px-4 mt-auto">
-            <p className="text-center text-xs text-muted-foreground">
-              Reunify — Every step brings you closer to your kids
-            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-1 max-w-5xl mx-auto">
+              <p className="text-xs text-muted-foreground">
+                Reunify — Every step brings you closer to your kids
+              </p>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a>
+                <span>·</span>
+                <a href="/terms" className="hover:text-foreground transition-colors">Terms of Service</a>
+              </div>
+            </div>
           </footer>
         </div>
       </SidebarInset>
