@@ -32,14 +32,14 @@ interface SubscriptionState {
 
 // PRO_FEATURES list for reference
 export const PRO_FEATURES = [
-  { key: 'pdf_export', label: 'PDF Export', description: 'Export court-ready compliance reports as PDF' },
-  { key: 'detailed_summary', label: 'Detailed Summary', description: 'Full compliance summary with achievements & needs-work areas' },
-  { key: 'multiple_cases', label: 'Multiple Cases', description: 'Track more than one case at a time' },
-  { key: 'reminders', label: 'Smart Reminders', description: 'Get alerts for upcoming court dates and deadlines' },
-  { key: 'data_backup', label: 'Cloud Backup', description: 'Automatic encrypted backup of your case data' },
-  { key: 'photo_attachments', label: 'Photo Attachments', description: 'Attach photos of certificates, receipts, and documents' },
-  { key: 'achievement_badges', label: 'Achievement Badges', description: 'Earn badges for hitting milestones and staying compliant' },
-  { key: 'sharing', label: 'Attorney Sharing', description: 'Share progress reports directly with your attorney or caseworker' },
+  { key: 'pdf_export', label: 'PDF Court Report', description: 'Professional court-ready compliance report for your judge, attorney, or caseworker' },
+  { key: 'detailed_summary', label: 'Pro Summary Report', description: 'Detailed compliance summary with achievements, needs-work areas, and professional formatting' },
+  { key: 'visual_charts', label: 'Progress Charts', description: 'Radar and comparison charts showing your progress at a glance' },
+  { key: 'data_export', label: 'Data Backup & Export', description: 'Export your complete case data as JSON for backup or sharing' },
+  { key: 'smart_reminders', label: 'Smart Reminders', description: 'Get alerts for upcoming court dates, drug tests, and deadlines' },
+  { key: 'photo_attachments', label: 'Photo Attachments', description: 'Attach photos of certificates, receipts, and documents to your records' },
+  { key: 'attorney_sharing', label: 'Attorney Sharing', description: 'Share your progress report directly with your attorney or caseworker' },
+  { key: 'priority_support', label: 'Priority Support', description: 'Get help faster when you need it most' },
 ]
 
 export const PRO_PRICE_MONTHLY = 4.99
