@@ -13,6 +13,7 @@ import { CreateCaseDialog } from '@/components/create-case-dialog'
 import { UpgradeDialog } from '@/components/upgrade-dialog'
 import { OnboardingDialog } from '@/components/onboarding-dialog'
 import { useSubscriptionStore } from '@/lib/subscription'
+import { ErrorBoundary } from '@/components/error-boundary'
 import { toast } from 'sonner'
 
 // Lazy load all view components to reduce initial compilation memory
@@ -192,9 +193,11 @@ function ActiveView() {
   const { activeView } = useAppStore()
   const ViewComponent = VIEW_MAP[activeView]
   return (
-    <Suspense fallback={<ViewLoader />}>
-      <ViewComponent />
-    </Suspense>
+    <ErrorBoundary>
+      <Suspense fallback={<ViewLoader />}>
+        <ViewComponent />
+      </Suspense>
+    </ErrorBoundary>
   )
 }
 

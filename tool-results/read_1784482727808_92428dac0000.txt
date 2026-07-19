@@ -1,0 +1,784 @@
+     1→'use client'
+     2→
+     3→import { useMemo, useState, useCallback, ComponentType } from 'react'
+     4→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+     5→import { Badge } from '@/components/ui/badge'
+     6→import { Button } from '@/components/ui/button'
+     7→import { Checkbox } from '@/components/ui/checkbox'
+     8→import { Skeleton } from '@/components/ui/skeleton'
+     9→import { useCase } from '@/lib/data-hooks'
+    10→import { useAppStore } from '@/lib/store'
+    11→import { CATEGORY_COLORS } from '@/lib/types'
+    12→import {
+    13→  ChevronLeft,
+    14→  ChevronRight,
+    15→  CalendarDays,
+    16→  Clock,
+    17→  Heart,
+    18→  FlaskConical,
+    19→  Users,
+    20→  Eye,
+    21→  Gavel,
+    22→  BookOpen,
+    23→  Flag,
+    24→  List,
+    25→  LayoutGrid,
+    26→  Plus,
+    27→  CheckCircle2,
+    28→  Circle,
+    29→  AlertCircle,
+    30→} from 'lucide-react'
+    31→import {
+    32→  format,
+    33→  startOfWeek,
+    34→  endOfWeek,
+    35→  addWeeks,
+    36→  subWeeks,
+    37→  eachDayOfInterval,
+    38→  isToday,
+    39→  isSameDay,
+    40→  parseISO,
+    41→  isFuture,
+    42→  startOfDay,
+    43→  isWithinInterval,
+    44→  addDays,
+    45→} from 'date-fns'
+    46→
+    47→// --- Timeline Event Type ---
+    48→interface TimelineEvent {
+    49→  id: string
+    50→  date: string
+    51→  type: string
+    52→  category: string
+    53→  title: string
+    54→  description?: string
+    55→  status: 'completed' | 'upcoming' | 'pending' | 'missed'
+    56→  time?: string | null
+    57→}
+    58→
+    59→// --- Category icon map ---
+    60→function getCategoryIcon(category: string) {
+    61→  switch (category) {
+    62→    case 'counseling':
+    63→      return <Heart className="size-3.5" />
+    64→    case 'drug-testing':
+    65→      return <FlaskConical className="size-3.5" />
+    66→    case 'na-meetings':
+    67→      return <Users className="size-3.5" />
+    68→    case 'supervised-visits':
+    69→      return <Eye className="size-3.5" />
+    70→    case 'legal':
+    71→      return <Gavel className="size-3.5" />
+    72→    case 'parenting-classes':
+    73→      return <BookOpen className="size-3.5" />
+    74→    default:
+    75→      return <Flag className="size-3.5" />
+    76→  }
+    77→}
+    78→
+    79→// --- Category filter options ---
+    80→const CATEGORY_FILTERS = [
+    81→  { key: 'counseling', label: 'Counseling' },
+    82→  { key: 'drug-testing', label: 'Drug Tests' },
+    83→  { key: 'na-meetings', label: 'NA Meetings' },
+    84→  { key: 'supervised-visits', label: 'Visits' },
+    85→  { key: 'legal', label: 'Court' },
+    86→  { key: 'parenting-classes', label: 'Parenting' },
+    87→  { key: 'milestone', label: 'Milestones' },
+    88→] as const
+    89→
+    90→// --- Loading skeleton ---
+    91→function TimelineSkeleton() {
+    92→  return (
+    93→    <div className="space-y-6">
+    94→      <div className="flex items-center justify-between">
+    95→        <Skeleton className="h-8 w-48" />
+    96→        <Skeleton className="h-9 w-24" />
+    97→      </div>
+    98→      <div className="grid gap-2 grid-cols-7">
+    99→        {Array.from({ length: 7 }).map((_, i) => (
+   100→          <Skeleton key={i} className="h-48 w-full rounded-lg" />
+   101→        ))}
+   102→      </div>
+   103→    </div>
+   104→  )
+   105→}
+   106→
+   107→// --- Empty state ---
+   108→function EmptyTimeline() {
+   109→  return (
+   110→    <div className="flex flex-col items-center justify-center py-16 px-4">
+   111→      <div className="flex size-16 items-center justify-center rounded-2xl bg-sky-100 dark:bg-sky-900/30 mb-4">
+   112→        <CalendarDays className="size-8 text-sky-600 dark:text-sky-400" />
+   113→      </div>
+   114→      <h3 className="text-lg font-semibold text-foreground mb-2">No Events Yet</h3>
+   115→      <p className="text-muted-foreground text-sm text-center max-w-sm">
+   116→        Your timeline will populate as you add counseling sessions, drug tests, visits, and other case activities.
+   117→      </p>
+   118→    </div>
+   119→  )
+   120→}
+   121→
+   122→// --- Status indicator ---
+   123→function StatusDot({ status }: { status: string }) {
+   124→  switch (status) {
+   125→    case 'completed':
+   126→      return <CheckCircle2 className="size-3.5 text-emerald-600" />
+   127→    case 'upcoming':
+   128→      return <Clock className="size-3.5 text-amber-500" />
+   129→    case 'pending':
+   130→      return <AlertCircle className="size-3.5 text-orange-500" />
+   131→    default:
+   132→      return <Circle className="size-3.5 text-muted-foreground" />
+   133→  }
+   134→}
+   135→
+   136→// --- Day Cell for week view ---
+   137→function DayCell({
+   138→  date,
+   139→  events,
+   140→  isSelected,
+   141→  onClick,
+   142→}: {
+   143→  date: Date
+   144→  events: TimelineEvent[]
+   145→  isSelected: boolean
+   146→  onClick: () => void
+   147→}) {
+   148→  const today = isToday(date)
+   149→  const hasEvents = events.length > 0
+   150→
+   151→  return (
+   152→    <button
+   153→      type="button"
+   154→      onClick={onClick}
+   155→      className={`flex flex-col rounded-xl border p-2 sm:p-3 text-left transition-all min-h-[120px] sm:min-h-[160px] ${
+   156→        today
+   157→          ? 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20 ring-1 ring-emerald-200 dark:ring-emerald-800'
+   158→          : isSelected
+   159→            ? 'border-primary bg-accent/50'
+   160→            : 'border-border hover:border-primary/30 hover:bg-accent/30'
+   161→      } ${!hasEvents ? 'opacity-50' : ''}`}
+   162→    >
+   163→      <div className="mb-2">
+   164→        <p className={`text-xs font-medium uppercase tracking-wider ${today ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+   165→          {format(date, 'EEE')}
+   166→        </p>
+   167→        <p className={`text-lg font-bold ${today ? 'text-emerald-700 dark:text-emerald-400' : ''}`}>
+   168→          {format(date, 'd')}
+   169→        </p>
+   170→      </div>
+   171→      <div className="flex-1 space-y-1 overflow-hidden">
+   172→        {events.slice(0, 3).map((event) => {
+   173→          const style = CATEGORY_COLORS[event.category] || CATEGORY_COLORS['other']
+   174→          return (
+   175→            <div
+   176→              key={event.id}
+   177→              className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-xs ${style.bg} ${style.text} truncate`}
+   178→            >
+   179→              {getCategoryIcon(event.category)}
+   180→              <span className="truncate">{event.title.substring(0, 20)}</span>
+   181→            </div>
+   182→          )
+   183→        })}
+   184→        {events.length > 3 && (
+   185→          <p className="text-xs text-muted-foreground pl-1">+{events.length - 3} more</p>
+   186→        )}
+   187→      </div>
+   188→    </button>
+   189→  )
+   190→}
+   191→
+   192→// --- Day Detail Panel ---
+   193→function DayDetail({
+   194→  date,
+   195→  events,
+   196→  onClose,
+   197→}: {
+   198→  date: Date
+   199→  events: TimelineEvent[]
+   200→  onClose: () => void
+   201→}) {
+   202→  const sortedEvents = [...events].sort((a, b) => {
+   203→    // Sort: completed first, then by type
+   204→    if (a.status === 'completed' && b.status !== 'completed') return -1
+   205→    if (a.status !== 'completed' && b.status === 'completed') return 1
+   206→    return a.title.localeCompare(b.title)
+   207→  })
+   208→
+   209→  return (
+   210→    <Card className="border-emerald-200 dark:border-emerald-800">
+   211→      <CardHeader className="pb-3">
+   212→        <div className="flex items-center justify-between">
+   213→          <div>
+   214→            <CardTitle className="text-base">
+   215→              {isToday(date) ? 'Today' : format(date, 'EEEE, MMMM d, yyyy')}
+   216→            </CardTitle>
+   217→            <CardDescription>
+   218→              {events.length} event{events.length !== 1 ? 's' : ''} scheduled
+   219→            </CardDescription>
+   220→          </div>
+   221→          <Button variant="ghost" size="sm" onClick={onClose} className="text-muted-foreground">
+   222→            ✕
+   223→          </Button>
+   224→        </div>
+   225→      </CardHeader>
+   226→      <CardContent>
+   227→        {events.length === 0 ? (
+   228→          <div className="py-8 text-center">
+   229→            <CalendarDays className="size-8 text-muted-foreground/30 mx-auto mb-2" />
+   230→            <p className="text-sm text-muted-foreground">No events on this day</p>
+   231→            <Button variant="outline" size="sm" className="mt-3 gap-1.5">
+   232→              <Plus className="size-3.5" />
+   233→              Add Event
+   234→            </Button>
+   235→          </div>
+   236→        ) : (
+   237→          <div className="space-y-2">
+   238→            {sortedEvents.map((event) => {
+   239→              const style = CATEGORY_COLORS[event.category] || CATEGORY_COLORS['other']
+   240→              return (
+   241→                <div
+   242→                  key={event.id}
+   243→                  className={`flex items-start gap-3 rounded-lg border p-3 ${style.bg} ${style.border}`}
+   244→                >
+   245→                  <div className="mt-0.5">
+   246→                    <StatusDot status={event.status} />
+   247→                  </div>
+   248→                  <div className="flex-1 min-w-0">
+   249→                    <div className="flex items-center gap-2 flex-wrap">
+   250→                      <p className="text-sm font-medium">{event.title}</p>
+   251→                      <Badge
+   252→                        variant="outline"
+   253→                        className={`text-xs ${style.text} ${style.border}`}
+   254→                      >
+   255→                        {event.type.replace('-', ' ')}
+   256→                      </Badge>
+   257→                    </div>
+   258→                    {event.description && (
+   259→                      <p className="text-xs text-muted-foreground mt-0.5">{event.description}</p>
+   260→                    )}
+   261→                    {event.time && (
+   262→                      <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+   263→                        <Clock className="size-3" />
+   264→                        {event.time}
+   265→                      </p>
+   266→                    )}
+   267→                  </div>
+   268→                  <Badge
+   269→                    variant={event.status === 'completed' ? 'default' : 'secondary'}
+   270→                    className={`text-xs shrink-0 ${
+   271→                      event.status === 'completed'
+   272→                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+   273→                        : event.status === 'upcoming'
+   274→                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+   275→                          : ''
+   276→                    }`}
+   277→                  >
+   278→                    {event.status}
+   279→                  </Badge>
+   280→                </div>
+   281→              )
+   282→            })}
+   283→            <Button variant="outline" size="sm" className="w-full gap-1.5 mt-2">
+   284→              <Plus className="size-3.5" />
+   285→              Add Event
+   286→            </Button>
+   287→          </div>
+   288→        )}
+   289→      </CardContent>
+   290→    </Card>
+   291→  )
+   292→}
+   293→
+   294→// --- Main Timeline View ---
+   295→export function TimelineView() {
+   296→  const { activeCaseId } = useAppStore()
+   297→  const { data: caseData, isLoading } = useCase(activeCaseId)
+   298→
+   299→  const [currentWeekStart, setCurrentWeekStart] = useState(() =>
+   300→    startOfWeek(new Date(), { weekStartsOn: 1 })
+   301→  )
+   302→  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+   303→  const [viewMode, setViewMode] = useState<'week' | 'list'>('week')
+   304→  const [activeFilters, setActiveFilters] = useState<Set<string>>(
+   305→    new Set(CATEGORY_FILTERS.map((f) => f.key))
+   306→  )
+   307→
+   308→  // Build all timeline events
+   309→  const allEvents = useMemo<TimelineEvent[]>(() => {
+   310→    if (!caseData) return []
+   311→
+   312→    const events: TimelineEvent[] = []
+   313→
+   314→    // Safe date parser - returns null for invalid dates instead of throwing
+   315→    function safeParseDate(dateStr: string | null | undefined): Date | null {
+   316→      if (!dateStr) return null
+   317→      try {
+   318→        const d = parseISO(dateStr)
+   319→        if (isNaN(d.getTime())) return null
+   320→        return d
+   321→      } catch {
+   322→        return null
+   323→      }
+   324→    }
+   325→
+   326→    function safeEventStatus(dateStr: string | null | undefined, isCompleted: boolean): 'completed' | 'upcoming' | 'pending' {
+   327→      if (isCompleted) return 'completed'
+   328→      const d = safeParseDate(dateStr)
+   329→      if (!d) return 'pending'
+   330→      try {
+   331→        return isFuture(d) ? 'upcoming' : 'pending'
+   332→      } catch {
+   333→        return 'pending'
+   334→      }
+   335→    }
+   336→
+   337→    caseData.counselingSessions?.forEach((s) => {
+   338→      if (!s.date) return
+   339→      events.push({
+   340→        id: s.id,
+   341→        date: s.date,
+   342→        type: 'counseling',
+   343→        category: 'counseling',
+   344→        title: `${s.sessionType || 'Counseling'} Session${s.counselorName ? ` — ${s.counselorName}` : ''}`,
+   345→        description: s.notes || undefined,
+   346→        status: safeEventStatus(s.date, s.isCompleted),
+   347→      })
+   348→    })
+   349→
+   350→    caseData.drugTests?.forEach((t) => {
+   351→      if (!t.date) return
+   352→      const resultLabel = t.result === 'negative' ? 'Negative' : t.result === 'positive' ? 'Positive' : t.result === 'diluted' ? 'Diluted' : 'Pending'
+   353→      events.push({
+   354→        id: t.id,
+   355→        date: t.date,
+   356→        type: 'drug-testing',
+   357→        category: 'drug-testing',
+   358→        title: `${t.testType || 'Drug'} Test — ${resultLabel}${t.isRandom ? ' (Random)' : ''}`,
+   359→        description: t.testingFacility || undefined,
+   360→        status: t.result ? 'completed' : 'upcoming',
+   361→      })
+   362→    })
+   363→
+   364→    caseData.naMeetings?.forEach((m) => {
+   365→      if (!m.date) return
+   366→      events.push({
+   367→        id: m.id,
+   368→        date: m.date,
+   369→        type: 'na-meetings',
+   370→        category: 'na-meetings',
+   371→        title: `NA Meeting${m.meetingName ? `: ${m.meetingName}` : ''}`,
+   372→        description: m.location || undefined,
+   373→        status: m.isVerified ? 'completed' : 'upcoming',
+   374→      })
+   375→    })
+   376→
+   377→    caseData.supervisedVisits?.forEach((v) => {
+   378→      if (!v.date) return
+   379→      events.push({
+   380→        id: v.id,
+   381→        date: v.date,
+   382→        type: 'supervised-visits',
+   383→        category: 'supervised-visits',
+   384→        title: `${v.visitType || 'Supervised'} Visit`,
+   385→        description: v.supervisorName ? `Supervisor: ${v.supervisorName}` : undefined,
+   386→        status: safeEventStatus(v.date, v.isCompleted),
+   387→      })
+   388→    })
+   389→
+   390→    caseData.courtDates?.forEach((c) => {
+   391→      if (!c.date) return
+   392→      events.push({
+   393→        id: c.id,
+   394→        date: c.date,
+   395→        type: 'legal',
+   396→        category: 'legal',
+   397→        title: `${c.hearingType || 'Court'} Hearing`,
+   398→        description: c.nextSteps || undefined,
+   399→        status: c.isCompleted ? 'completed' : 'upcoming',
+   400→      })
+   401→    })
+   402→
+   403→    caseData.parentingClasses?.forEach((p) => {
+   404→      if (!p.date) return
+   405→      events.push({
+   406→        id: p.id,
+   407→        date: p.date,
+   408→        type: 'parenting-classes',
+   409→        category: 'parenting-classes',
+   410→        title: `Parenting Class${p.className ? `: ${p.className}` : ''}`,
+   411→        description: p.topic || undefined,
+   412→        status: safeEventStatus(p.date, p.isCompleted),
+   413→      })
+   414→    })
+   415→
+   416→    // Milestones as events
+   417→    caseData.milestones?.forEach((m) => {
+   418→      const dateToUse = m.completedAt || m.targetDate
+   419→      if (dateToUse) {
+   420→        events.push({
+   421→          id: m.id,
+   422→          date: dateToUse,
+   423→          type: 'milestone',
+   424→          category: m.category || 'milestone',
+   425→          title: `🏁 ${m.title}`,
+   426→          description: m.description || undefined,
+   427→          status: m.isCompleted ? 'completed' : 'upcoming',
+   428→        })
+   429→      }
+   430→    })
+   431→
+   432→    return events.sort((a, b) => {
+   433→      const dateA = safeParseDate(a.date)
+   434→      const dateB = safeParseDate(b.date)
+   435→      const timeA = dateA ? dateA.getTime() : 0
+   436→      const timeB = dateB ? dateB.getTime() : 0
+   437→      return timeA - timeB
+   438→    })
+   439→  }, [caseData])
+   440→
+   441→  // Filter events
+   442→  const filteredEvents = useMemo(() => {
+   443→    return allEvents.filter((e) => activeFilters.has(e.type) || (e.type === 'milestone' && activeFilters.has('milestone')))
+   444→  }, [allEvents, activeFilters])
+   445→
+   446→  // Week days
+   447→  const weekDays = useMemo(() => {
+   448→    try {
+   449→      const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 })
+   450→      return eachDayOfInterval({ start: currentWeekStart, end: weekEnd })
+   451→    } catch {
+   452→      // Fallback: return current week manually
+   453→      const today = new Date()
+   454→      const start = startOfWeek(today, { weekStartsOn: 1 })
+   455→      const end = endOfWeek(today, { weekStartsOn: 1 })
+   456→      return eachDayOfInterval({ start, end })
+   457→    }
+   458→  }, [currentWeekStart])
+   459→
+   460→  // Events by day - with safe date parsing
+   461→  const eventsByDay = useMemo(() => {
+   462→    const map = new Map<string, TimelineEvent[]>()
+   463→    filteredEvents.forEach((event) => {
+   464→      try {
+   465→        const key = format(parseISO(event.date), 'yyyy-MM-dd')
+   466→        if (!map.has(key)) map.set(key, [])
+   467→        map.get(key)!.push(event)
+   468→      } catch {
+   469→        // Skip events with invalid dates
+   470→      }
+   471→    })
+   472→    return map
+   473→  }, [filteredEvents])
+   474→
+   475→  // Selected day events
+   476→  const selectedDayEvents = useMemo(() => {
+   477→    if (!selectedDate) return []
+   478→    try {
+   479→      const key = format(selectedDate, 'yyyy-MM-dd')
+   480→      return eventsByDay.get(key) || []
+   481→    } catch {
+   482→      return []
+   483→    }
+   484→  }, [selectedDate, eventsByDay])
+   485→
+   486→  // List view events (chronological) - with safe sorting
+   487→  const listEvents = useMemo(() => {
+   488→    return [...filteredEvents].sort((a, b) => {
+   489→      try {
+   490→        return new Date(a.date).getTime() - new Date(b.date).getTime()
+   491→      } catch {
+   492→        return 0
+   493→      }
+   494→    })
+   495→  }, [filteredEvents])
+   496→
+   497→  // Week navigation
+   498→  const goToPrevWeek = () => setCurrentWeekStart((w) => subWeeks(w, 1))
+   499→  const goToNextWeek = () => setCurrentWeekStart((w) => addWeeks(w, 1))
+   500→  const goToToday = () => {
+   501→    setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))
+   502→    setSelectedDate(new Date())
+   503→  }
+   504→
+   505→  // Toggle filter
+   506→  const toggleFilter = (key: string) => {
+   507→    setActiveFilters((prev) => {
+   508→      const next = new Set(prev)
+   509→      if (next.has(key)) {
+   510→        next.delete(key)
+   511→      } else {
+   512→        next.add(key)
+   513→      }
+   514→      return next
+   515→    })
+   516→  }
+   517→
+   518→  // Week label
+   519→  let weekLabel: string
+   520→  try {
+   521→    weekLabel = `${format(currentWeekStart, 'MMM d')} – ${format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'MMM d, yyyy')}`
+   522→  } catch {
+   523→    weekLabel = 'This Week'
+   524→  }
+   525→
+   526→  // --- RENDER ---
+   527→  if (isLoading) return <TimelineSkeleton />
+   528→  if (!caseData) return <EmptyTimeline />
+   529→
+   530→  return (
+   531→    <div className="space-y-4">
+   532→      {/* Header */}
+   533→      <div>
+   534→        <h1 className="text-2xl font-bold tracking-tight">Timeline</h1>
+   535→        <p className="text-muted-foreground text-sm mt-1">
+   536→          View all your case events, appointments, and milestones
+   537→        </p>
+   538→      </div>
+   539→
+   540→      {/* Filter Controls */}
+   541→      <Card>
+   542→        <CardContent className="py-4">
+   543→          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+   544→            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground mr-1">
+   545→              Filter:
+   546→            </span>
+   547→            {CATEGORY_FILTERS.map((filter) => {
+   548→              const style = CATEGORY_COLORS[filter.key] || CATEGORY_COLORS['other']
+   549→              const isActive = activeFilters.has(filter.key)
+   550→              return (
+   551→                <label
+   552→                  key={filter.key}
+   553→                  className="flex items-center gap-1.5 cursor-pointer select-none"
+   554→                >
+   555→                  <Checkbox
+   556→                    checked={isActive}
+   557→                    onCheckedChange={() => toggleFilter(filter.key)}
+   558→                  />
+   559→                  <span
+   560→                    className={`text-xs font-medium ${
+   561→                      isActive ? style.text : 'text-muted-foreground line-through'
+   562→                    }`}
+   563→                  >
+   564→                    {filter.label}
+   565→                  </span>
+   566→                </label>
+   567→              )
+   568→            })}
+   569→          </div>
+   570→        </CardContent>
+   571→      </Card>
+   572→
+   573→      {/* Week Navigation */}
+   574→      <div className="flex items-center justify-between gap-4">
+   575→        <div className="flex items-center gap-2">
+   576→          <Button variant="outline" size="icon" onClick={goToPrevWeek} aria-label="Previous week">
+   577→            <ChevronLeft className="size-4" />
+   578→          </Button>
+   579→          <Button variant="outline" size="icon" onClick={goToNextWeek} aria-label="Next week">
+   580→            <ChevronRight className="size-4" />
+   581→          </Button>
+   582→          <h2 className="text-sm font-semibold ml-2 hidden sm:block">{weekLabel}</h2>
+   583→        </div>
+   584→        <div className="flex items-center gap-2">
+   585→          <Button variant="outline" size="sm" onClick={goToToday}>
+   586→            <CalendarDays className="size-3.5" />
+   587→            Today
+   588→          </Button>
+   589→          <div className="flex border rounded-md overflow-hidden">
+   590→            <Button
+   591→              variant={viewMode === 'week' ? 'default' : 'ghost'}
+   592→              size="sm"
+   593→              onClick={() => setViewMode('week')}
+   594→              className="rounded-none"
+   595→            >
+   596→              <LayoutGrid className="size-3.5" />
+   597→              <span className="hidden sm:inline ml-1.5">Week</span>
+   598→            </Button>
+   599→            <Button
+   600→              variant={viewMode === 'list' ? 'default' : 'ghost'}
+   601→              size="sm"
+   602→              onClick={() => setViewMode('list')}
+   603→              className="rounded-none"
+   604→            >
+   605→              <List className="size-3.5" />
+   606→              <span className="hidden sm:inline ml-1.5">List</span>
+   607→            </Button>
+   608→          </div>
+   609→        </div>
+   610→      </div>
+   611→
+   612→      {/* Mobile week label */}
+   613→      <p className="text-sm font-semibold sm:hidden">{weekLabel}</p>
+   614→
+   615→      {/* Week View */}
+   616→      {viewMode === 'week' ? (
+   617→        <div className="space-y-4">
+   618→          {/* Day Grid - 7 columns on desktop, list on mobile */}
+   619→          <div className="hidden md:grid md:grid-cols-7 gap-2">
+   620→            {weekDays.map((day) => {
+   621→              const key = format(day, 'yyyy-MM-dd')
+   622→              const dayEvents = eventsByDay.get(key) || []
+   623→              const isSelected = selectedDate ? isSameDay(day, selectedDate) : false
+   624→
+   625→              return (
+   626→                <DayCell
+   627→                  key={key}
+   628→                  date={day}
+   629→                  events={dayEvents}
+   630→                  isSelected={isSelected}
+   631→                  onClick={() => setSelectedDate(day)}
+   632→                />
+   633→              )
+   634→            })}
+   635→          </div>
+   636→
+   637→          {/* Mobile: vertical day list */}
+   638→          <div className="md:hidden space-y-2">
+   639→            {weekDays.map((day) => {
+   640→              const key = format(day, 'yyyy-MM-dd')
+   641→              const dayEvents = eventsByDay.get(key) || []
+   642→              const today = isToday(day)
+   643→
+   644→              return (
+   645→                <button
+   646→                  key={key}
+   647→                  type="button"
+   648→                  onClick={() => setSelectedDate(day)}
+   649→                  className={`w-full text-left rounded-lg border p-3 transition-all ${
+   650→                    today
+   651→                      ? 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20'
+   652→                      : 'border-border hover:border-primary/30'
+   653→                  } ${dayEvents.length === 0 ? 'opacity-50' : ''}`}
+   654→                >
+   655→                  <div className="flex items-center justify-between mb-1">
+   656→                    <span className={`text-sm font-semibold ${today ? 'text-emerald-600' : ''}`}>
+   657→                      {format(day, 'EEEE, MMM d')}
+   658→                    </span>
+   659→                    {dayEvents.length > 0 && (
+   660→                      <Badge variant="secondary" className="text-xs">
+   661→                        {dayEvents.length}
+   662→                      </Badge>
+   663→                    )}
+   664→                  </div>
+   665→                  {dayEvents.length > 0 ? (
+   666→                    <div className="flex flex-wrap gap-1 mt-1">
+   667→                      {dayEvents.map((event) => {
+   668→                        const style = CATEGORY_COLORS[event.category] || CATEGORY_COLORS['other']
+   669→                        return (
+   670→                          <Badge
+   671→                            key={event.id}
+   672→                            variant="outline"
+   673→                            className={`text-xs ${style.text} ${style.border} ${style.bg}`}
+   674→                          >
+   675→                            {event.type.replace('-', ' ')}
+   676→                          </Badge>
+   677→                        )
+   678→                      })}
+   679→                    </div>
+   680→                  ) : (
+   681→                    <p className="text-xs text-muted-foreground">No events</p>
+   682→                  )}
+   683→                </button>
+   684→              )
+   685→            })}
+   686→          </div>
+   687→
+   688→          {/* Day Detail */}
+   689→          {selectedDate && (
+   690→            <DayDetail
+   691→              date={selectedDate}
+   692→              events={selectedDayEvents}
+   693→              onClose={() => setSelectedDate(null)}
+   694→            />
+   695→          )}
+   696→        </div>
+   697→      ) : (
+   698→        /* List View */
+   699→        <Card>
+   700→          <CardHeader>
+   701→            <CardTitle className="text-base">All Events</CardTitle>
+   702→            <CardDescription>
+   703→              {filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''} found
+   704→            </CardDescription>
+   705→          </CardHeader>
+   706→          <CardContent>
+   707→            {listEvents.length === 0 ? (
+   708→              <div className="py-8 text-center">
+   709→                <CalendarDays className="size-8 text-muted-foreground/30 mx-auto mb-2" />
+   710→                <p className="text-sm text-muted-foreground">No events match your filters</p>
+   711→              </div>
+   712→            ) : (
+   713→              <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1" style={{ scrollbarGutter: 'stable' }}>
+   714→                {(() => {
+   715→                  let lastDateGroup = ''
+   716→                  return listEvents.map((event) => {
+   717→                    let dateGroup: string
+   718→                    let dateObj: Date
+   719→                    let today = false
+   720→                    try {
+   721→                      dateObj = parseISO(event.date)
+   722→                      dateGroup = format(dateObj, 'EEEE, MMMM d, yyyy')
+   723→                      today = isToday(dateObj)
+   724→                    } catch {
+   725→                      dateGroup = event.date || 'Unknown date'
+   726→                      today = false
+   727→                    }
+   728→                    const showDateHeader = dateGroup !== lastDateGroup
+   729→                    lastDateGroup = dateGroup
+   730→
+   731→                    const style = CATEGORY_COLORS[event.category] || CATEGORY_COLORS['other']
+   732→
+   733→                    return (
+   734→                      <div key={event.id}>
+   735→                        {showDateHeader && (
+   736→                          <div className={`text-xs font-semibold uppercase tracking-wider pt-3 pb-1 flex items-center gap-2 ${today ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+   737→                            {today && <span className="flex size-2 rounded-full bg-emerald-500" />}
+   738→                            {dateGroup}
+   739→                          </div>
+   740→                        )}
+   741→                        <div className="flex items-start gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors">
+   742→                          <div className="mt-0.5">
+   743→                            <StatusDot status={event.status} />
+   744→                          </div>
+   745→                          <div className="flex-1 min-w-0">
+   746→                            <div className="flex items-center gap-2 flex-wrap">
+   747→                              <p className="text-sm font-medium">{event.title}</p>
+   748→                              <Badge
+   749→                                variant="outline"
+   750→                                className={`text-xs ${style.text} ${style.border}`}
+   751→                              >
+   752→                                {event.type.replace('-', ' ')}
+   753→                              </Badge>
+   754→                            </div>
+   755→                            {event.description && (
+   756→                              <p className="text-xs text-muted-foreground mt-0.5">{event.description}</p>
+   757→                            )}
+   758→                          </div>
+   759→                          <Badge
+   760→                            variant="secondary"
+   761→                            className={`text-xs shrink-0 ${
+   762→                              event.status === 'completed'
+   763→                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+   764→                                : event.status === 'upcoming'
+   765→                                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+   766→                                  : ''
+   767→                            }`}
+   768→                          >
+   769→                            {event.status}
+   770→                          </Badge>
+   771→                        </div>
+   772→                      </div>
+   773→                    )
+   774→                  })
+   775→                })()}
+   776→              </div>
+   777→            )}
+   778→          </CardContent>
+   779→        </Card>
+   780→      )}
+   781→    </div>
+   782→  )
+   783→}
+   784→

@@ -294,7 +294,7 @@ function DayDetail({
 // --- Main Timeline View ---
 export function TimelineView() {
   const { activeCaseId } = useAppStore()
-  const { data: caseData, isLoading } = useCase(activeCaseId)
+  const { data: caseData, isLoading, error } = useCase(activeCaseId)
 
   const [currentWeekStart, setCurrentWeekStart] = useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
@@ -309,6 +309,7 @@ export function TimelineView() {
   const allEvents = useMemo<TimelineEvent[]>(() => {
     if (!caseData) return []
 
+    try {
     const events: TimelineEvent[] = []
 
     // Safe date parser - returns null for invalid dates instead of throwing
@@ -334,99 +335,123 @@ export function TimelineView() {
       }
     }
 
-    caseData.counselingSessions?.forEach((s) => {
-      if (!s.date) return
-      events.push({
-        id: s.id,
-        date: s.date,
-        type: 'counseling',
-        category: 'counseling',
-        title: `${s.sessionType || 'Counseling'} Session${s.counselorName ? ` — ${s.counselorName}` : ''}`,
-        description: s.notes || undefined,
-        status: safeEventStatus(s.date, s.isCompleted),
-      })
+    // Safely iterate arrays that might be undefined
+    const counselingSessions = Array.isArray(caseData.counselingSessions) ? caseData.counselingSessions : []
+    const drugTests = Array.isArray(caseData.drugTests) ? caseData.drugTests : []
+    const naMeetings = Array.isArray(caseData.naMeetings) ? caseData.naMeetings : []
+    const supervisedVisits = Array.isArray(caseData.supervisedVisits) ? caseData.supervisedVisits : []
+    const courtDates = Array.isArray(caseData.courtDates) ? caseData.courtDates : []
+    const parentingClasses = Array.isArray(caseData.parentingClasses) ? caseData.parentingClasses : []
+    const milestones = Array.isArray(caseData.milestones) ? caseData.milestones : []
+
+    counselingSessions.forEach((s) => {
+      if (!s?.date) return
+      try {
+        events.push({
+          id: s.id,
+          date: s.date,
+          type: 'counseling',
+          category: 'counseling',
+          title: `${s.sessionType || 'Counseling'} Session${s.counselorName ? ` — ${s.counselorName}` : ''}`,
+          description: s.notes || undefined,
+          status: safeEventStatus(s.date, s.isCompleted),
+        })
+      } catch { /* skip invalid entries */ }
     })
 
-    caseData.drugTests?.forEach((t) => {
-      if (!t.date) return
-      const resultLabel = t.result === 'negative' ? 'Negative' : t.result === 'positive' ? 'Positive' : t.result === 'diluted' ? 'Diluted' : 'Pending'
-      events.push({
-        id: t.id,
-        date: t.date,
-        type: 'drug-testing',
-        category: 'drug-testing',
-        title: `${t.testType || 'Drug'} Test — ${resultLabel}${t.isRandom ? ' (Random)' : ''}`,
-        description: t.testingFacility || undefined,
-        status: t.result ? 'completed' : 'upcoming',
-      })
+    drugTests.forEach((t) => {
+      if (!t?.date) return
+      try {
+        const resultLabel = t.result === 'negative' ? 'Negative' : t.result === 'positive' ? 'Positive' : t.result === 'diluted' ? 'Diluted' : 'Pending'
+        events.push({
+          id: t.id,
+          date: t.date,
+          type: 'drug-testing',
+          category: 'drug-testing',
+          title: `${t.testType || 'Drug'} Test — ${resultLabel}${t.isRandom ? ' (Random)' : ''}`,
+          description: t.testingFacility || undefined,
+          status: t.result ? 'completed' : 'upcoming',
+        })
+      } catch { /* skip invalid entries */ }
     })
 
-    caseData.naMeetings?.forEach((m) => {
-      if (!m.date) return
-      events.push({
-        id: m.id,
-        date: m.date,
-        type: 'na-meetings',
-        category: 'na-meetings',
-        title: `NA Meeting${m.meetingName ? `: ${m.meetingName}` : ''}`,
-        description: m.location || undefined,
-        status: m.isVerified ? 'completed' : 'upcoming',
-      })
+    naMeetings.forEach((m) => {
+      if (!m?.date) return
+      try {
+        events.push({
+          id: m.id,
+          date: m.date,
+          type: 'na-meetings',
+          category: 'na-meetings',
+          title: `NA Meeting${m.meetingName ? `: ${m.meetingName}` : ''}`,
+          description: m.location || undefined,
+          status: m.isVerified ? 'completed' : 'upcoming',
+        })
+      } catch { /* skip invalid entries */ }
     })
 
-    caseData.supervisedVisits?.forEach((v) => {
-      if (!v.date) return
-      events.push({
-        id: v.id,
-        date: v.date,
-        type: 'supervised-visits',
-        category: 'supervised-visits',
-        title: `${v.visitType || 'Supervised'} Visit`,
-        description: v.supervisorName ? `Supervisor: ${v.supervisorName}` : undefined,
-        status: safeEventStatus(v.date, v.isCompleted),
-      })
+    supervisedVisits.forEach((v) => {
+      if (!v?.date) return
+      try {
+        events.push({
+          id: v.id,
+          date: v.date,
+          type: 'supervised-visits',
+          category: 'supervised-visits',
+          title: `${v.visitType || 'Supervised'} Visit`,
+          description: v.supervisorName ? `Supervisor: ${v.supervisorName}` : undefined,
+          status: safeEventStatus(v.date, v.isCompleted),
+        })
+      } catch { /* skip invalid entries */ }
     })
 
-    caseData.courtDates?.forEach((c) => {
-      if (!c.date) return
-      events.push({
-        id: c.id,
-        date: c.date,
-        type: 'legal',
-        category: 'legal',
-        title: `${c.hearingType || 'Court'} Hearing`,
-        description: c.nextSteps || undefined,
-        status: c.isCompleted ? 'completed' : 'upcoming',
-      })
+    courtDates.forEach((c) => {
+      if (!c?.date) return
+      try {
+        events.push({
+          id: c.id,
+          date: c.date,
+          type: 'legal',
+          category: 'legal',
+          title: `${c.hearingType || 'Court'} Hearing`,
+          description: c.nextSteps || undefined,
+          status: c.isCompleted ? 'completed' : 'upcoming',
+        })
+      } catch { /* skip invalid entries */ }
     })
 
-    caseData.parentingClasses?.forEach((p) => {
-      if (!p.date) return
-      events.push({
-        id: p.id,
-        date: p.date,
-        type: 'parenting-classes',
-        category: 'parenting-classes',
-        title: `Parenting Class${p.className ? `: ${p.className}` : ''}`,
-        description: p.topic || undefined,
-        status: safeEventStatus(p.date, p.isCompleted),
-      })
+    parentingClasses.forEach((p) => {
+      if (!p?.date) return
+      try {
+        events.push({
+          id: p.id,
+          date: p.date,
+          type: 'parenting-classes',
+          category: 'parenting-classes',
+          title: `Parenting Class${p.className ? `: ${p.className}` : ''}`,
+          description: p.topic || undefined,
+          status: safeEventStatus(p.date, p.isCompleted),
+        })
+      } catch { /* skip invalid entries */ }
     })
 
     // Milestones as events
-    caseData.milestones?.forEach((m) => {
-      const dateToUse = m.completedAt || m.targetDate
-      if (dateToUse) {
-        events.push({
-          id: m.id,
-          date: dateToUse,
-          type: 'milestone',
-          category: m.category || 'milestone',
-          title: `🏁 ${m.title}`,
-          description: m.description || undefined,
-          status: m.isCompleted ? 'completed' : 'upcoming',
-        })
-      }
+    milestones.forEach((m) => {
+      if (!m) return
+      try {
+        const dateToUse = m.completedAt || m.targetDate
+        if (dateToUse) {
+          events.push({
+            id: m.id,
+            date: dateToUse,
+            type: 'milestone',
+            category: m.category || 'milestone',
+            title: `🏁 ${m.title}`,
+            description: m.description || undefined,
+            status: m.isCompleted ? 'completed' : 'upcoming',
+          })
+        }
+      } catch { /* skip invalid entries */ }
     })
 
     return events.sort((a, b) => {
@@ -436,6 +461,9 @@ export function TimelineView() {
       const timeB = dateB ? dateB.getTime() : 0
       return timeA - timeB
     })
+    } catch {
+      return []
+    }
   }, [caseData])
 
   // Filter events
@@ -525,6 +553,19 @@ export function TimelineView() {
 
   // --- RENDER ---
   if (isLoading) return <TimelineSkeleton />
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 px-4">
+        <div className="flex size-16 items-center justify-center rounded-2xl bg-red-100 dark:bg-red-900/30 mb-4">
+          <AlertCircle className="size-8 text-red-600 dark:text-red-400" />
+        </div>
+        <h3 className="text-lg font-semibold text-foreground mb-2">Error Loading Timeline</h3>
+        <p className="text-muted-foreground text-sm text-center max-w-sm">
+          There was a problem loading your timeline data. Please try again.
+        </p>
+      </div>
+    )
+  }
   if (!caseData) return <EmptyTimeline />
 
   return (
