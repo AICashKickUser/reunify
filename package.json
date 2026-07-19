@@ -15,6 +15,8 @@
     "db:reset": "prisma migrate reset"
   },
   "dependencies": {
+    "@bubblewrap/cli": "^1.24.1",
+    "@bubblewrap/core": "^1.24.1",
     "@hookform/resolvers": "^5.1.1",
     "@prisma/client": "^6.11.1",
     "@radix-ui/react-accordion": "^1.2.11",
