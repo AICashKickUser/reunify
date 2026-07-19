@@ -8,7 +8,7 @@ import { useAppStore, VIEW_LABELS, type ViewType } from '@/lib/store'
 import { useCases, useSeedDatabase } from '@/lib/data-hooks'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { FolderHeart, Eye, Loader2, FileText, ArrowRight, Sparkles } from 'lucide-react'
+import { FolderHeart, Eye, Loader2, FileText, ArrowRight, Sparkles, AlertTriangle } from 'lucide-react'
 import { CreateCaseDialog } from '@/components/create-case-dialog'
 import { UpgradeDialog } from '@/components/upgrade-dialog'
 import { OnboardingDialog } from '@/components/onboarding-dialog'
@@ -16,20 +16,48 @@ import { useSubscriptionStore } from '@/lib/subscription'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { toast } from 'sonner'
 
-// Lazy load all view components to reduce initial compilation memory
-const DashboardView = lazy(() => import('@/components/views/dashboard-view').then(m => ({ default: m.DashboardView })))
-const TimelineView = lazy(() => import('@/components/views/timeline-view').then(m => ({ default: m.TimelineView })))
-const CasePlanView = lazy(() => import('@/components/views/case-plan-view').then(m => ({ default: m.CasePlanView })))
-const CounselingView = lazy(() => import('@/components/views/counseling-view').then(m => ({ default: m.CounselingView })))
-const DrugTestingView = lazy(() => import('@/components/views/drug-testing-view').then(m => ({ default: m.DrugTestingView })))
-const NAStepsView = lazy(() => import('@/components/views/na-steps-view').then(m => ({ default: m.NAStepsView })))
-const NAMeetingsView = lazy(() => import('@/components/views/na-meetings-view').then(m => ({ default: m.NAMeetingsView })))
-const SupervisedVisitsView = lazy(() => import('@/components/views/supervised-visits-view').then(m => ({ default: m.SupervisedVisitsView })))
-const CourtDatesView = lazy(() => import('@/components/views/court-dates-view').then(m => ({ default: m.CourtDatesView })))
-const ParentingClassesView = lazy(() => import('@/components/views/parenting-classes-view').then(m => ({ default: m.ParentingClassesView })))
-const ProgressView = lazy(() => import('@/components/views/progress-view').then(m => ({ default: m.ProgressView })))
-const DailyCheckinsView = lazy(() => import('@/components/views/daily-checkins-view').then(m => ({ default: m.DailyCheckinsView })))
-const GoProView = lazy(() => import('@/components/views/go-pro-view').then(m => ({ default: m.GoProView })))
+// Safe lazy load helper - catches import errors
+function safeLazy<T extends React.ComponentType>(
+  importFn: () => Promise<{ [key: string]: T }>,
+  exportName: string
+) {
+  return lazy(async () => {
+    try {
+      const mod = await importFn()
+      return { default: mod[exportName] }
+    } catch (error) {
+      console.error(`Failed to load view ${exportName}:`, error)
+      // Return a fallback component instead of crashing
+      return {
+        default: () => (
+          <div className="flex flex-col items-center justify-center py-16 px-4">
+            <div className="flex size-16 items-center justify-center rounded-2xl bg-orange-100 dark:bg-orange-900/30 mb-4">
+              <AlertTriangle className="size-8 text-orange-600 dark:text-orange-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Failed to load view</h3>
+            <p className="text-muted-foreground text-sm text-center max-w-sm">
+              There was an error loading this section. Please try refreshing the page.
+            </p>
+          </div>
+        ) as unknown as T
+      }
+    }
+  })
+}
+
+const DashboardView = safeLazy(() => import('@/components/views/dashboard-view'), 'DashboardView')
+const TimelineView = safeLazy(() => import('@/components/views/timeline-view'), 'TimelineView')
+const CasePlanView = safeLazy(() => import('@/components/views/case-plan-view'), 'CasePlanView')
+const CounselingView = safeLazy(() => import('@/components/views/counseling-view'), 'CounselingView')
+const DrugTestingView = safeLazy(() => import('@/components/views/drug-testing-view'), 'DrugTestingView')
+const NAStepsView = safeLazy(() => import('@/components/views/na-steps-view'), 'NAStepsView')
+const NAMeetingsView = safeLazy(() => import('@/components/views/na-meetings-view'), 'NAMeetingsView')
+const SupervisedVisitsView = safeLazy(() => import('@/components/views/supervised-visits-view'), 'SupervisedVisitsView')
+const CourtDatesView = safeLazy(() => import('@/components/views/court-dates-view'), 'CourtDatesView')
+const ParentingClassesView = safeLazy(() => import('@/components/views/parenting-classes-view'), 'ParentingClassesView')
+const ProgressView = safeLazy(() => import('@/components/views/progress-view'), 'ProgressView')
+const DailyCheckinsView = safeLazy(() => import('@/components/views/daily-checkins-view'), 'DailyCheckinsView')
+const GoProView = safeLazy(() => import('@/components/views/go-pro-view'), 'GoProView')
 
 const VIEW_MAP: Record<ViewType, React.ComponentType> = {
   'dashboard': DashboardView,
@@ -192,6 +220,17 @@ function WelcomeScreen() {
 function ActiveView() {
   const { activeView } = useAppStore()
   const ViewComponent = VIEW_MAP[activeView]
+
+  if (!ViewComponent) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 px-4">
+        <AlertTriangle className="size-12 text-orange-500 mb-4" />
+        <h3 className="text-lg font-semibold mb-2">View not found</h3>
+        <p className="text-muted-foreground text-sm">Please select a different view from the sidebar.</p>
+      </div>
+    )
+  }
+
   return (
     <ErrorBoundary>
       <Suspense fallback={<ViewLoader />}>

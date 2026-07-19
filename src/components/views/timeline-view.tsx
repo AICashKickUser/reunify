@@ -296,9 +296,13 @@ export function TimelineView() {
   const { activeCaseId } = useAppStore()
   const { data: caseData, isLoading, error } = useCase(activeCaseId)
 
-  const [currentWeekStart, setCurrentWeekStart] = useState(() =>
-    startOfWeek(new Date(), { weekStartsOn: 1 })
-  )
+  const [currentWeekStart, setCurrentWeekStart] = useState(() => {
+    try {
+      return startOfWeek(new Date(), { weekStartsOn: 1 })
+    } catch {
+      return new Date()
+    }
+  })
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [viewMode, setViewMode] = useState<'week' | 'list'>('week')
   const [activeFilters, setActiveFilters] = useState<Set<string>>(

@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000 --webpack 2>&1 | tee dev.log",
-    "build": "prisma generate && prisma migrate deploy && next build",
+    "setup-db": "node scripts/setup-db-provider.js",
+    "build": "node scripts/setup-db-provider.js && prisma generate && prisma db push && next build",
     "start": "next start",
     "lint": "eslint .",
-    "postinstall": "prisma generate",
+    "postinstall": "node scripts/setup-db-provider.js && prisma generate",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
