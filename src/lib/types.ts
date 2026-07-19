@@ -171,6 +171,7 @@ export const CATEGORY_COLORS: Record<string, { bg: string; text: string; border:
   'legal': { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200' },
   'family': { bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200' },
   'education': { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200' },
+  'milestone': { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
   'other': { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' },
 }
 

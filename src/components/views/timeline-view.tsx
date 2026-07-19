@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback, ComponentType } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -311,7 +311,31 @@ export function TimelineView() {
 
     const events: TimelineEvent[] = []
 
+    // Safe date parser - returns null for invalid dates instead of throwing
+    function safeParseDate(dateStr: string | null | undefined): Date | null {
+      if (!dateStr) return null
+      try {
+        const d = parseISO(dateStr)
+        if (isNaN(d.getTime())) return null
+        return d
+      } catch {
+        return null
+      }
+    }
+
+    function safeEventStatus(dateStr: string | null | undefined, isCompleted: boolean): 'completed' | 'upcoming' | 'pending' {
+      if (isCompleted) return 'completed'
+      const d = safeParseDate(dateStr)
+      if (!d) return 'pending'
+      try {
+        return isFuture(d) ? 'upcoming' : 'pending'
+      } catch {
+        return 'pending'
+      }
+    }
+
     caseData.counselingSessions?.forEach((s) => {
+      if (!s.date) return
       events.push({
         id: s.id,
         date: s.date,
@@ -319,11 +343,12 @@ export function TimelineView() {
         category: 'counseling',
         title: `${s.sessionType || 'Counseling'} Session${s.counselorName ? ` — ${s.counselorName}` : ''}`,
         description: s.notes || undefined,
-        status: s.isCompleted ? 'completed' : isFuture(parseISO(s.date)) ? 'upcoming' : 'pending',
+        status: safeEventStatus(s.date, s.isCompleted),
       })
     })
 
     caseData.drugTests?.forEach((t) => {
+      if (!t.date) return
       const resultLabel = t.result === 'negative' ? 'Negative' : t.result === 'positive' ? 'Positive' : t.result === 'diluted' ? 'Diluted' : 'Pending'
       events.push({
         id: t.id,
@@ -337,6 +362,7 @@ export function TimelineView() {
     })
 
     caseData.naMeetings?.forEach((m) => {
+      if (!m.date) return
       events.push({
         id: m.id,
         date: m.date,
@@ -349,6 +375,7 @@ export function TimelineView() {
     })
 
     caseData.supervisedVisits?.forEach((v) => {
+      if (!v.date) return
       events.push({
         id: v.id,
         date: v.date,
@@ -356,11 +383,12 @@ export function TimelineView() {
         category: 'supervised-visits',
         title: `${v.visitType || 'Supervised'} Visit`,
         description: v.supervisorName ? `Supervisor: ${v.supervisorName}` : undefined,
-        status: v.isCompleted ? 'completed' : isFuture(parseISO(v.date)) ? 'upcoming' : 'pending',
+        status: safeEventStatus(v.date, v.isCompleted),
       })
     })
 
     caseData.courtDates?.forEach((c) => {
+      if (!c.date) return
       events.push({
         id: c.id,
         date: c.date,
@@ -373,6 +401,7 @@ export function TimelineView() {
     })
 
     caseData.parentingClasses?.forEach((p) => {
+      if (!p.date) return
       events.push({
         id: p.id,
         date: p.date,
@@ -380,7 +409,7 @@ export function TimelineView() {
         category: 'parenting-classes',
         title: `Parenting Class${p.className ? `: ${p.className}` : ''}`,
         description: p.topic || undefined,
-        status: p.isCompleted ? 'completed' : isFuture(parseISO(p.date)) ? 'upcoming' : 'pending',
+        status: safeEventStatus(p.date, p.isCompleted),
       })
     })
 
@@ -400,7 +429,13 @@ export function TimelineView() {
       }
     })
 
-    return events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    return events.sort((a, b) => {
+      const dateA = safeParseDate(a.date)
+      const dateB = safeParseDate(b.date)
+      const timeA = dateA ? dateA.getTime() : 0
+      const timeB = dateB ? dateB.getTime() : 0
+      return timeA - timeB
+    })
   }, [caseData])
 
   // Filter events
@@ -410,17 +445,29 @@ export function TimelineView() {
 
   // Week days
   const weekDays = useMemo(() => {
-    const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 })
-    return eachDayOfInterval({ start: currentWeekStart, end: weekEnd })
+    try {
+      const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 })
+      return eachDayOfInterval({ start: currentWeekStart, end: weekEnd })
+    } catch {
+      // Fallback: return current week manually
+      const today = new Date()
+      const start = startOfWeek(today, { weekStartsOn: 1 })
+      const end = endOfWeek(today, { weekStartsOn: 1 })
+      return eachDayOfInterval({ start, end })
+    }
   }, [currentWeekStart])
 
-  // Events by day
+  // Events by day - with safe date parsing
   const eventsByDay = useMemo(() => {
     const map = new Map<string, TimelineEvent[]>()
     filteredEvents.forEach((event) => {
-      const key = format(parseISO(event.date), 'yyyy-MM-dd')
-      if (!map.has(key)) map.set(key, [])
-      map.get(key)!.push(event)
+      try {
+        const key = format(parseISO(event.date), 'yyyy-MM-dd')
+        if (!map.has(key)) map.set(key, [])
+        map.get(key)!.push(event)
+      } catch {
+        // Skip events with invalid dates
+      }
     })
     return map
   }, [filteredEvents])
@@ -428,13 +475,23 @@ export function TimelineView() {
   // Selected day events
   const selectedDayEvents = useMemo(() => {
     if (!selectedDate) return []
-    const key = format(selectedDate, 'yyyy-MM-dd')
-    return eventsByDay.get(key) || []
+    try {
+      const key = format(selectedDate, 'yyyy-MM-dd')
+      return eventsByDay.get(key) || []
+    } catch {
+      return []
+    }
   }, [selectedDate, eventsByDay])
 
-  // List view events (chronological)
+  // List view events (chronological) - with safe sorting
   const listEvents = useMemo(() => {
-    return [...filteredEvents].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    return [...filteredEvents].sort((a, b) => {
+      try {
+        return new Date(a.date).getTime() - new Date(b.date).getTime()
+      } catch {
+        return 0
+      }
+    })
   }, [filteredEvents])
 
   // Week navigation
@@ -459,7 +516,12 @@ export function TimelineView() {
   }
 
   // Week label
-  const weekLabel = `${format(currentWeekStart, 'MMM d')} – ${format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'MMM d, yyyy')}`
+  let weekLabel: string
+  try {
+    weekLabel = `${format(currentWeekStart, 'MMM d')} – ${format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'MMM d, yyyy')}`
+  } catch {
+    weekLabel = 'This Week'
+  }
 
   // --- RENDER ---
   if (isLoading) return <TimelineSkeleton />
@@ -652,13 +714,21 @@ export function TimelineView() {
                 {(() => {
                   let lastDateGroup = ''
                   return listEvents.map((event) => {
-                    const dateGroup = format(parseISO(event.date), 'EEEE, MMMM d, yyyy')
+                    let dateGroup: string
+                    let dateObj: Date
+                    let today = false
+                    try {
+                      dateObj = parseISO(event.date)
+                      dateGroup = format(dateObj, 'EEEE, MMMM d, yyyy')
+                      today = isToday(dateObj)
+                    } catch {
+                      dateGroup = event.date || 'Unknown date'
+                      today = false
+                    }
                     const showDateHeader = dateGroup !== lastDateGroup
                     lastDateGroup = dateGroup
 
                     const style = CATEGORY_COLORS[event.category] || CATEGORY_COLORS['other']
-                    const dateObj = parseISO(event.date)
-                    const today = isToday(dateObj)
 
                     return (
                       <div key={event.id}>

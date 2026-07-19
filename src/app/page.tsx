@@ -8,7 +8,7 @@ import { useAppStore, VIEW_LABELS, type ViewType } from '@/lib/store'
 import { useCases, useSeedDatabase } from '@/lib/data-hooks'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { FolderHeart, Eye, Loader2, FileText, ArrowRight } from 'lucide-react'
+import { FolderHeart, Eye, Loader2, FileText, ArrowRight, Sparkles } from 'lucide-react'
 import { CreateCaseDialog } from '@/components/create-case-dialog'
 import { UpgradeDialog } from '@/components/upgrade-dialog'
 import { OnboardingDialog } from '@/components/onboarding-dialog'
@@ -146,6 +146,29 @@ function WelcomeScreen() {
         </Card>
 
         <CreateCaseDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+
+        {/* Go Pro Card */}
+        <Card className="text-left border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 dark:border-amber-800 dark:from-amber-950/20 dark:to-yellow-950/20">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="size-5 text-amber-600" />
+              <div>
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Upgrade to Pro</p>
+                <p className="text-xs text-amber-700/80 dark:text-amber-400/80">
+                  Unlock advanced reporting, data export, and more with a 7-day free trial
+                </p>
+              </div>
+            </div>
+            <Button
+              className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white border-0"
+              onClick={() => useAppStore.getState().setActiveView('go-pro')}
+            >
+              <Sparkles className="size-4" />
+              See Pro Features
+            </Button>
+          </CardContent>
+        </Card>
+
         <div className="grid grid-cols-3 gap-3 text-center">
           <div className="space-y-1">
             <p className="text-2xl font-bold text-emerald-600">100%</p>
