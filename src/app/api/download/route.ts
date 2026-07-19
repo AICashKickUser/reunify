@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
       'reunify-1.1.0.aab',
       'reunify-1.1.0.apk',
       'reunify-1.1.0.zip',
+      'reunify-key.jks',
     ];
     
     if (!allowedFiles.includes(file)) {
