@@ -61,12 +61,11 @@ export function AppHeader() {
       ) : (
         <Button 
           size="sm" 
-          variant="outline"
-          className="gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/30"
+          className="gap-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white border-0 shadow-sm"
           onClick={() => setActiveView('go-pro')}
         >
           <Sparkles className="size-3.5" />
-          <span className="hidden sm:inline">Go Pro</span>
+          <span className="sm:inline">Go Pro</span>
         </Button>
       )}
 
