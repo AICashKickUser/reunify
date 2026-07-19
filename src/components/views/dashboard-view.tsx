@@ -8,6 +8,8 @@ import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCase } from '@/lib/data-hooks'
 import { useAppStore } from '@/lib/store'
+import { useSubscriptionStore } from '@/lib/subscription'
+import { ProBadge } from '@/components/pro-badge'
 import { CATEGORY_COLORS } from '@/lib/types'
 import {
   CheckCircle2,
@@ -27,6 +29,8 @@ import {
   BookOpen,
   Flag,
   Activity,
+  FileText,
+  Lock,
 } from 'lucide-react'
 import {
   format,
@@ -162,117 +166,181 @@ function StatCard({
 export function DashboardView() {
   const { activeCaseId, setActiveView } = useAppStore()
   const { data: caseData, isLoading } = useCase(activeCaseId)
+  const { tier, setUpgradeDialogOpen } = useSubscriptionStore()
+  const isPro = tier === 'pro'
 
   // Build unified timeline events
   const allEvents = useMemo<TimelineEvent[]>(() => {
     if (!caseData) return []
 
+    try {
     const events: TimelineEvent[] = []
 
+    // Safe date parser
+    function safeParseDate(dateStr: string | null | undefined): Date | null {
+      if (!dateStr) return null
+      try {
+        const d = parseISO(dateStr)
+        if (isNaN(d.getTime())) return null
+        return d
+      } catch {
+        return null
+      }
+    }
+
+    function safeEventStatus(dateStr: string | null | undefined, isCompleted: boolean): 'completed' | 'upcoming' | 'pending' {
+      if (isCompleted) return 'completed'
+      const d = safeParseDate(dateStr)
+      if (!d) return 'pending'
+      try {
+        return isFuture(d) ? 'upcoming' : 'pending'
+      } catch {
+        return 'pending'
+      }
+    }
+
     // Counseling sessions
-    caseData.counselingSessions?.forEach((s) => {
-      events.push({
-        id: s.id,
-        date: s.date,
-        type: 'counseling',
-        category: 'counseling',
-        title: `${s.sessionType || 'Counseling'} Session${s.counselorName ? ` with ${s.counselorName}` : ''}`,
-        status: s.isCompleted ? 'completed' : isFuture(parseISO(s.date)) ? 'upcoming' : 'pending',
-        icon: <Heart className="size-3.5" />,
-      })
+    const counselingSessions = Array.isArray(caseData.counselingSessions) ? caseData.counselingSessions : []
+    counselingSessions.forEach((s) => {
+      if (!s?.date) return
+      try {
+        events.push({
+          id: s.id,
+          date: s.date,
+          type: 'counseling',
+          category: 'counseling',
+          title: `${s.sessionType || 'Counseling'} Session${s.counselorName ? ` with ${s.counselorName}` : ''}`,
+          status: safeEventStatus(s.date, s.isCompleted),
+          icon: <Heart className="size-3.5" />,
+        })
+      } catch { /* skip */ }
     })
 
     // Drug tests
-    caseData.drugTests?.forEach((t) => {
-      const resultLabel = t.result === 'negative' ? 'Negative' : t.result === 'positive' ? 'Positive' : t.result === 'diluted' ? 'Diluted' : 'Pending'
-      events.push({
-        id: t.id,
-        date: t.date,
-        type: 'drug-testing',
-        category: 'drug-testing',
-        title: `${t.testType || 'Drug'} Test — ${resultLabel}${t.isRandom ? ' (Random)' : ''}`,
-        status: t.result ? 'completed' : 'upcoming',
-        icon: <FlaskConical className="size-3.5" />,
-      })
+    const drugTests = Array.isArray(caseData.drugTests) ? caseData.drugTests : []
+    drugTests.forEach((t) => {
+      if (!t?.date) return
+      try {
+        const resultLabel = t.result === 'negative' ? 'Negative' : t.result === 'positive' ? 'Positive' : t.result === 'diluted' ? 'Diluted' : 'Pending'
+        events.push({
+          id: t.id,
+          date: t.date,
+          type: 'drug-testing',
+          category: 'drug-testing',
+          title: `${t.testType || 'Drug'} Test — ${resultLabel}${t.isRandom ? ' (Random)' : ''}`,
+          status: t.result ? 'completed' : 'upcoming',
+          icon: <FlaskConical className="size-3.5" />,
+        })
+      } catch { /* skip */ }
     })
 
     // NA meetings
-    caseData.naMeetings?.forEach((m) => {
-      events.push({
-        id: m.id,
-        date: m.date,
-        type: 'na-meetings',
-        category: 'na-meetings',
-        title: `NA Meeting${m.meetingName ? `: ${m.meetingName}` : ''}${m.isVerified ? ' ✓ Verified' : ''}`,
-        status: m.isVerified ? 'completed' : 'upcoming',
-        icon: <Users className="size-3.5" />,
-      })
+    const naMeetings = Array.isArray(caseData.naMeetings) ? caseData.naMeetings : []
+    naMeetings.forEach((m) => {
+      if (!m?.date) return
+      try {
+        events.push({
+          id: m.id,
+          date: m.date,
+          type: 'na-meetings',
+          category: 'na-meetings',
+          title: `NA Meeting${m.meetingName ? `: ${m.meetingName}` : ''}${m.isVerified ? ' ✓ Verified' : ''}`,
+          status: m.isVerified ? 'completed' : 'upcoming',
+          icon: <Users className="size-3.5" />,
+        })
+      } catch { /* skip */ }
     })
 
     // Supervised visits
-    caseData.supervisedVisits?.forEach((v) => {
-      events.push({
-        id: v.id,
-        date: v.date,
-        type: 'supervised-visits',
-        category: 'supervised-visits',
-        title: `${v.visitType || 'Supervised'} Visit${v.supervisorName ? ` with ${v.supervisorName}` : ''}`,
-        status: v.isCompleted ? 'completed' : isFuture(parseISO(v.date)) ? 'upcoming' : 'pending',
-        icon: <Eye className="size-3.5" />,
-      })
+    const supervisedVisits = Array.isArray(caseData.supervisedVisits) ? caseData.supervisedVisits : []
+    supervisedVisits.forEach((v) => {
+      if (!v?.date) return
+      try {
+        events.push({
+          id: v.id,
+          date: v.date,
+          type: 'supervised-visits',
+          category: 'supervised-visits',
+          title: `${v.visitType || 'Supervised'} Visit${v.supervisorName ? ` with ${v.supervisorName}` : ''}`,
+          status: safeEventStatus(v.date, v.isCompleted),
+          icon: <Eye className="size-3.5" />,
+        })
+      } catch { /* skip */ }
     })
 
     // Court dates
-    caseData.courtDates?.forEach((c) => {
-      events.push({
-        id: c.id,
-        date: c.date,
-        type: 'legal',
-        category: 'legal',
-        title: `${c.hearingType || 'Court'} Hearing${c.outcome ? ` — ${c.outcome}` : ''}`,
-        status: c.isCompleted ? 'completed' : 'upcoming',
-        icon: <Gavel className="size-3.5" />,
-      })
+    const courtDates = Array.isArray(caseData.courtDates) ? caseData.courtDates : []
+    courtDates.forEach((c) => {
+      if (!c?.date) return
+      try {
+        events.push({
+          id: c.id,
+          date: c.date,
+          type: 'legal',
+          category: 'legal',
+          title: `${c.hearingType || 'Court'} Hearing${c.outcome ? ` — ${c.outcome}` : ''}`,
+          status: c.isCompleted ? 'completed' : 'upcoming',
+          icon: <Gavel className="size-3.5" />,
+        })
+      } catch { /* skip */ }
     })
 
     // Parenting classes
-    caseData.parentingClasses?.forEach((p) => {
-      events.push({
-        id: p.id,
-        date: p.date,
-        type: 'parenting-classes',
-        category: 'parenting-classes',
-        title: `Parenting Class${p.className ? `: ${p.className}` : ''}${p.hasCertificate ? ' 🏅' : ''}`,
-        status: p.isCompleted ? 'completed' : isFuture(parseISO(p.date)) ? 'upcoming' : 'pending',
-        icon: <BookOpen className="size-3.5" />,
-      })
+    const parentingClasses = Array.isArray(caseData.parentingClasses) ? caseData.parentingClasses : []
+    parentingClasses.forEach((p) => {
+      if (!p?.date) return
+      try {
+        events.push({
+          id: p.id,
+          date: p.date,
+          type: 'parenting-classes',
+          category: 'parenting-classes',
+          title: `Parenting Class${p.className ? `: ${p.className}` : ''}${p.hasCertificate ? ' 🏅' : ''}`,
+          status: safeEventStatus(p.date, p.isCompleted),
+          icon: <BookOpen className="size-3.5" />,
+        })
+      } catch { /* skip */ }
     })
 
     // Milestones
-    caseData.milestones?.forEach((m) => {
-      events.push({
-        id: m.id,
-        date: m.completedAt || m.targetDate || caseData.createdAt,
-        type: 'milestone',
-        category: m.category,
-        title: m.title,
-        status: m.isCompleted ? 'completed' : 'upcoming',
-        icon: <Flag className="size-3.5" />,
-      })
+    const milestones = Array.isArray(caseData.milestones) ? caseData.milestones : []
+    milestones.forEach((m) => {
+      if (!m) return
+      try {
+        events.push({
+          id: m.id,
+          date: m.completedAt || m.targetDate || caseData.createdAt,
+          type: 'milestone',
+          category: m.category,
+          title: m.title,
+          status: m.isCompleted ? 'completed' : 'upcoming',
+          icon: <Flag className="size-3.5" />,
+        })
+      } catch { /* skip */ }
     })
 
-    return events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    return events.sort((a, b) => {
+      try {
+        return new Date(a.date).getTime() - new Date(b.date).getTime()
+      } catch {
+        return 0
+      }
+    })
+    } catch {
+      return []
+    }
   }, [caseData])
 
   // Computed stats
   const stats = useMemo(() => {
     if (!caseData) return null
 
+    try {
     const requirements = caseData.requirements || []
     const completedReqs = requirements.filter((r) => r.isCompleted).length
     const totalReqs = requirements.length
 
-    const drugTests = caseData.drugTests || []
+    const drugTests = Array.isArray(caseData.drugTests) ? caseData.drugTests : []
     const negativeTests = drugTests.filter((t) => t.result === 'negative').length
     const totalTests = drugTests.filter((t) => t.result).length
 
@@ -280,22 +348,35 @@ export function DashboardView() {
     const completedSteps = naSteps.filter((s) => s.isCompleted).length
     const totalSteps = naSteps.length || 12
 
-    const counselingSessions = caseData.counselingSessions || []
+    const counselingSessions = Array.isArray(caseData.counselingSessions) ? caseData.counselingSessions : []
     const completedSessions = counselingSessions.filter((s) => s.isCompleted).length
     const upcomingSessions = counselingSessions.filter(
-      (s) => !s.isCompleted && isFuture(parseISO(s.date))
+      (s) => {
+        if (s.isCompleted) return false
+        try {
+          const d = parseISO(s.date)
+          return isFuture(d)
+        } catch {
+          return false
+        }
+      }
     ).length
 
-    const visits = caseData.supervisedVisits || []
+    const visits = Array.isArray(caseData.supervisedVisits) ? caseData.supervisedVisits : []
     const completedVisits = visits.filter((v) => v.isCompleted).length
     const visitTypes = [...new Set(visits.filter((v) => v.isCompleted).map((v) => v.visitType).filter(Boolean))]
     const visitProgression = visitTypes.join(' → ') || 'Starting visits'
 
-    
-    const removalDate = caseData.removalDate ? parseISO(caseData.removalDate) : null
-    const targetDate = caseData.targetReunificationDate ? parseISO(caseData.targetReunificationDate) : null
-    const daysInCase = removalDate ? Math.max(0, differenceInDays(new Date(), removalDate)) : 0
-    const daysUntilTarget = targetDate ? Math.max(0, differenceInDays(targetDate, new Date())) : null
+    let daysInCase = 0
+    let daysUntilTarget: number | null = null
+    try {
+      const removalDate = caseData.removalDate ? parseISO(caseData.removalDate) : null
+      const targetDate = caseData.targetReunificationDate ? parseISO(caseData.targetReunificationDate) : null
+      daysInCase = removalDate ? Math.max(0, differenceInDays(new Date(), removalDate)) : 0
+      daysUntilTarget = targetDate ? Math.max(0, differenceInDays(targetDate, new Date())) : null
+    } catch {
+      // Use defaults
+    }
 
     return {
       completedReqs,
@@ -314,33 +395,64 @@ export function DashboardView() {
       daysInCase,
       daysUntilTarget,
     }
+    } catch {
+      return null
+    }
   }, [caseData])
 
   // Upcoming events (next 7 days)
   const upcomingEvents = useMemo(() => {
-    const now = startOfDay(new Date())
-    const weekLater = addDays(now, 7)
-    return allEvents
-      .filter((e) => {
-        const d = parseISO(e.date)
-        return isFuture(d) || isToday(d)
-      })
-      .filter((e) => isWithinInterval(parseISO(e.date), { start: now, end: weekLater }))
-      .slice(0, 10)
+    try {
+      const now = startOfDay(new Date())
+      const weekLater = addDays(now, 7)
+      return allEvents
+        .filter((e) => {
+          try {
+            const d = parseISO(e.date)
+            return isFuture(d) || isToday(d)
+          } catch {
+            return false
+          }
+        })
+        .filter((e) => {
+          try {
+            return isWithinInterval(parseISO(e.date), { start: now, end: weekLater })
+          } catch {
+            return false
+          }
+        })
+        .slice(0, 10)
+    } catch {
+      return []
+    }
   }, [allEvents])
 
   // Recent activity (last 7 days, completed)
   const recentActivity = useMemo(() => {
-    const now = startOfDay(new Date())
-    const weekAgo = addDays(now, -7)
-    return allEvents
-      .filter((e) => e.status === 'completed')
-      .filter((e) => {
-        const d = parseISO(e.date)
-        return isWithinInterval(d, { start: weekAgo, end: now }) || isToday(d)
-      })
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 10)
+    try {
+      const now = startOfDay(new Date())
+      const weekAgo = addDays(now, -7)
+      return allEvents
+        .filter((e) => e.status === 'completed')
+        .filter((e) => {
+          try {
+            const d = parseISO(e.date)
+            return isWithinInterval(d, { start: weekAgo, end: now }) || isToday(d)
+          } catch {
+            return false
+          }
+        })
+        .sort((a, b) => {
+          try {
+            return new Date(b.date).getTime() - new Date(a.date).getTime()
+          } catch {
+            return 0
+          }
+        })
+        .slice(0, 10)
+    } catch {
+      return []
+    }
   }, [allEvents])
 
   // --- RENDER ---
@@ -354,10 +466,15 @@ export function DashboardView() {
   }
 
   const formatEventDate = (dateStr: string) => {
-    const d = parseISO(dateStr)
-    if (isToday(d)) return 'Today'
-    if (isTomorrow(d)) return 'Tomorrow'
-    return format(d, 'EEE, MMM d')
+    try {
+      const d = parseISO(dateStr)
+      if (isNaN(d.getTime())) return dateStr
+      if (isToday(d)) return 'Today'
+      if (isTomorrow(d)) return 'Tomorrow'
+      return format(d, 'EEE, MMM d')
+    } catch {
+      return dateStr
+    }
   }
 
   return (
@@ -510,7 +627,7 @@ export function DashboardView() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{event.title}</p>
-                        <p className="text-xs text-muted-foreground">{format(event.date, 'MMM d, yyyy')}</p>
+                        <p className="text-xs text-muted-foreground">{formatEventDate(event.date)}</p>
                       </div>
                       <Badge
                         variant="outline"
@@ -526,6 +643,102 @@ export function DashboardView() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Quick Summary Card */}
+      <Card className={isPro ? 'border-emerald-200 dark:border-emerald-800' : 'border-amber-200 dark:border-amber-800'}>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileText className="size-4 text-emerald-600" />
+              Case Summary
+              {isPro && <ProBadge size="sm" />}
+            </CardTitle>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-1.5"
+              onClick={() => setActiveView('progress')}
+            >
+              <FileText className="size-3.5" />
+              Full Report
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {stats ? (
+            <div className="space-y-3">
+              {/* Basic Summary - always visible */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 p-3 text-center">
+                  <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400">{stats.reqProgress}%</p>
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400/70">Overall Progress</p>
+                </div>
+                <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 p-3 text-center">
+                  <p className="text-xl font-bold text-amber-700 dark:text-amber-400">{stats.completedReqs}/{stats.totalReqs}</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400/70">Requirements</p>
+                </div>
+                <div className="rounded-lg bg-sky-50 dark:bg-sky-950/20 p-3 text-center">
+                  <p className="text-xl font-bold text-sky-700 dark:text-sky-400">{stats.drugTestPct}%</p>
+                  <p className="text-xs text-sky-600 dark:text-sky-400/70">Clean Tests</p>
+                </div>
+                <div className="rounded-lg bg-violet-50 dark:bg-violet-950/20 p-3 text-center">
+                  <p className="text-xl font-bold text-violet-700 dark:text-violet-400">{stats.completedSteps}/12</p>
+                  <p className="text-xs text-violet-600 dark:text-violet-400/70">NA Steps</p>
+                </div>
+              </div>
+
+              {/* Free basic text summary */}
+              <div className="bg-muted/50 rounded-lg p-3 border">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Basic Overview</p>
+                <p className="text-sm text-foreground whitespace-pre-line">
+                  {`Case: ${caseData?.caseNumber || 'N/A'} — ${stats.reqProgress}% complete\n` +
+                   `${stats.completedReqs} of ${stats.totalReqs} requirements done • ${stats.completedSessions} counseling sessions\n` +
+                   `${stats.negativeTests} clean drug tests • ${stats.completedSteps}/12 NA steps • ${stats.completedVisits} visits completed`}
+                </p>
+              </div>
+
+              {/* Pro preview / upgrade prompt for free users */}
+              {!isPro && (
+                <div className="relative">
+                  <div className="absolute inset-0 z-10 bg-background/70 backdrop-blur-sm rounded-lg flex items-center justify-center gap-3 p-4">
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1.5 mb-2">
+                        <Lock className="size-4 text-amber-500" />
+                        <span className="font-semibold text-sm text-foreground">Pro Report Available</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground max-w-xs mx-auto mb-3">
+                        Get the full court-ready report with achievements, compliance details, areas needing attention, and professional formatting.
+                      </p>
+                      <Button
+                        size="sm"
+                        className="gap-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white border-0"
+                        onClick={() => setUpgradeDialogOpen(true)}
+                      >
+                        <Sparkles className="size-3.5" />
+                        Upgrade to Pro — $4.99/mo
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="pointer-events-none select-none bg-muted/30 rounded-lg p-3 border opacity-60">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Pro Report Includes:</p>
+                    <div className="space-y-1.5 text-xs text-muted-foreground">
+                      <p>✓ Achievements & completed milestones</p>
+                      <p>✓ Compliance details by category</p>
+                      <p>✓ Areas on track vs. needing attention</p>
+                      <p>✓ Remaining requirements with due dates</p>
+                      <p>✓ Professional court-ready formatting</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Add data to your case to see a summary
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Quick Actions */}
       <Card>
