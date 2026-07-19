@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "buildCommand": "bun run build",
+  "buildCommand": "node scripts/setup-db-provider.js && prisma generate && prisma db push && next build",
   "installCommand": "bun install",
   "regions": ["iad1"]
 }

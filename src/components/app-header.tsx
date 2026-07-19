@@ -65,7 +65,7 @@ export function AppHeader() {
           onClick={() => setActiveView('go-pro')}
         >
           <Sparkles className="size-3.5" />
-          <span className="sm:inline">Go Pro</span>
+          <span>Go Pro</span>
         </Button>
       )}
 
