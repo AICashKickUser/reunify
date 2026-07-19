@@ -92,3 +92,24 @@ Stage Summary:
 - Download URL (ZIP): https://reunify-six.vercel.app/api/download?file=reunify-1.1.0.zip
 - The /api/download route forces file download with Content-Disposition header
 - ZIP format recommended for iPad users who can't download .aab files directly
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Fix Timeline crash and Go Pro visibility issues
+
+Work Log:
+- Diagnosed Timeline crash: parseISO/isFuture/format calls throwing on invalid dates
+- Added safeParseDate and safeEventStatus helper functions to timeline-view.tsx
+- Wrapped all date-fns calls in try-catch blocks throughout timeline view
+- Added null date checks (if (!s.date) return) for each event type
+- Added milestone category to CATEGORY_COLORS map
+- Added prominent "Go Pro" button to app header (always visible)
+- Added ProBadge display when user is Pro, Go Pro button when not
+- Added "Upgrade to Pro" card to welcome screen
+- Pushed all fixes to Vercel via git push
+
+Stage Summary:
+- Timeline should no longer crash - all date parsing is now safe
+- Go Pro is now accessible from: header button, sidebar, welcome screen card
+- Changes deployed to reunify-six.vercel.app via Vercel auto-deploy
