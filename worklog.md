@@ -70,3 +70,25 @@ Stage Summary:
 - Feature graphic: /home/z/my-project/android-build/feature-graphic.png
 - Phone screenshots: /home/z/my-project/android-build/screenshot-phone-{1,2}.png
 - Digital Asset Links deployed at: https://reunify-six.vercel.app/.well-known/assetlinks.json
+
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix Play Console AAB upload errors and create iPad-compatible download
+
+Work Log:
+- Diagnosed three Play Console errors: missing AAB upload, version code conflict, no bundles added
+- Found that existing AAB (versionCode 1) needed to be updated to versionCode 2
+- Built new AAB with @bubblewrap/core - versionCode 2, versionName 1.1.0
+- Created /api/download route with Content-Disposition header for iPad download compatibility
+- Created ZIP versions of AAB for easier iPad download
+- Signed AAB with existing keystore (reunify-key.jks)
+- Pushed changes to Vercel for deployment
+- Tested download API locally - confirmed working with proper headers
+
+Stage Summary:
+- New AAB: reunify-1.1.0.aab (versionCode 2, versionName 1.1.0) - 1.2MB
+- Download URL (AAB): https://reunify-six.vercel.app/api/download?file=reunify-1.1.0.aab
+- Download URL (ZIP): https://reunify-six.vercel.app/api/download?file=reunify-1.1.0.zip
+- The /api/download route forces file download with Content-Disposition header
+- ZIP format recommended for iPad users who can't download .aab files directly
