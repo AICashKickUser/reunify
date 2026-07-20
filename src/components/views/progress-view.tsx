@@ -172,8 +172,8 @@ function CircularProgress({
   const offset = circumference - (value / 100) * circumference
 
   return (
-    <div className="relative inline-flex items-center justify-center">
-      <svg width={size} height={size} className="-rotate-90">
+    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size, maxWidth: '100%' }}>
+      <svg viewBox={`0 0 ${size} ${size}`} className="-rotate-90 w-full h-full" style={{ maxWidth: size, maxHeight: size }}>
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -197,7 +197,7 @@ function CircularProgress({
         />
       </svg>
       <div className="absolute flex flex-col items-center justify-center">
-        <span className="text-4xl font-bold text-foreground">{value}%</span>
+        <span className="text-3xl sm:text-4xl font-bold text-foreground">{value}%</span>
         <span className="text-xs text-muted-foreground">Overall</span>
       </div>
     </div>
@@ -1322,12 +1322,14 @@ export function ProgressView() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-x-hidden">
       {/* Overall Progress */}
-      <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/20 dark:to-background">
-        <CardContent className="p-6 sm:p-8">
-          <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:justify-center">
-            <CircularProgress value={overallProgress} />
+      <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/20 dark:to-background overflow-hidden">
+        <CardContent className="p-4 sm:p-6 md:p-8">
+          <div className="flex flex-col items-center gap-4 sm:gap-6 sm:flex-row sm:items-center sm:justify-center">
+            <div className="w-[140px] h-[140px] sm:w-[180px] sm:h-[180px]">
+              <CircularProgress value={overallProgress} size={180} />
+            </div>
             <div className="text-center sm:text-left max-w-md">
               <div className="flex items-center justify-center gap-2 sm:justify-start">
                 <Sparkles className="size-5 text-emerald-600" />
@@ -1456,7 +1458,7 @@ export function ProgressView() {
             <CardTitle className="text-base">Progress Radar</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[300px] w-full">
+            <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[220px] sm:max-h-[300px] w-full">
               <RadarChart data={radarData}>
                 <PolarGrid />
                 <PolarAngleAxis
