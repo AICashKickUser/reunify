@@ -172,8 +172,8 @@ function CircularProgress({
   const offset = circumference - (value / 100) * circumference
 
   return (
-    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size, maxWidth: '100%' }}>
-      <svg viewBox={`0 0 ${size} ${size}`} className="-rotate-90 w-full h-full" style={{ maxWidth: size, maxHeight: size }}>
+    <div className="relative w-full h-full flex items-center justify-center">
+      <svg viewBox={`0 0 ${size} ${size}`} className="-rotate-90 w-full h-full max-w-[180px] max-h-[180px]">
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -197,7 +197,7 @@ function CircularProgress({
         />
       </svg>
       <div className="absolute flex flex-col items-center justify-center">
-        <span className="text-3xl sm:text-4xl font-bold text-foreground">{value}%</span>
+        <span className="text-2xl sm:text-4xl font-bold text-foreground">{value}%</span>
         <span className="text-xs text-muted-foreground">Overall</span>
       </div>
     </div>
@@ -1322,12 +1322,12 @@ export function ProgressView() {
   }
 
   return (
-    <div className="space-y-6 overflow-x-hidden">
+    <div className="space-y-4 sm:space-y-6 overflow-x-hidden">
       {/* Overall Progress */}
       <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/20 dark:to-background overflow-hidden">
         <CardContent className="p-4 sm:p-6 md:p-8">
           <div className="flex flex-col items-center gap-4 sm:gap-6 sm:flex-row sm:items-center sm:justify-center">
-            <div className="w-[140px] h-[140px] sm:w-[180px] sm:h-[180px]">
+            <div className="w-[130px] h-[130px] sm:w-[180px] sm:h-[180px] shrink-0">
               <CircularProgress value={overallProgress} size={180} />
             </div>
             <div className="text-center sm:text-left max-w-md">
@@ -1346,17 +1346,10 @@ export function ProgressView() {
               <div className="mt-3 flex items-center gap-2 flex-wrap justify-center sm:justify-start">
                 <Button
                   className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
-                  onClick={() => {
-                    if (!isPro) {
-                      setUpgradeDialogOpen(true)
-                    } else {
-                      setSummaryOpen(true)
-                    }
-                  }}
+                  onClick={() => setSummaryOpen(true)}
                 >
                   <ClipboardCheck className="size-4" />
                   View Summary
-                  {!isPro && <ProBadge />}
                 </Button>
                 <Button
                   variant="outline"
@@ -1452,34 +1445,36 @@ export function ProgressView() {
             </Button>
           </div>
         )}
-        <div className={`grid gap-6 lg:grid-cols-2 ${!isPro ? 'pointer-events-none' : ''}`}>
+        <div className={`grid gap-4 sm:gap-6 lg:grid-cols-2 ${!isPro ? 'pointer-events-none' : ''}`}>
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Progress Radar</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[220px] sm:max-h-[300px] w-full">
-              <RadarChart data={radarData}>
-                <PolarGrid />
-                <PolarAngleAxis
-                  dataKey="category"
-                  tick={{ fontSize: 10 }}
-                />
-                <PolarRadiusAxis
-                  angle={30}
-                  domain={[0, 100]}
-                  tick={{ fontSize: 10 }}
-                />
-                <Radar
-                  name="Progress"
-                  dataKey="progress"
-                  stroke="#10b981"
-                  fill="#10b981"
-                  fillOpacity={0.3}
-                  strokeWidth={2}
-                />
-              </RadarChart>
-            </ChartContainer>
+            <div className="w-full max-h-[200px] sm:max-h-[300px] mx-auto">
+              <ChartContainer config={chartConfig} className="mx-auto aspect-square w-full h-full">
+                <RadarChart data={radarData}>
+                  <PolarGrid />
+                  <PolarAngleAxis
+                    dataKey="category"
+                    tick={{ fontSize: 9 }}
+                  />
+                  <PolarRadiusAxis
+                    angle={30}
+                    domain={[0, 100]}
+                    tick={{ fontSize: 9 }}
+                  />
+                  <Radar
+                    name="Progress"
+                    dataKey="progress"
+                    stroke="#10b981"
+                    fill="#10b981"
+                    fillOpacity={0.3}
+                    strokeWidth={2}
+                  />
+                </RadarChart>
+              </ChartContainer>
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -1487,22 +1482,24 @@ export function ProgressView() {
             <CardTitle className="text-base">Category Comparison</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="aspect-video w-full">
-              <BarChart data={barData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} />
-                <YAxis
-                  dataKey="name"
-                  type="category"
-                  width={100}
-                  tick={{ fontSize: 10 }}
-                />
-                <Tooltip
-                  formatter={(value: number) => [`${value}%`, 'Progress']}
-                />
-                <Bar dataKey="progress" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ChartContainer>
+            <div className="w-full">
+              <ChartContainer config={chartConfig} className="aspect-video w-full">
+                <BarChart data={barData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 9 }} />
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    width={80}
+                    tick={{ fontSize: 9 }}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => [`${value}%`, 'Progress']}
+                  />
+                  <Bar dataKey="progress" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ChartContainer>
+            </div>
           </CardContent>
         </Card>
         </div>
@@ -1539,17 +1536,10 @@ export function ProgressView() {
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Button
               className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
-              onClick={() => {
-                if (!isPro) {
-                  setUpgradeDialogOpen(true)
-                } else {
-                  setSummaryOpen(true)
-                }
-              }}
+              onClick={() => setSummaryOpen(true)}
             >
               <ClipboardCheck className="size-4" />
               Summary
-              {!isPro && <ProBadge />}
             </Button>
             <Button
               className="gap-2"

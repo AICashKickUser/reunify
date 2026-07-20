@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Crown, Check, Sparkles, ExternalLink, AlertCircle, AlertTriangle, RefreshCw, Copy } from 'lucide-react'
+import { Crown, Check, Sparkles, ExternalLink, AlertCircle, AlertTriangle, RefreshCw, ArrowLeft, Key } from 'lucide-react'
 import { useSubscriptionStore, PRO_FEATURES, PRO_PRICE_MONTHLY, PRO_PRICE_YEARLY, BillingPeriod } from '@/lib/subscription'
+import { useAppStore } from '@/lib/store'
 import { toast } from 'sonner'
 
 interface StripeConfig {
@@ -21,18 +22,21 @@ interface StripeConfig {
 
 export function GoProView() {
   const { tier, setTier, setSubscriptionData, stripeSessionId, cancelAtPeriodEnd, currentPeriodEnd, isTrial, trialEnd } = useSubscriptionStore()
+  const { goBack, viewHistory } = useAppStore()
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('yearly')
   const [upgrading, setUpgrading] = useState(false)
   const [managing, setManaging] = useState(false)
   const [stripeConfig, setStripeConfig] = useState<StripeConfig | null>(null)
   const [configLoading, setConfigLoading] = useState(true)
   const [hasCheckedOnce, setHasCheckedOnce] = useState(false)
+  const [activationCode, setActivationCode] = useState('')
+  const [showActivation, setShowActivation] = useState(false)
 
   useEffect(() => {
     checkConfig()
   }, [])
 
-  async function checkConfig() {
+  const checkConfig = useCallback(async () => {
     setConfigLoading(true)
     const isManualRecheck = hasCheckedOnce
     try {
@@ -41,9 +45,11 @@ export function GoProView() {
       setStripeConfig(data)
       
       if (data.configured) {
-        toast.success('Stripe is configured!', {
-          description: 'Payment is ready. You can now upgrade to Pro!',
-        })
+        if (isManualRecheck) {
+          toast.success('Stripe is configured!', {
+            description: 'Payment is ready. You can now upgrade to Pro!',
+          })
+        }
       } else if (isManualRecheck && data.missing && data.missing.length > 0) {
         toast.info('Still not configured', {
           description: `Missing: ${data.missing.join(', ')}. Make sure you've redeployed on Vercel after adding env vars.`,
@@ -56,6 +62,30 @@ export function GoProView() {
       setConfigLoading(false)
       setHasCheckedOnce(true)
     }
+  }, [hasCheckedOnce])
+
+  // Owner activation code handler
+  function handleActivation() {
+    // The activation code is "reunify-owner-2024" - this lets the developer use Pro features
+    if (activationCode === 'reunify-owner-2024') {
+      setSubscriptionData({
+        tier: 'pro',
+        stripeSessionId: 'owner-activation',
+        subscriptionStatus: 'active',
+        trialEnd: null,
+        currentPeriodEnd: Math.floor(Date.now() / 1000) + (365 * 24 * 60 * 60), // 1 year from now
+        cancelAtPeriodEnd: false,
+      })
+      toast.success('Pro activated!', {
+        description: 'You now have full access to all Pro features.',
+      })
+      setActivationCode('')
+      setShowActivation(false)
+    } else {
+      toast.error('Invalid activation code', {
+        description: 'Please check the code and try again.',
+      })
+    }
   }
 
   const isPro = tier === 'pro'
@@ -64,7 +94,6 @@ export function GoProView() {
   const savingsPercent = Math.round((1 - PRO_PRICE_YEARLY / (PRO_PRICE_MONTHLY * 12)) * 100)
 
   async function handleUpgrade() {
-    // If config isn't ready, check first
     if (stripeConfig && !stripeConfig.configured) {
       toast.error('Payment not set up yet', {
         description: `Missing: ${stripeConfig.missing.join(', ')}. These need to be configured in your Vercel dashboard.`,
@@ -84,7 +113,6 @@ export function GoProView() {
       const data = await res.json()
 
       if (data.url) {
-        // Redirect to Stripe Checkout
         window.location.href = data.url
       } else if (data.error) {
         if (res.status === 503) {
@@ -116,6 +144,14 @@ export function GoProView() {
       return
     }
 
+    // If owner-activated, just show info
+    if (stripeSessionId === 'owner-activation') {
+      toast.info('Owner access', {
+        description: 'Your Pro access was activated with an owner code. No subscription to manage.',
+      })
+      return
+    }
+
     setManaging(true)
     try {
       const res = await fetch('/api/stripe/portal', {
@@ -142,11 +178,12 @@ export function GoProView() {
   if (isPro) {
     const trialActive = isTrial()
     const periodEnd = currentPeriodEnd ? new Date(currentPeriodEnd * 1000).toLocaleDateString() : null
+    const isOwner = stripeSessionId === 'owner-activation'
 
     return (
-      <div className="flex flex-col items-center justify-center py-8 sm:py-12 px-4">
-        <div className="flex size-16 sm:size-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 shadow-lg mb-4">
-          <Crown className="size-8 sm:size-10 text-white" />
+      <div className="flex flex-col items-center justify-center py-6 sm:py-12 px-4">
+        <div className="flex size-14 sm:size-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 shadow-lg mb-3 sm:mb-4">
+          <Crown className="size-7 sm:size-10 text-white" />
         </div>
         <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">You&apos;re a Pro Member!</h2>
         <p className="text-muted-foreground text-center max-w-md text-sm sm:text-base">
@@ -154,7 +191,15 @@ export function GoProView() {
         </p>
 
         {/* Subscription status info */}
-        <div className="mt-4 text-center space-y-1">
+        <div className="mt-3 sm:mt-4 text-center space-y-1">
+          {isOwner && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800">
+              <Key className="size-3.5 text-emerald-600" />
+              <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                Owner Access — Full Pro
+              </span>
+            </div>
+          )}
           {trialActive && (
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
               <Sparkles className="size-3.5 text-amber-600" />
@@ -174,10 +219,10 @@ export function GoProView() {
         </div>
 
         {/* Manage subscription */}
-        {stripeSessionId && (
+        {stripeSessionId && !isOwner && (
           <Button
             variant="outline"
-            className="mt-4 gap-2"
+            className="mt-3 sm:mt-4 gap-2"
             onClick={handleManageSubscription}
             disabled={managing}
           >
@@ -186,9 +231,9 @@ export function GoProView() {
           </Button>
         )}
 
-        <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-lg w-full">
+        <div className="mt-4 sm:mt-6 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 max-w-lg w-full">
           {PRO_FEATURES.slice(0, 4).map((f) => (
-            <div key={f.key} className="text-center p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20">
+            <div key={f.key} className="text-center p-2 sm:p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20">
               <Check className="size-4 text-emerald-600 mx-auto mb-1" />
               <p className="text-xs font-medium">{f.label}</p>
             </div>
@@ -200,11 +245,22 @@ export function GoProView() {
 
   // Upgrade view
   return (
-    <div className="max-w-2xl mx-auto py-4 sm:py-6 space-y-6 px-1">
+    <div className="max-w-2xl mx-auto py-3 sm:py-6 space-y-4 sm:space-y-6 px-2 sm:px-4 overflow-y-auto">
+      {/* Back button for mobile */}
+      {viewHistory.length > 0 && (
+        <button
+          onClick={() => { goBack(); window.history.back() }}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2"
+        >
+          <ArrowLeft className="size-4" />
+          Back
+        </button>
+      )}
+
       {/* Header */}
-      <div className="text-center space-y-3">
-        <div className="flex size-16 sm:size-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 shadow-lg mx-auto">
-          <Crown className="size-8 sm:size-10 text-white" />
+      <div className="text-center space-y-2 sm:space-y-3">
+        <div className="flex size-14 sm:size-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 shadow-lg mx-auto">
+          <Crown className="size-7 sm:size-10 text-white" />
         </div>
         <h2 className="text-xl sm:text-2xl font-bold text-foreground">Upgrade to Reunify Pro</h2>
         <p className="text-muted-foreground max-w-md mx-auto text-sm sm:text-base">
@@ -215,10 +271,10 @@ export function GoProView() {
       {/* Config Warning with Setup Guide */}
       {!configLoading && stripeConfig && !stripeConfig.configured && (
         <Card className="border-orange-300 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20">
-          <CardContent className="p-4 space-y-4">
+          <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="size-5 text-orange-600 shrink-0 mt-0.5" />
-              <div className="space-y-2">
+              <div className="space-y-1 sm:space-y-2">
                 <p className="text-sm font-medium text-orange-800 dark:text-orange-300">
                   Payment setup incomplete
                 </p>
@@ -229,9 +285,9 @@ export function GoProView() {
             </div>
 
             {/* Missing variables list */}
-            <div className="space-y-2">
+            <div className="space-y-1.5 sm:space-y-2">
               {stripeConfig.missing.map((m) => (
-                <div key={m} className="flex items-center gap-2 px-3 py-1.5 rounded bg-orange-100/80 dark:bg-orange-900/30">
+                <div key={m} className="flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded bg-orange-100/80 dark:bg-orange-900/30">
                   <span className="text-xs font-mono font-medium text-orange-800 dark:text-orange-300">{m}</span>
                   {m === 'STRIPE_SECRET_KEY' && (
                     <span className="text-[10px] text-orange-600 dark:text-orange-400 ml-auto">sk_test_... or sk_live_...</span>
@@ -246,56 +302,15 @@ export function GoProView() {
               ))}
             </div>
 
-            {/* Step-by-step setup guide */}
-            <div className="space-y-3 pt-2">
-              <p className="text-xs font-semibold text-orange-800 dark:text-orange-300 uppercase tracking-wider">
-                Quick Setup Guide
-              </p>
-              <ol className="space-y-2 text-xs text-orange-700 dark:text-orange-400">
-                <li className="flex gap-2">
-                  <span className="shrink-0 size-5 rounded-full bg-orange-200 dark:bg-orange-800 flex items-center justify-center text-[10px] font-bold text-orange-800 dark:text-orange-200">1</span>
-                  <span>Go to <strong>Stripe Dashboard → Products</strong> and create a &quot;Reunify Pro&quot; product</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="shrink-0 size-5 rounded-full bg-orange-200 dark:bg-orange-800 flex items-center justify-center text-[10px] font-bold text-orange-800 dark:text-orange-200">2</span>
-                  <span>Add two prices: <strong>$4.99/month</strong> (recurring) and <strong>$39.99/year</strong> (recurring)</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="shrink-0 size-5 rounded-full bg-orange-200 dark:bg-orange-800 flex items-center justify-center text-[10px] font-bold text-orange-800 dark:text-orange-200">3</span>
-                  <span>Copy the <strong>price IDs</strong> (they start with &quot;price_&quot;) for each price</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="shrink-0 size-5 rounded-full bg-orange-200 dark:bg-orange-800 flex items-center justify-center text-[10px] font-bold text-orange-800 dark:text-orange-200">4</span>
-                  <span>Go to <strong>Vercel → Your Project → Settings → Environment Variables</strong></span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="shrink-0 size-5 rounded-full bg-orange-200 dark:bg-orange-800 flex items-center justify-center text-[10px] font-bold text-orange-800 dark:text-orange-200">5</span>
-                  <span>Add these 4 variables:<br/>
-                    <code className="px-1 py-0.5 rounded bg-orange-200 dark:bg-orange-800">STRIPE_SECRET_KEY</code> = your Stripe secret key<br/>
-                    <code className="px-1 py-0.5 rounded bg-orange-200 dark:bg-orange-800">STRIPE_PRICE_MONTHLY_ID</code> = monthly price ID<br/>
-                    <code className="px-1 py-0.5 rounded bg-orange-200 dark:bg-orange-800">STRIPE_PRICE_YEARLY_ID</code> = yearly price ID<br/>
-                    <code className="px-1 py-0.5 rounded bg-orange-200 dark:bg-orange-800">NEXT_PUBLIC_URL</code> = your app URL (e.g. https://yourapp.vercel.app)
-                  </span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="shrink-0 size-5 rounded-full bg-orange-200 dark:bg-orange-800 flex items-center justify-center text-[10px] font-bold text-orange-800 dark:text-orange-200">6</span>
-                  <span><strong>Redeploy</strong> on Vercel (Deployments → click ⋯ → Redeploy) — env vars only take effect after redeploy!</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="shrink-0 size-5 rounded-full bg-orange-200 dark:bg-orange-800 flex items-center justify-center text-[10px] font-bold text-orange-800 dark:text-orange-200">7</span>
-                  <span>Come back here and click <strong>Re-check Configuration</strong> below</span>
-                </li>
-              </ol>
-            </div>
-
-            {/* Refresh button */}
+            {/* Refresh button - uses useCallback to prevent full page reload */}
             <Button
               variant="outline"
               size="sm"
               className="w-full gap-2 border-orange-300 text-orange-700 hover:bg-orange-100 dark:border-orange-700 dark:text-orange-300 dark:hover:bg-orange-900/50"
               onClick={checkConfig}
+              disabled={configLoading}
             >
-              <RefreshCw className="size-3.5" />
+              <RefreshCw className={`size-3.5 ${configLoading ? 'animate-spin' : ''}`} />
               Re-check Configuration
             </Button>
           </CardContent>
@@ -306,7 +321,7 @@ export function GoProView() {
       <div className="flex items-center justify-center gap-2">
         <button
           onClick={() => setBillingPeriod('monthly')}
-          className={`px-4 sm:px-5 py-2 rounded-full text-sm font-medium transition-colors ${
+          className={`px-3 sm:px-5 py-2 rounded-full text-sm font-medium transition-colors ${
             billingPeriod === 'monthly'
               ? 'bg-emerald-600 text-white'
               : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -316,7 +331,7 @@ export function GoProView() {
         </button>
         <button
           onClick={() => setBillingPeriod('yearly')}
-          className={`px-4 sm:px-5 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${
+          className={`px-3 sm:px-5 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${
             billingPeriod === 'yearly'
               ? 'bg-emerald-600 text-white'
               : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -348,7 +363,7 @@ export function GoProView() {
             Everything in Free, plus:
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-2 sm:space-y-3">
           {PRO_FEATURES.map((feature) => (
             <div key={feature.key} className="flex items-start gap-3">
               <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 mt-0.5">
@@ -364,7 +379,7 @@ export function GoProView() {
       </Card>
 
       {/* CTA */}
-      <div className="text-center space-y-3">
+      <div className="text-center space-y-2 sm:space-y-3">
         <Button
           className="w-full max-w-sm h-12 bg-emerald-600 hover:bg-emerald-700 text-white text-base font-semibold gap-2"
           onClick={handleUpgrade}
@@ -387,6 +402,41 @@ export function GoProView() {
         <p className="text-xs text-muted-foreground">
           7-day free trial, then {billingPeriod === 'monthly' ? `$${PRO_PRICE_MONTHLY}/month` : `$${PRO_PRICE_YEARLY}/year`}. Cancel anytime.
         </p>
+      </div>
+
+      {/* Activation Code Section - for owner/developer access */}
+      <div className="pt-2">
+        {!showActivation ? (
+          <button
+            onClick={() => setShowActivation(true)}
+            className="mx-auto flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Key className="size-3" />
+            Have an activation code?
+          </button>
+        ) : (
+          <Card className="border-dashed">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Key className="size-4 text-muted-foreground" />
+                <p className="text-sm font-medium">Enter Activation Code</p>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={activationCode}
+                  onChange={(e) => setActivationCode(e.target.value)}
+                  placeholder="Enter your code"
+                  className="flex-1 h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleActivation() }}
+                />
+                <Button size="sm" onClick={handleActivation} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                  Activate
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )
