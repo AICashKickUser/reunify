@@ -295,6 +295,7 @@ function DayDetail({
 export function TimelineView() {
   const { activeCaseId } = useAppStore()
   const { data: caseData, isLoading, error } = useCase(activeCaseId)
+  const [renderError, setRenderError] = useState(false)
 
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     try {
@@ -557,6 +558,25 @@ export function TimelineView() {
 
   // --- RENDER ---
   if (isLoading) return <TimelineSkeleton />
+  if (renderError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 px-4">
+        <div className="flex size-16 items-center justify-center rounded-2xl bg-orange-100 dark:bg-orange-900/30 mb-4">
+          <AlertCircle className="size-8 text-orange-600 dark:text-orange-400" />
+        </div>
+        <h3 className="text-lg font-semibold text-foreground mb-2">Timeline Error</h3>
+        <p className="text-muted-foreground text-sm text-center max-w-sm mb-4">
+          Something went wrong rendering the timeline. This can happen on some mobile devices.
+        </p>
+        <Button
+          className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+          onClick={() => setRenderError(false)}
+        >
+          Try Again
+        </Button>
+      </div>
+    )
+  }
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4">

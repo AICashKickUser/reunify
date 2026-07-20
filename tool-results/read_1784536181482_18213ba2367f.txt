@@ -172,8 +172,8 @@
    172→  const offset = circumference - (value / 100) * circumference
    173→
    174→  return (
-   175→    <div className="relative inline-flex items-center justify-center">
-   176→      <svg width={size} height={size} className="-rotate-90">
+   175→    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size, maxWidth: '100%' }}>
+   176→      <svg viewBox={`0 0 ${size} ${size}`} className="-rotate-90 w-full h-full" style={{ maxWidth: size, maxHeight: size }}>
    177→        <circle
    178→          cx={size / 2}
    179→          cy={size / 2}
@@ -197,7 +197,7 @@
    197→        />
    198→      </svg>
    199→      <div className="absolute flex flex-col items-center justify-center">
-   200→        <span className="text-4xl font-bold text-foreground">{value}%</span>
+   200→        <span className="text-3xl sm:text-4xl font-bold text-foreground">{value}%</span>
    201→        <span className="text-xs text-muted-foreground">Overall</span>
    202→      </div>
    203→    </div>
@@ -1322,287 +1322,289 @@
   1322→  }
   1323→
   1324→  return (
-  1325→    <div className="space-y-6">
+  1325→    <div className="space-y-6 overflow-x-hidden">
   1326→      {/* Overall Progress */}
-  1327→      <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/20 dark:to-background">
-  1328→        <CardContent className="p-6 sm:p-8">
-  1329→          <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:justify-center">
-  1330→            <CircularProgress value={overallProgress} />
-  1331→            <div className="text-center sm:text-left max-w-md">
-  1332→              <div className="flex items-center justify-center gap-2 sm:justify-start">
-  1333→                <Sparkles className="size-5 text-emerald-600" />
-  1334→                <h2 className="text-xl font-bold text-foreground">
-  1335→                  Your Reunification Journey
-  1336→                </h2>
-  1337→              </div>
-  1338→              <p className="mt-1 text-lg font-semibold text-emerald-700 dark:text-emerald-400">
-  1339→                {motivation.title}
-  1340→              </p>
-  1341→              <p className="mt-2 text-sm text-muted-foreground">
-  1342→                {motivation.message}
-  1343→              </p>
-  1344→              <div className="mt-3 flex items-center gap-2 flex-wrap justify-center sm:justify-start">
-  1345→                <Button
-  1346→                  className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
-  1347→                  onClick={() => {
-  1348→                    if (!isPro) {
-  1349→                      setUpgradeDialogOpen(true)
-  1350→                    } else {
-  1351→                      setSummaryOpen(true)
-  1352→                    }
-  1353→                  }}
-  1354→                >
-  1355→                  <ClipboardCheck className="size-4" />
-  1356→                  View Summary
-  1357→                  {!isPro && <ProBadge />}
-  1358→                </Button>
-  1359→                <Button
-  1360→                  variant="outline"
-  1361→                  className="gap-2"
-  1362→                  onClick={() => {
-  1363→                    if (!isPro) {
-  1364→                      setUpgradeDialogOpen(true)
-  1365→                    } else if (caseData) {
-  1366→                      generatePDFReport(caseData as unknown as Record<string, unknown>, categories)
-  1367→                    }
-  1368→                  }}
-  1369→                >
-  1370→                  <FileText className="size-4" />
-  1371→                  PDF Report
-  1372→                  {!isPro && <ProBadge />}
-  1373→                </Button>
-  1374→              </div>
-  1375→              <div className="mt-4 flex items-center gap-4 justify-center sm:justify-start">
-  1376→                <div className="text-center">
-  1377→                  <p className="text-2xl font-bold text-foreground">
-  1378→                    {completedRequirements}
-  1379→                  </p>
-  1380→                  <p className="text-xs text-muted-foreground">Completed</p>
-  1381→                </div>
-  1382→                <ArrowRight className="size-4 text-muted-foreground" />
-  1383→                <div className="text-center">
-  1384→                  <p className="text-2xl font-bold text-foreground">
-  1385→                    {totalRequirements}
-  1386→                  </p>
-  1387→                  <p className="text-xs text-muted-foreground">Total Goals</p>
-  1388→                </div>
-  1389→              </div>
-  1390→            </div>
-  1391→          </div>
-  1392→        </CardContent>
-  1393→      </Card>
-  1394→
-  1395→      {/* Category Breakdown */}
-  1396→      <div>
-  1397→        <h2 className="text-lg font-semibold text-foreground mb-4">
-  1398→          Progress by Category
-  1399→        </h2>
-  1400→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-  1401→          {categories.map((cat) => (
-  1402→            <Card
-  1403→              key={cat.key}
-  1404→              className={`border-l-4 ${getStatusColor(cat.status)}`}
-  1405→            >
-  1406→              <CardContent className="p-4">
-  1407→                <div className="flex items-center justify-between mb-2">
-  1408→                  <div className="flex items-center gap-2">
-  1409→                    {cat.icon}
-  1410→                    <span className="font-medium text-sm text-foreground">
-  1411→                      {cat.label}
-  1412→                    </span>
-  1413→                  </div>
-  1414→                  {getStatusBadge(cat.status)}
-  1415→                </div>
-  1416→                <div className="mt-3 space-y-1">
-  1417→                  <div className="flex items-center justify-between text-xs">
-  1418→                    <span className="text-muted-foreground">
-  1419→                      {cat.statLabel}
-  1420→                    </span>
-  1421→                    <span className="font-semibold text-foreground">
-  1422→                      {cat.statValue}
-  1423→                    </span>
-  1424→                  </div>
-  1425→                  <Progress value={cat.progress} className="h-2" />
-  1426→                  <p className="text-xs text-muted-foreground text-right">
-  1427→                    {cat.progress}%
-  1428→                  </p>
-  1429→                </div>
-  1430→              </CardContent>
-  1431→            </Card>
-  1432→          ))}
-  1433→        </div>
-  1434→      </div>
-  1435→
-  1436→      {/* Charts — Pro Feature */}
-  1437→      <div className="relative">
-  1438→        {!isPro && (
-  1439→          <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center gap-3 p-6">
-  1440→            <Lock className="size-8 text-muted-foreground" />
-  1441→            <p className="text-sm font-medium text-foreground">Detailed Charts</p>
-  1442→            <p className="text-xs text-muted-foreground text-center">Upgrade to Pro to see radar and comparison charts</p>
-  1443→            <Button
-  1444→              size="sm"
-  1445→              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
-  1446→              onClick={() => setUpgradeDialogOpen(true)}
-  1447→            >
-  1448→              <Sparkles className="size-3.5" />
-  1449→              Upgrade to Pro
-  1450→            </Button>
-  1451→          </div>
-  1452→        )}
-  1453→        <div className={`grid gap-6 lg:grid-cols-2 ${!isPro ? 'pointer-events-none' : ''}`}>
-  1454→        <Card>
-  1455→          <CardHeader>
-  1456→            <CardTitle className="text-base">Progress Radar</CardTitle>
-  1457→          </CardHeader>
-  1458→          <CardContent>
-  1459→            <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[300px] w-full">
-  1460→              <RadarChart data={radarData}>
-  1461→                <PolarGrid />
-  1462→                <PolarAngleAxis
-  1463→                  dataKey="category"
-  1464→                  tick={{ fontSize: 10 }}
-  1465→                />
-  1466→                <PolarRadiusAxis
-  1467→                  angle={30}
-  1468→                  domain={[0, 100]}
-  1469→                  tick={{ fontSize: 10 }}
-  1470→                />
-  1471→                <Radar
-  1472→                  name="Progress"
-  1473→                  dataKey="progress"
-  1474→                  stroke="#10b981"
-  1475→                  fill="#10b981"
-  1476→                  fillOpacity={0.3}
-  1477→                  strokeWidth={2}
-  1478→                />
-  1479→              </RadarChart>
-  1480→            </ChartContainer>
-  1481→          </CardContent>
-  1482→        </Card>
-  1483→        <Card>
-  1484→          <CardHeader>
-  1485→            <CardTitle className="text-base">Category Comparison</CardTitle>
-  1486→          </CardHeader>
-  1487→          <CardContent>
-  1488→            <ChartContainer config={chartConfig} className="aspect-video w-full">
-  1489→              <BarChart data={barData} layout="vertical">
-  1490→                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-  1491→                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} />
-  1492→                <YAxis
-  1493→                  dataKey="name"
-  1494→                  type="category"
-  1495→                  width={100}
-  1496→                  tick={{ fontSize: 10 }}
-  1497→                />
-  1498→                <Tooltip
-  1499→                  formatter={(value: number) => [`${value}%`, 'Progress']}
-  1500→                />
-  1501→                <Bar dataKey="progress" radius={[0, 4, 4, 0]} />
-  1502→              </BarChart>
-  1503→            </ChartContainer>
-  1504→          </CardContent>
-  1505→        </Card>
-  1506→        </div>
-  1507→      </div>
-  1508→
-  1509→      {/* Timeline Summary */}
-  1510→      <Card>
-  1511→        <CardHeader>
-  1512→          <CardTitle className="text-base flex items-center gap-2">
-  1513→            <TrendingUp className="size-5 text-emerald-600" />
-  1514→            Key Milestones Timeline
-  1515→          </CardTitle>
-  1516→        </CardHeader>
-  1517→        <CardContent>
-  1518→          {milestones.length === 0 ? (
-  1519→            <p className="text-sm text-muted-foreground text-center py-4">
-  1520→              No milestones tracked yet. Complete activities to see your
-  1521→              progress here.
-  1522→            </p>
-  1523→          ) : (
-  1524→            <TimelineSummary milestones={milestones} caseData={caseData} />
-  1525→          )}
-  1526→        </CardContent>
-  1527→      </Card>
-  1528→
-  1529→      {/* Export & Report */}
-  1530→      <Separator />
-  1531→      <div className="space-y-4 py-4">
-  1532→        <div className="flex flex-col items-center gap-3">
-  1533→          <p className="text-sm text-muted-foreground text-center">
-  1534→            Export your complete case data or print a progress report to share
-  1535→            with your caseworker, attorney, or judge.
-  1536→          </p>
-  1537→          <div className="flex flex-wrap items-center justify-center gap-3">
-  1538→            <Button
-  1539→              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
-  1540→              onClick={() => {
-  1541→                if (!isPro) {
-  1542→                  setUpgradeDialogOpen(true)
-  1543→                } else {
-  1544→                  setSummaryOpen(true)
-  1545→                }
-  1546→              }}
-  1547→            >
-  1548→              <ClipboardCheck className="size-4" />
-  1549→              Summary
-  1550→              {!isPro && <ProBadge />}
-  1551→            </Button>
-  1552→            <Button
-  1553→              className="gap-2"
-  1554→              onClick={() => {
-  1555→                if (!isPro) {
-  1556→                  setUpgradeDialogOpen(true)
-  1557→                } else {
-  1558→                  handleExport()
-  1559→                }
-  1560→              }}
-  1561→              disabled={exporting && isPro}
-  1562→            >
-  1563→              {exporting ? (
-  1564→                <Loader2 className="size-4 animate-spin" />
-  1565→              ) : (
-  1566→                <Download className="size-4" />
-  1567→              )}
-  1568→              {exporting ? 'Exporting...' : 'Export Case Data'}
-  1569→              {!isPro && <ProBadge />}
-  1570→            </Button>
-  1571→            <Button
-  1572→              variant="outline"
-  1573→              className="gap-2"
-  1574→              onClick={() => {
-  1575→                if (!isPro) {
-  1576→                  setUpgradeDialogOpen(true)
-  1577→                } else if (caseData) {
-  1578→                  generatePDFReport(caseData as unknown as Record<string, unknown>, categories)
-  1579→                }
-  1580→              }}
-  1581→            >
-  1582→              <FileText className="size-4" />
-  1583→              PDF Report
-  1584→              {!isPro && <ProBadge />}
-  1585→            </Button>
-  1586→            <Button
-  1587→              variant="outline"
-  1588→              className="gap-2"
-  1589→              onClick={() => window.print()}
-  1590→            >
-  1591→              <Printer className="size-4" />
-  1592→              Print
-  1593→            </Button>
-  1594→          </div>
-  1595→        </div>
-  1596→        <PrivacyNotice />
-  1597→      </div>
-  1598→
-  1599→      <SummaryDialog
-  1600→        open={summaryOpen}
-  1601→        onOpenChange={setSummaryOpen}
-  1602→        caseData={caseData}
-  1603→        categories={categories}
-  1604→      />
-  1605→    </div>
-  1606→  )
-  1607→}
-  1608→
+  1327→      <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/20 dark:to-background overflow-hidden">
+  1328→        <CardContent className="p-4 sm:p-6 md:p-8">
+  1329→          <div className="flex flex-col items-center gap-4 sm:gap-6 sm:flex-row sm:items-center sm:justify-center">
+  1330→            <div className="w-[140px] h-[140px] sm:w-[180px] sm:h-[180px]">
+  1331→              <CircularProgress value={overallProgress} size={180} />
+  1332→            </div>
+  1333→            <div className="text-center sm:text-left max-w-md">
+  1334→              <div className="flex items-center justify-center gap-2 sm:justify-start">
+  1335→                <Sparkles className="size-5 text-emerald-600" />
+  1336→                <h2 className="text-xl font-bold text-foreground">
+  1337→                  Your Reunification Journey
+  1338→                </h2>
+  1339→              </div>
+  1340→              <p className="mt-1 text-lg font-semibold text-emerald-700 dark:text-emerald-400">
+  1341→                {motivation.title}
+  1342→              </p>
+  1343→              <p className="mt-2 text-sm text-muted-foreground">
+  1344→                {motivation.message}
+  1345→              </p>
+  1346→              <div className="mt-3 flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+  1347→                <Button
+  1348→                  className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+  1349→                  onClick={() => {
+  1350→                    if (!isPro) {
+  1351→                      setUpgradeDialogOpen(true)
+  1352→                    } else {
+  1353→                      setSummaryOpen(true)
+  1354→                    }
+  1355→                  }}
+  1356→                >
+  1357→                  <ClipboardCheck className="size-4" />
+  1358→                  View Summary
+  1359→                  {!isPro && <ProBadge />}
+  1360→                </Button>
+  1361→                <Button
+  1362→                  variant="outline"
+  1363→                  className="gap-2"
+  1364→                  onClick={() => {
+  1365→                    if (!isPro) {
+  1366→                      setUpgradeDialogOpen(true)
+  1367→                    } else if (caseData) {
+  1368→                      generatePDFReport(caseData as unknown as Record<string, unknown>, categories)
+  1369→                    }
+  1370→                  }}
+  1371→                >
+  1372→                  <FileText className="size-4" />
+  1373→                  PDF Report
+  1374→                  {!isPro && <ProBadge />}
+  1375→                </Button>
+  1376→              </div>
+  1377→              <div className="mt-4 flex items-center gap-4 justify-center sm:justify-start">
+  1378→                <div className="text-center">
+  1379→                  <p className="text-2xl font-bold text-foreground">
+  1380→                    {completedRequirements}
+  1381→                  </p>
+  1382→                  <p className="text-xs text-muted-foreground">Completed</p>
+  1383→                </div>
+  1384→                <ArrowRight className="size-4 text-muted-foreground" />
+  1385→                <div className="text-center">
+  1386→                  <p className="text-2xl font-bold text-foreground">
+  1387→                    {totalRequirements}
+  1388→                  </p>
+  1389→                  <p className="text-xs text-muted-foreground">Total Goals</p>
+  1390→                </div>
+  1391→              </div>
+  1392→            </div>
+  1393→          </div>
+  1394→        </CardContent>
+  1395→      </Card>
+  1396→
+  1397→      {/* Category Breakdown */}
+  1398→      <div>
+  1399→        <h2 className="text-lg font-semibold text-foreground mb-4">
+  1400→          Progress by Category
+  1401→        </h2>
+  1402→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  1403→          {categories.map((cat) => (
+  1404→            <Card
+  1405→              key={cat.key}
+  1406→              className={`border-l-4 ${getStatusColor(cat.status)}`}
+  1407→            >
+  1408→              <CardContent className="p-4">
+  1409→                <div className="flex items-center justify-between mb-2">
+  1410→                  <div className="flex items-center gap-2">
+  1411→                    {cat.icon}
+  1412→                    <span className="font-medium text-sm text-foreground">
+  1413→                      {cat.label}
+  1414→                    </span>
+  1415→                  </div>
+  1416→                  {getStatusBadge(cat.status)}
+  1417→                </div>
+  1418→                <div className="mt-3 space-y-1">
+  1419→                  <div className="flex items-center justify-between text-xs">
+  1420→                    <span className="text-muted-foreground">
+  1421→                      {cat.statLabel}
+  1422→                    </span>
+  1423→                    <span className="font-semibold text-foreground">
+  1424→                      {cat.statValue}
+  1425→                    </span>
+  1426→                  </div>
+  1427→                  <Progress value={cat.progress} className="h-2" />
+  1428→                  <p className="text-xs text-muted-foreground text-right">
+  1429→                    {cat.progress}%
+  1430→                  </p>
+  1431→                </div>
+  1432→              </CardContent>
+  1433→            </Card>
+  1434→          ))}
+  1435→        </div>
+  1436→      </div>
+  1437→
+  1438→      {/* Charts — Pro Feature */}
+  1439→      <div className="relative">
+  1440→        {!isPro && (
+  1441→          <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center gap-3 p-6">
+  1442→            <Lock className="size-8 text-muted-foreground" />
+  1443→            <p className="text-sm font-medium text-foreground">Detailed Charts</p>
+  1444→            <p className="text-xs text-muted-foreground text-center">Upgrade to Pro to see radar and comparison charts</p>
+  1445→            <Button
+  1446→              size="sm"
+  1447→              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+  1448→              onClick={() => setUpgradeDialogOpen(true)}
+  1449→            >
+  1450→              <Sparkles className="size-3.5" />
+  1451→              Upgrade to Pro
+  1452→            </Button>
+  1453→          </div>
+  1454→        )}
+  1455→        <div className={`grid gap-6 lg:grid-cols-2 ${!isPro ? 'pointer-events-none' : ''}`}>
+  1456→        <Card>
+  1457→          <CardHeader>
+  1458→            <CardTitle className="text-base">Progress Radar</CardTitle>
+  1459→          </CardHeader>
+  1460→          <CardContent>
+  1461→            <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[220px] sm:max-h-[300px] w-full">
+  1462→              <RadarChart data={radarData}>
+  1463→                <PolarGrid />
+  1464→                <PolarAngleAxis
+  1465→                  dataKey="category"
+  1466→                  tick={{ fontSize: 10 }}
+  1467→                />
+  1468→                <PolarRadiusAxis
+  1469→                  angle={30}
+  1470→                  domain={[0, 100]}
+  1471→                  tick={{ fontSize: 10 }}
+  1472→                />
+  1473→                <Radar
+  1474→                  name="Progress"
+  1475→                  dataKey="progress"
+  1476→                  stroke="#10b981"
+  1477→                  fill="#10b981"
+  1478→                  fillOpacity={0.3}
+  1479→                  strokeWidth={2}
+  1480→                />
+  1481→              </RadarChart>
+  1482→            </ChartContainer>
+  1483→          </CardContent>
+  1484→        </Card>
+  1485→        <Card>
+  1486→          <CardHeader>
+  1487→            <CardTitle className="text-base">Category Comparison</CardTitle>
+  1488→          </CardHeader>
+  1489→          <CardContent>
+  1490→            <ChartContainer config={chartConfig} className="aspect-video w-full">
+  1491→              <BarChart data={barData} layout="vertical">
+  1492→                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+  1493→                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} />
+  1494→                <YAxis
+  1495→                  dataKey="name"
+  1496→                  type="category"
+  1497→                  width={100}
+  1498→                  tick={{ fontSize: 10 }}
+  1499→                />
+  1500→                <Tooltip
+  1501→                  formatter={(value: number) => [`${value}%`, 'Progress']}
+  1502→                />
+  1503→                <Bar dataKey="progress" radius={[0, 4, 4, 0]} />
+  1504→              </BarChart>
+  1505→            </ChartContainer>
+  1506→          </CardContent>
+  1507→        </Card>
+  1508→        </div>
+  1509→      </div>
+  1510→
+  1511→      {/* Timeline Summary */}
+  1512→      <Card>
+  1513→        <CardHeader>
+  1514→          <CardTitle className="text-base flex items-center gap-2">
+  1515→            <TrendingUp className="size-5 text-emerald-600" />
+  1516→            Key Milestones Timeline
+  1517→          </CardTitle>
+  1518→        </CardHeader>
+  1519→        <CardContent>
+  1520→          {milestones.length === 0 ? (
+  1521→            <p className="text-sm text-muted-foreground text-center py-4">
+  1522→              No milestones tracked yet. Complete activities to see your
+  1523→              progress here.
+  1524→            </p>
+  1525→          ) : (
+  1526→            <TimelineSummary milestones={milestones} caseData={caseData} />
+  1527→          )}
+  1528→        </CardContent>
+  1529→      </Card>
+  1530→
+  1531→      {/* Export & Report */}
+  1532→      <Separator />
+  1533→      <div className="space-y-4 py-4">
+  1534→        <div className="flex flex-col items-center gap-3">
+  1535→          <p className="text-sm text-muted-foreground text-center">
+  1536→            Export your complete case data or print a progress report to share
+  1537→            with your caseworker, attorney, or judge.
+  1538→          </p>
+  1539→          <div className="flex flex-wrap items-center justify-center gap-3">
+  1540→            <Button
+  1541→              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+  1542→              onClick={() => {
+  1543→                if (!isPro) {
+  1544→                  setUpgradeDialogOpen(true)
+  1545→                } else {
+  1546→                  setSummaryOpen(true)
+  1547→                }
+  1548→              }}
+  1549→            >
+  1550→              <ClipboardCheck className="size-4" />
+  1551→              Summary
+  1552→              {!isPro && <ProBadge />}
+  1553→            </Button>
+  1554→            <Button
+  1555→              className="gap-2"
+  1556→              onClick={() => {
+  1557→                if (!isPro) {
+  1558→                  setUpgradeDialogOpen(true)
+  1559→                } else {
+  1560→                  handleExport()
+  1561→                }
+  1562→              }}
+  1563→              disabled={exporting && isPro}
+  1564→            >
+  1565→              {exporting ? (
+  1566→                <Loader2 className="size-4 animate-spin" />
+  1567→              ) : (
+  1568→                <Download className="size-4" />
+  1569→              )}
+  1570→              {exporting ? 'Exporting...' : 'Export Case Data'}
+  1571→              {!isPro && <ProBadge />}
+  1572→            </Button>
+  1573→            <Button
+  1574→              variant="outline"
+  1575→              className="gap-2"
+  1576→              onClick={() => {
+  1577→                if (!isPro) {
+  1578→                  setUpgradeDialogOpen(true)
+  1579→                } else if (caseData) {
+  1580→                  generatePDFReport(caseData as unknown as Record<string, unknown>, categories)
+  1581→                }
+  1582→              }}
+  1583→            >
+  1584→              <FileText className="size-4" />
+  1585→              PDF Report
+  1586→              {!isPro && <ProBadge />}
+  1587→            </Button>
+  1588→            <Button
+  1589→              variant="outline"
+  1590→              className="gap-2"
+  1591→              onClick={() => window.print()}
+  1592→            >
+  1593→              <Printer className="size-4" />
+  1594→              Print
+  1595→            </Button>
+  1596→          </div>
+  1597→        </div>
+  1598→        <PrivacyNotice />
+  1599→      </div>
+  1600→
+  1601→      <SummaryDialog
+  1602→        open={summaryOpen}
+  1603→        onOpenChange={setSummaryOpen}
+  1604→        caseData={caseData}
+  1605→        categories={categories}
+  1606→      />
+  1607→    </div>
+  1608→  )
+  1609→}
+  1610→
