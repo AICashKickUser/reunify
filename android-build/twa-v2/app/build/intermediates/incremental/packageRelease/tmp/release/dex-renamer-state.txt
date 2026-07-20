@@ -1,0 +1,4 @@
+#Mon Jul 20 17:52:27 UTC 2026
+base.0=/home/z/my-project/android-build/twa-v2/app/build/intermediates/dex/release/minifyReleaseWithR8/classes.dex
+renamed.0=classes.dex
+path.0=classes.dex

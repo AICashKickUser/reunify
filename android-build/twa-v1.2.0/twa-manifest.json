@@ -1,0 +1,33 @@
+{
+  "host": "reunify-six.vercel.app",
+  "name": "ReunifyMe",
+  "launcherName": "ReunifyMe",
+  "startUrl": "/",
+  "backgroundColor": "#FFFFFF",
+  "themeColor": "#059669",
+  "navigationColor": "#059669",
+  "navigationColorDark": "#059669",
+  "navigationDividerColor": "#059669",
+  "navigationDividerColorDark": "#059669",
+  "orientation": "portrait-primary",
+  "display": "standalone",
+  "packageId": "com.aicashkick.reunify",
+  "appVersionName": "1.2.0",
+  "appVersionCode": 3,
+  "shortcuts": [],
+  "signingKey": {
+    "path": "/home/z/my-project/android-build/reunify-key.jks",
+    "alias": "reunify"
+  },
+  "splashScreenFadeOutDuration": 300,
+  "enableSiteSettingsShortcut": false,
+  "fallbackType": "customtabs",
+  "webManifestUrl": "https://reunify-six.vercel.app/manifest.json",
+  "maskableIconUrl": "https://reunify-six.vercel.app/icons/icon-512x512.png",
+  "fingerprintUrl": "https://reunify-six.vercel.app/.well-known/assetlinks.json",
+  "additionalTrustedOrigins": [],
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  }
+}
