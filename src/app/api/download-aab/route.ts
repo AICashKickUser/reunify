@@ -13,6 +13,7 @@ export async function GET() {
         'Content-Type': 'application/octet-stream',
         'Content-Disposition': 'attachment; filename="reunify-1.3.0.aab"',
         'Content-Length': fileBuffer.length.toString(),
+        'Cache-Control': 'no-cache',
       },
     });
   } catch (error) {
