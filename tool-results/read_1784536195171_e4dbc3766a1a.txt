@@ -1,0 +1,1610 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+     4→     4→import { Badge } from '@/components/ui/badge'
+     5→     5→import { Button } from '@/components/ui/button'
+     6→     6→import { Progress } from '@/components/ui/progress'
+     7→     7→import { Skeleton } from '@/components/ui/skeleton'
+     8→     8→import { Separator } from '@/components/ui/separator'
+     9→     9→import {
+    10→    10→  Heart,
+    11→    11→  TestTube2,
+    12→    12→  Footprints,
+    13→    13→  Users,
+    14→    14→  Baby,
+    15→    15→  GraduationCap,
+    16→    16→  Scale,
+    17→    17→  ClipboardCheck,
+    18→    18→  Printer,
+    19→    19→  TrendingUp,
+    20→    20→  CheckCircle,
+    21→    21→  AlertTriangle,
+    22→    22→  CircleDot,
+    23→    23→  ArrowRight,
+    24→    24→  Sparkles,
+    25→    25→  Download,
+    26→    26→  Shield,
+    27→    27→  Loader2,
+    28→    28→  Lock,
+    29→    29→} from 'lucide-react'
+    30→    30→import { FileText } from 'lucide-react'
+    31→    31→import { useAppStore } from '@/lib/store'
+    32→    32→import { useCase } from '@/lib/data-hooks'
+    33→    33→import { useSubscriptionStore } from '@/lib/subscription'
+    34→    34→import { ProBadge } from '@/components/pro-badge'
+    35→    35→import { ChartContainer } from '@/components/ui/chart'
+    36→    36→import {
+    37→    37→  RadarChart,
+    38→    38→  PolarGrid,
+    39→    39→  PolarAngleAxis,
+    40→    40→  PolarRadiusAxis,
+    41→    41→  Radar,
+    42→    42→  ResponsiveContainer,
+    43→    43→  BarChart,
+    44→    44→  Bar,
+    45→    45→  XAxis,
+    46→    46→  YAxis,
+    47→    47→  CartesianGrid,
+    48→    48→  Tooltip,
+    49→    49→} from 'recharts'
+    50→    50→import { toast } from 'sonner'
+    51→    51→import { useState } from 'react'
+    52→    52→import {
+    53→    53→  Dialog,
+    54→    54→  DialogContent,
+    55→    55→  DialogDescription,
+    56→    56→  DialogFooter,
+    57→    57→  DialogHeader,
+    58→    58→  DialogTitle,
+    59→    59→} from '@/components/ui/dialog'
+    60→    60→
+    61→    61→interface CategoryProgress {
+    62→    62→  key: string
+    63→    63→  label: string
+    64→    64→  icon: React.ReactNode
+    65→    65→  progress: number
+    66→    66→  statLabel: string
+    67→    67→  statValue: string
+    68→    68→  status: 'completed' | 'on-track' | 'needs-attention' | 'behind'
+    69→    69→  color: string
+    70→    70→}
+    71→    71→
+    72→    72→function getMotivationalMessage(progress: number): {
+    73→    73→  title: string
+    74→    74→  message: string
+    75→    75→} {
+    76→    76→  if (progress >= 90) {
+    77→    77→    return {
+    78→    78→      title: 'Almost there! 🌟',
+    79→    79→      message:
+    80→    80→        "You're so close to completing your case plan! Keep pushing forward — your kids are waiting for you.",
+    81→    81→    }
+    82→    82→  }
+    83→    83→  if (progress >= 70) {
+    84→    84→    return {
+    85→    85→      title: 'Great momentum! 💪',
+    86→    86→      message:
+    87→    87→        "You're making incredible progress. The finish line is in sight — stay focused and consistent.",
+    88→    88→    }
+    89→    89→  }
+    90→    90→  if (progress >= 50) {
+    91→    91→    return {
+    92→    92→      title: 'Halfway there! 🎯',
+    93→    93→      message:
+    94→    94→        "You've come a long way. Every step counts, and you're proving your commitment every day.",
+    95→    95→    }
+    96→    96→  }
+    97→    97→  if (progress >= 25) {
+    98→    98→    return {
+    99→    99→      title: 'Keep going! 🌱',
+   100→   100→      message:
+   101→   101→        "You're building a foundation for your family's future. Small steps lead to big changes.",
+   102→   102→    }
+   103→   103→  }
+   104→   104→  return {
+   105→   105→    title: 'Your journey starts now 🚀',
+   106→   106→    message:
+   107→   107→      "Every journey begins with a single step. You've taken the first step by being here. Stay strong and keep showing up.",
+   108→   108→  }
+   109→   109→}
+   110→   110→
+   111→   111→function getStatusColor(status: string): string {
+   112→   112→  switch (status) {
+   113→   113→    case 'completed':
+   114→   114→      return 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20'
+   115→   115→    case 'on-track':
+   116→   116→      return 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20'
+   117→   117→    case 'needs-attention':
+   118→   118→      return 'border-amber-400 bg-amber-50 dark:bg-amber-950/20'
+   119→   119→    case 'behind':
+   120→   120→      return 'border-red-400 bg-red-50 dark:bg-red-950/20'
+   121→   121→    default:
+   122→   122→      return 'border-slate-300 bg-slate-50 dark:bg-slate-950/20'
+   123→   123→  }
+   124→   124→}
+   125→   125→
+   126→   126→function getStatusBadge(status: string) {
+   127→   127→  switch (status) {
+   128→   128→    case 'completed':
+   129→   129→      return (
+   130→   130→        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
+   131→   131→          <CheckCircle className="size-3" />
+   132→   132→          Completed
+   133→   133→        </Badge>
+   134→   134→      )
+   135→   135→    case 'on-track':
+   136→   136→      return (
+   137→   137→        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
+   138→   138→          <TrendingUp className="size-3" />
+   139→   139→          On Track
+   140→   140→        </Badge>
+   141→   141→      )
+   142→   142→    case 'needs-attention':
+   143→   143→      return (
+   144→   144→        <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">
+   145→   145→          <AlertTriangle className="size-3" />
+   146→   146→          Needs Attention
+   147→   147→        </Badge>
+   148→   148→      )
+   149→   149→    case 'behind':
+   150→   150→      return (
+   151→   151→        <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100">
+   152→   152→          <CircleDot className="size-3" />
+   153→   153→          Behind
+   154→   154→        </Badge>
+   155→   155→      )
+   156→   156→    default:
+   157→   157→      return null
+   158→   158→  }
+   159→   159→}
+   160→   160→
+   161→   161→function CircularProgress({
+   162→   162→  value,
+   163→   163→  size = 180,
+   164→   164→  strokeWidth = 12,
+   165→   165→}: {
+   166→   166→  value: number
+   167→   167→  size?: number
+   168→   168→  strokeWidth?: number
+   169→   169→}) {
+   170→   170→  const radius = (size - strokeWidth) / 2
+   171→   171→  const circumference = 2 * Math.PI * radius
+   172→   172→  const offset = circumference - (value / 100) * circumference
+   173→   173→
+   174→   174→  return (
+   175→   175→    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size, maxWidth: '100%' }}>
+   176→   176→      <svg viewBox={`0 0 ${size} ${size}`} className="-rotate-90 w-full h-full" style={{ maxWidth: size, maxHeight: size }}>
+   177→   177→        <circle
+   178→   178→          cx={size / 2}
+   179→   179→          cy={size / 2}
+   180→   180→          r={radius}
+   181→   181→          fill="none"
+   182→   182→          stroke="currentColor"
+   183→   183→          strokeWidth={strokeWidth}
+   184→   184→          className="text-slate-200 dark:text-slate-700"
+   185→   185→        />
+   186→   186→        <circle
+   187→   187→          cx={size / 2}
+   188→   188→          cy={size / 2}
+   189→   189→          r={radius}
+   190→   190→          fill="none"
+   191→   191→          stroke="currentColor"
+   192→   192→          strokeWidth={strokeWidth}
+   193→   193→          strokeDasharray={circumference}
+   194→   194→          strokeDashoffset={offset}
+   195→   195→          strokeLinecap="round"
+   196→   196→          className="text-emerald-500 transition-all duration-1000 ease-out"
+   197→   197→        />
+   198→   198→      </svg>
+   199→   199→      <div className="absolute flex flex-col items-center justify-center">
+   200→   200→        <span className="text-3xl sm:text-4xl font-bold text-foreground">{value}%</span>
+   201→   201→        <span className="text-xs text-muted-foreground">Overall</span>
+   202→   202→      </div>
+   203→   203→    </div>
+   204→   204→  )
+   205→   205→}
+   206→   206→
+   207→   207→function TimelineSummary({
+   208→   208→  milestones,
+   209→   209→  caseData,
+   210→   210→}: {
+   211→   211→  milestones: { title: string; isCompleted: boolean; completedAt: string | null; category: string }[]
+   212→   212→  caseData: { removalDate: string | null; targetReunificationDate: string | null }
+   213→   213→}) {
+   214→   214→  const keyMilestones = milestones
+   215→   215→    .filter(
+   216→   216→      (m) =>
+   217→   217→        m.category === 'legal' ||
+   218→   218→        m.category === 'recovery' ||
+   219→   219→        m.category === 'family' ||
+   220→   220→        m.title.toLowerCase().includes('first') ||
+   221→   221→        m.title.toLowerCase().includes('removal') ||
+   222→   222→        m.title.toLowerCase().includes('reunification')
+   223→   223→    )
+   224→   224→    .slice(0, 8)
+   225→   225→
+   226→   226→  const timelineItems = [
+   227→   227→    ...(caseData.removalDate
+   228→   228→      ? [
+   229→   229→          {
+   230→   230→            title: 'Removal Date',
+   231→   231→            date: caseData.removalDate,
+   232→   232→            isCompleted: true,
+   233→   233→          },
+   234→   234→        ]
+   235→   235→      : []),
+   236→   236→    ...keyMilestones.map((m) => ({
+   237→   237→      title: m.title,
+   238→   238→      date: m.completedAt || '',
+   239→   239→      isCompleted: m.isCompleted,
+   240→   240→    })),
+   241→   241→    ...(caseData.targetReunificationDate
+   242→   242→      ? [
+   243→   243→          {
+   244→   244→            title: 'Reunification Target',
+   245→   245→            date: caseData.targetReunificationDate,
+   246→   246→            isCompleted: false,
+   247→   247→          },
+   248→   248→        ]
+   249→   249→      : []),
+   250→   250→  ].slice(0, 10)
+   251→   251→
+   252→   252→  return (
+   253→   253→    <div className="space-y-0">
+   254→   254→      {timelineItems.map((item, index) => (
+   255→   255→        <div key={index} className="flex gap-3">
+   256→   256→          <div className="flex flex-col items-center">
+   257→   257→            <div
+   258→   258→              className={`flex size-6 items-center justify-center rounded-full border-2 ${
+   259→   259→                item.isCompleted
+   260→   260→                  ? 'border-emerald-500 bg-emerald-500'
+   261→   261→                  : 'border-slate-300 bg-background'
+   262→   262→              }`}
+   263→   263→            >
+   264→   264→              {item.isCompleted && (
+   265→   265→                <CheckCircle className="size-3.5 text-white" />
+   266→   266→              )}
+   267→   267→            </div>
+   268→   268→            {index < timelineItems.length - 1 && (
+   269→   269→              <div
+   270→   270→                className={`w-0.5 flex-1 min-h-6 ${
+   271→   271→                  item.isCompleted ? 'bg-emerald-300' : 'bg-slate-200'
+   272→   272→                }`}
+   273→   273→              />
+   274→   274→            )}
+   275→   275→          </div>
+   276→   276→          <div className="pb-6 flex-1">
+   277→   277→            <p
+   278→   278→              className={`text-sm font-medium ${
+   279→   279→                item.isCompleted
+   280→   280→                  ? 'text-emerald-700 dark:text-emerald-400'
+   281→   281→                  : 'text-muted-foreground'
+   282→   282→              }`}
+   283→   283→            >
+   284→   284→              {item.title}
+   285→   285→            </p>
+   286→   286→            {item.date && (
+   287→   287→              <p className="text-xs text-muted-foreground">
+   288→   288→                {new Date(item.date).toLocaleDateString('en-US', {
+   289→   289→                  month: 'short',
+   290→   290→                  day: 'numeric',
+   291→   291→                  year: 'numeric',
+   292→   292→                })}
+   293→   293→              </p>
+   294→   294→            )}
+   295→   295→          </div>
+   296→   296→        </div>
+   297→   297→      ))}
+   298→   298→    </div>
+   299→   299→  )
+   300→   300→}
+   301→   301→
+   302→   302→function PrivacyNotice() {
+   303→   303→  return (
+   304→   304→    <Card className="border-emerald-200 dark:border-emerald-800">
+   305→   305→      <CardContent className="p-4">
+   306→   306→        <div className="flex items-start gap-3">
+   307→   307→          <Shield className="size-5 text-emerald-600 mt-0.5 shrink-0" />
+   308→   308→          <div className="space-y-1">
+   309→   309→            <p className="text-sm font-medium">Your Data is Private</p>
+   310→   310→            <p className="text-xs text-muted-foreground">
+   311→   311→              All case data is stored locally on your device. Reunify does not
+   312→   312→              send your information to any external servers. Exported files
+   313→   313→              contain your complete case data — store them securely and only
+   314→   314→              share with trusted parties like your attorney.
+   315→   315→            </p>
+   316→   316→          </div>
+   317→   317→        </div>
+   318→   318→      </CardContent>
+   319→   319→    </Card>
+   320→   320→  )
+   321→   321→}
+   322→   322→
+   323→   323→function SummaryDialog({ open, onOpenChange, caseData, categories }: {
+   324→   324→  open: boolean
+   325→   325→  onOpenChange: (open: boolean) => void
+   326→   326→  caseData: Record<string, unknown>
+   327→   327→  categories: CategoryProgress[]
+   328→   328→}) {
+   329→   329→  const { tier, setUpgradeDialogOpen } = useSubscriptionStore()
+   330→   330→  const isPro = tier === 'pro'
+   331→   331→
+   332→   332→  const requirements = (caseData.requirements || []) as Array<Record<string, unknown>>
+   333→   333→  const completedReqs = requirements.filter((r) => r.isCompleted)
+   334→   334→  const incompleteReqs = requirements.filter((r) => !r.isCompleted)
+   335→   335→
+   336→   336→  const counselingSessions = (caseData.counselingSessions || []) as Array<Record<string, unknown>>
+   337→   337→  const completedSessions = counselingSessions.filter((s) => s.isCompleted)
+   338→   338→
+   339→   339→  const drugTests = (caseData.drugTests || []) as Array<Record<string, unknown>>
+   340→   340→  const passedTests = drugTests.filter((t) => t.result === 'negative')
+   341→   341→  const failedTests = drugTests.filter((t) => t.result === 'positive')
+   342→   342→  const pendingTests = drugTests.filter((t) => t.result === 'pending' || !t.result)
+   343→   343→
+   344→   344→  const naSteps = (caseData.naSteps || []) as Array<Record<string, unknown>>
+   345→   345→  const completedSteps = naSteps.filter((s) => s.isCompleted)
+   346→   346→
+   347→   347→  const naMeetings = (caseData.naMeetings || []) as Array<Record<string, unknown>>
+   348→   348→  const visits = (caseData.supervisedVisits || []) as Array<Record<string, unknown>>
+   349→   349→  const completedVisits = visits.filter((v) => v.isCompleted)
+   350→   350→  const parentingClasses = (caseData.parentingClasses || []) as Array<Record<string, unknown>>
+   351→   351→  const completedClasses = parentingClasses.filter((c) => c.isCompleted)
+   352→   352→  const milestones = (caseData.milestones || []) as Array<Record<string, unknown>>
+   353→   353→  const completedMilestones = milestones.filter((m) => m.isCompleted)
+   354→   354→  const courtDates = (caseData.courtDates || []) as Array<Record<string, unknown>>
+   355→   355→
+   356→   356→  const overallProgress = requirements.length > 0
+   357→   357→    ? Math.round((completedReqs.length / requirements.length) * 100)
+   358→   358→    : 0
+   359→   359→
+   360→   360→  const onTrackCategories = categories.filter(c => c.status === 'on-track' || c.status === 'completed')
+   361→   361→  const needsAttentionCategories = categories.filter(c => c.status === 'needs-attention')
+   362→   362→  const behindCategories = categories.filter(c => c.status === 'behind')
+   363→   363→
+   364→   364→  // Full Pro summary text
+   365→   365→  const proSummaryText = `REUNIFICATION CASE SUMMARY
+   366→   366→Generated: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+   367→   367→
+   368→   368→Case: ${caseData.caseNumber || 'N/A'}
+   369→   369→Court: ${caseData.courtName || 'Not specified'}
+   370→   370→Caseworker: ${caseData.caseworkerName || 'Not specified'}
+   371→   371→Judge: ${caseData.judgeName || 'Not specified'}
+   372→   372→Attorney: ${caseData.attorneyName || 'Not specified'}
+   373→   373→
+   374→   374→═══════════════════════════════
+   375→   375→OVERALL PROGRESS: ${overallProgress}%
+   376→   376→═══════════════════════════════
+   377→   377→
+   378→   378→Requirements Completed: ${completedReqs.length} of ${requirements.length}
+   379→   379→
+   380→   380→───────────────────────────────
+   381→   381→ACHIEVEMENTS & COMPLETED ITEMS
+   382→   382→───────────────────────────────
+   383→   383→${completedReqs.length > 0 ? completedReqs.map((r) => `✓ ${r.title} (${r.category})${r.completedAt ? ' - Completed ' + new Date(r.completedAt as string).toLocaleDateString() : ''}`).join('\n') : 'No requirements completed yet'}
+   384→   384→
+   385→   385→${completedMilestones.length > 0 ? '\nMilestones Achieved:\n' + completedMilestones.map((m) => `★ ${m.title} - ${m.completedAt ? new Date(m.completedAt as string).toLocaleDateString() : 'Date not recorded'}`).join('\n') : ''}
+   386→   386→
+   387→   387→${completedSteps.length > 0 ? '\nNA Steps Completed: ' + completedSteps.length + '/12\n' + completedSteps.map((s) => `  Step ${s.stepNumber}: ✓${s.sponsorVerified ? ' (Sponsor Verified)' : ''}`).join('\n') : ''}
+   388→   388→
+   389→   389→───────────────────────────────
+   390→   390→COMPLIANCE DETAILS
+   391→   391→───────────────────────────────
+   392→   392→
+   393→   393→Counseling: ${completedSessions.length}/${counselingSessions.length} sessions completed
+   394→   394→Drug Testing: ${passedTests.length} clean / ${drugTests.length} total (${failedTests.length} positive, ${pendingTests.length} pending)
+   395→   395→NA Meetings: ${naMeetings.length} meetings attended (${naMeetings.filter((m) => m.isVerified).length} verified)
+   396→   396→Supervised Visits: ${completedVisits.length}/${visits.length} completed
+   397→   397→Parenting Classes: ${completedClasses.length}/${parentingClasses.length} completed (${parentingClasses.filter((c) => c.hasCertificate).length} certificates earned)
+   398→   398→Court Dates: ${courtDates.filter((c) => c.isCompleted).length}/${courtDates.length} completed
+   399→   399→
+   400→   400→───────────────────────────────
+   401→   401→AREAS ON TRACK
+   402→   402→───────────────────────────────
+   403→   403→${onTrackCategories.length > 0 ? onTrackCategories.map(c => `✓ ${c.label}: ${c.progress}% - ${c.statValue}`).join('\n') : 'No categories on track yet'}
+   404→   404→
+   405→   405→───────────────────────────────
+   406→   406→AREAS NEEDING ATTENTION
+   407→   407→───────────────────────────────
+   408→   408→${needsAttentionCategories.length > 0 ? needsAttentionCategories.map(c => `⚠ ${c.label}: ${c.progress}% - ${c.statValue}`).join('\n') : 'None - great work!'}
+   409→   409→
+   410→   410→───────────────────────────────
+   411→   411→AREAS BEHIND
+   412→   412→───────────────────────────────
+   413→   413→${behindCategories.length > 0 ? behindCategories.map(c => `✗ ${c.label}: ${c.progress}% - ${c.statValue}`).join('\n') : 'None - keep it up!'}
+   414→   414→
+   415→   415→───────────────────────────────
+   416→   416→REMAINING REQUIREMENTS
+   417→   417→───────────────────────────────
+   418→   418→${incompleteReqs.length > 0 ? incompleteReqs.map((r) => `○ ${r.title} (${r.category})${r.dueDate ? ' - Due: ' + new Date(r.dueDate as string).toLocaleDateString() : ''}`).join('\n') : 'All requirements completed!'}`
+   419→   419→
+   420→   420→  // Basic free summary (minimal)
+   421→   421→  const basicSummaryText = `BASIC CASE OVERVIEW
+   422→   422→Case: ${caseData.caseNumber || 'N/A'}
+   423→   423→Court: ${caseData.courtName || 'Not specified'}
+   424→   424→
+   425→   425→Overall Progress: ${overallProgress}%
+   426→   426→Requirements: ${completedReqs.length} of ${requirements.length} completed
+   427→   427→
+   428→   428→Counseling: ${completedSessions.length} sessions
+   429→   429→Drug Tests: ${passedTests.length} clean / ${drugTests.length} total
+   430→   430→NA Steps: ${completedSteps.length}/12
+   431→   431→Visits: ${completedVisits.length} completed
+   432→   432→Classes: ${completedClasses.length} completed`
+   433→   433→
+   434→   434→  function handleCopySummary() {
+   435→   435→    const textToCopy = isPro ? proSummaryText : basicSummaryText
+   436→   436→    navigator.clipboard.writeText(textToCopy).then(() => {
+   437→   437→      toast.success('Summary copied to clipboard!')
+   438→   438→    }).catch(() => {
+   439→   439→      toast.error('Failed to copy summary')
+   440→   440→    })
+   441→   441→  }
+   442→   442→
+   443→   443→  return (
+   444→   444→    <Dialog open={open} onOpenChange={onOpenChange}>
+   445→   445→      <DialogContent className="max-w-2xl max-h-[85vh]">
+   446→   446→        <DialogHeader>
+   447→   447→          <DialogTitle className="flex items-center gap-2">
+   448→   448→            <ClipboardCheck className="size-5 text-emerald-600" />
+   449→   449→            Case Summary Report
+   450→   450→          </DialogTitle>
+   451→   451→          <DialogDescription>
+   452→   452→            {isPro
+   453→   453→              ? 'Professional compliance summary for your judge, attorney, or caseworker'
+   454→   454→              : 'Basic case overview — upgrade to Pro for the full professional report'}
+   455→   455→          </DialogDescription>
+   456→   456→        </DialogHeader>
+   457→   457→
+   458→   458→        {isPro ? (
+   459→   459→          /* ===== PRO FULL SUMMARY ===== */
+   460→   460→          <div className="space-y-4">
+   461→   461→            {/* Quick Stats */}
+   462→   462→            <div className="grid grid-cols-3 gap-3">
+   463→   463→              <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 p-3 text-center">
+   464→   464→                <p className="text-2xl font-bold text-emerald-700">{completedReqs.length}</p>
+   465→   465→                <p className="text-xs text-emerald-600">Completed</p>
+   466→   466→              </div>
+   467→   467→              <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 p-3 text-center">
+   468→   468→                <p className="text-2xl font-bold text-amber-700">{needsAttentionCategories.length + behindCategories.length}</p>
+   469→   469→                <p className="text-xs text-amber-600">Needs Work</p>
+   470→   470→              </div>
+   471→   471→              <div className="rounded-lg bg-sky-50 dark:bg-sky-950/20 p-3 text-center">
+   472→   472→                <p className="text-2xl font-bold text-sky-700">{overallProgress}%</p>
+   473→   473→                <p className="text-xs text-sky-600">Overall</p>
+   474→   474→              </div>
+   475→   475→            </div>
+   476→   476→
+   477→   477→            <pre className="whitespace-pre-wrap text-xs font-mono bg-muted/50 rounded-lg p-4 max-h-96 overflow-y-auto border">
+   478→   478→              {proSummaryText}
+   479→   479→            </pre>
+   480→   480→          </div>
+   481→   481→        ) : (
+   482→   482→          /* ===== FREE BASIC SUMMARY + PRO PREVIEW ===== */
+   483→   483→          <div className="space-y-4">
+   484→   484→            {/* Quick Stats */}
+   485→   485→            <div className="grid grid-cols-3 gap-3">
+   486→   486→              <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 p-3 text-center">
+   487→   487→                <p className="text-2xl font-bold text-emerald-700">{completedReqs.length}</p>
+   488→   488→                <p className="text-xs text-emerald-600">Completed</p>
+   489→   489→              </div>
+   490→   490→              <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 p-3 text-center">
+   491→   491→                <p className="text-2xl font-bold text-amber-700">{needsAttentionCategories.length + behindCategories.length}</p>
+   492→   492→                <p className="text-xs text-amber-600">Needs Work</p>
+   493→   493→              </div>
+   494→   494→              <div className="rounded-lg bg-sky-50 dark:bg-sky-950/20 p-3 text-center">
+   495→   495→                <p className="text-2xl font-bold text-sky-700">{overallProgress}%</p>
+   496→   496→                <p className="text-xs text-sky-600">Overall</p>
+   497→   497→              </div>
+   498→   498→            </div>
+   499→   499→
+   500→   500→            {/* Basic summary */}
+   501→   501→            <div>
+   502→   502→              <p className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Basic Overview</p>
+   503→   503→              <pre className="whitespace-pre-wrap text-xs font-mono bg-muted/50 rounded-lg p-4 max-h-32 overflow-y-auto border">
+   504→   504→                {basicSummaryText}
+   505→   505→              </pre>
+   506→   506→            </div>
+   507→   507→
+   508→   508→            {/* Pro preview - blurred with CTA */}
+   509→   509→            <div className="relative">
+   510→   510→              <div className="absolute inset-0 z-10 bg-background/70 backdrop-blur-md rounded-lg flex flex-col items-center justify-center gap-3 p-6">
+   511→   511→                <div className="flex items-center gap-2">
+   512→   512→                  <Sparkles className="size-5 text-amber-500" />
+   513→   513→                  <span className="font-bold text-foreground">Pro Report Preview</span>
+   514→   514→                </div>
+   515→   515→                <p className="text-xs text-muted-foreground text-center max-w-sm">
+   516→   516→                  The Pro report includes achievements, compliance details, areas on track vs. needing attention, remaining requirements, and professional formatting for court.
+   517→   517→                </p>
+   518→   518→                <Button
+   519→   519→                  className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+   520→   520→                  onClick={() => {
+   521→   521→                    onOpenChange(false)
+   522→   522→                    setUpgradeDialogOpen(true)
+   523→   523→                  }}
+   524→   524→                >
+   525→   525→                  <Sparkles className="size-4" />
+   526→   526→                  Upgrade to Pro — $4.99/mo
+   527→   527→                </Button>
+   528→   528→              </div>
+   529→   529→              <div className="pointer-events-none select-none">
+   530→   530→                <p className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Pro Report Includes:</p>
+   531→   531→                <pre className="whitespace-pre-wrap text-xs font-mono bg-muted/50 rounded-lg p-4 max-h-40 overflow-hidden border">
+   532→   532→                  {proSummaryText.slice(0, 600)}...
+   533→   533→                </pre>
+   534→   534→              </div>
+   535→   535→            </div>
+   536→   536→          </div>
+   537→   537→        )}
+   538→   538→
+   539→   539→        <DialogFooter className="flex-col sm:flex-row gap-2">
+   540→   540→          <Button variant="outline" onClick={handleCopySummary} className="gap-2">
+   541→   541→            Copy to Clipboard
+   542→   542→          </Button>
+   543→   543→          <Button onClick={() => onOpenChange(false)} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+   544→   544→            Done
+   545→   545→          </Button>
+   546→   546→        </DialogFooter>
+   547→   547→      </DialogContent>
+   548→   548→    </Dialog>
+   549→   549→  )
+   550→   550→}
+   551→   551→
+   552→   552→function generatePDFReport(caseData: Record<string, unknown>, categories: CategoryProgress[]) {
+   553→   553→  const requirements = (caseData.requirements || []) as Array<Record<string, unknown>>
+   554→   554→  const completedReqs = requirements.filter((r) => r.isCompleted)
+   555→   555→  const incompleteReqs = requirements.filter((r) => !r.isCompleted)
+   556→   556→
+   557→   557→  const counselingSessions = (caseData.counselingSessions || []) as Array<Record<string, unknown>>
+   558→   558→  const completedSessions = counselingSessions.filter((s) => s.isCompleted)
+   559→   559→
+   560→   560→  const drugTests = (caseData.drugTests || []) as Array<Record<string, unknown>>
+   561→   561→  const passedTests = drugTests.filter((t) => t.result === 'negative')
+   562→   562→  const failedTests = drugTests.filter((t) => t.result === 'positive')
+   563→   563→
+   564→   564→  const naSteps = (caseData.naSteps || []) as Array<Record<string, unknown>>
+   565→   565→  const completedSteps = naSteps.filter((s) => s.isCompleted)
+   566→   566→  const sponsorVerifiedCount = completedSteps.filter((s) => s.sponsorVerified).length
+   567→   567→
+   568→   568→  const naMeetings = (caseData.naMeetings || []) as Array<Record<string, unknown>>
+   569→   569→  const verifiedMeetings = naMeetings.filter((m) => m.isVerified)
+   570→   570→
+   571→   571→  const visits = (caseData.supervisedVisits || []) as Array<Record<string, unknown>>
+   572→   572→  const completedVisits = visits.filter((v) => v.isCompleted)
+   573→   573→  const latestVisitType = completedVisits.length > 0
+   574→   574→    ? (completedVisits.sort((a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime())[0]?.visitType || 'supervised')
+   575→   575→    : 'supervised'
+   576→   576→  const visitLevelLabel = latestVisitType === 'unsupervised'
+   577→   577→    ? 'Unsupervised'
+   578→   578→    : latestVisitType === 'semi-supervised'
+   579→   579→      ? 'Semi-Supervised'
+   580→   580→      : 'Supervised'
+   581→   581→
+   582→   582→  const parentingClasses = (caseData.parentingClasses || []) as Array<Record<string, unknown>>
+   583→   583→  const completedClasses = parentingClasses.filter((c) => c.isCompleted)
+   584→   584→  const certificatesEarned = parentingClasses.filter((c) => c.hasCertificate).length
+   585→   585→
+   586→   586→  const courtDates = (caseData.courtDates || []) as Array<Record<string, unknown>>
+   587→   587→  const completedCourtDates = courtDates.filter((c) => c.isCompleted)
+   588→   588→  const nextCourtDate = courtDates
+   589→   589→    .filter((c) => !c.isCompleted && new Date(c.date as string) > new Date())
+   590→   590→    .sort((a, b) => new Date(a.date as string).getTime() - new Date(b.date as string).getTime())[0]
+   591→   591→
+   592→   592→  const milestones = (caseData.milestones || []) as Array<Record<string, unknown>>
+   593→   593→  const completedMilestones = milestones.filter((m) => m.isCompleted)
+   594→   594→
+   595→   595→  const overallProgress = requirements.length > 0
+   596→   596→    ? Math.round((completedReqs.length / requirements.length) * 100)
+   597→   597→    : 0
+   598→   598→
+   599→   599→  // Calculate clean streak
+   600→   600→  const sortedTests = [...drugTests].sort(
+   601→   601→    (a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime()
+   602→   602→  )
+   603→   603→  let cleanStreak = 0
+   604→   604→  for (const test of sortedTests) {
+   605→   605→    if (test.result === 'negative') {
+   606→   606→      cleanStreak++
+   607→   607→    } else {
+   608→   608→      break
+   609→   609→    }
+   610→   610→  }
+   611→   611→
+   612→   612→  const drugPassRate = drugTests.length > 0
+   613→   613→    ? Math.round((passedTests.length / drugTests.length) * 100)
+   614→   614→    : 0
+   615→   615→
+   616→   616→  const formatDate = (d: string | null | undefined) =>
+   617→   617→    d ? new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Not specified'
+   618→   618→
+   619→   619→  const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+   620→   620→  const caseNumber = caseData.caseNumber || 'N/A'
+   621→   621→
+   622→   622→  const onTrackCategories = categories.filter(c => c.status === 'on-track' || c.status === 'completed')
+   623→   623→  const needsAttentionCategories = categories.filter(c => c.status === 'needs-attention')
+   624→   624→  const behindCategories = categories.filter(c => c.status === 'behind')
+   625→   625→
+   626→   626→  const html = `<!DOCTYPE html>
+   627→   627→<html lang="en">
+   628→   628→<head>
+   629→   629→  <meta charset="UTF-8">
+   630→   630→  <title>Reunification Compliance Report - Case ${caseNumber}</title>
+   631→   631→  <style>
+   632→   632→    * { margin: 0; padding: 0; box-sizing: border-box; }
+   633→   633→    body {
+   634→   634→      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+   635→   635→      color: #1a1a1a;
+   636→   636→      background: #fff;
+   637→   637→      padding: 0;
+   638→   638→      line-height: 1.5;
+   639→   639→    }
+   640→   640→    .page {
+   641→   641→      max-width: 850px;
+   642→   642→      margin: 0 auto;
+   643→   643→      padding: 40px 50px;
+   644→   644→    }
+   645→   645→    .header {
+   646→   646→      text-align: center;
+   647→   647→      border-bottom: 3px solid #059669;
+   648→   648→      padding-bottom: 20px;
+   649→   649→      margin-bottom: 24px;
+   650→   650→    }
+   651→   651→    .header h1 {
+   652→   652→      font-size: 22px;
+   653→   653→      font-weight: 700;
+   654→   654→      letter-spacing: 2px;
+   655→   655→      color: #064e3b;
+   656→   656→      margin-bottom: 4px;
+   657→   657→    }
+   658→   658→    .header .case-num {
+   659→   659→      font-size: 14px;
+   660→   660→      color: #374151;
+   661→   661→      font-weight: 500;
+   662→   662→    }
+   663→   663→    .header .date {
+   664→   664→      font-size: 12px;
+   665→   665→      color: #6b7280;
+   666→   666→      margin-top: 4px;
+   667→   667→    }
+   668→   668→    .section {
+   669→   669→      margin-bottom: 22px;
+   670→   670→    }
+   671→   671→    .section-title {
+   672→   672→      font-size: 14px;
+   673→   673→      font-weight: 700;
+   674→   674→      text-transform: uppercase;
+   675→   675→      letter-spacing: 1px;
+   676→   676→      color: #fff;
+   677→   677→      background: #059669;
+   678→   678→      padding: 6px 14px;
+   679→   679→      border-radius: 3px;
+   680→   680→      margin-bottom: 12px;
+   681→   681→    }
+   682→   682→    .info-grid {
+   683→   683→      display: grid;
+   684→   684→      grid-template-columns: 1fr 1fr;
+   685→   685→      gap: 8px 24px;
+   686→   686→    }
+   687→   687→    .info-item {
+   688→   688→      display: flex;
+   689→   689→      gap: 6px;
+   690→   690→      font-size: 12px;
+   691→   691→      padding: 4px 0;
+   692→   692→    }
+   693→   693→    .info-label {
+   694→   694→      font-weight: 600;
+   695→   695→      color: #374151;
+   696→   696→      min-width: 120px;
+   697→   697→    }
+   698→   698→    .info-value {
+   699→   699→      color: #1f2937;
+   700→   700→    }
+   701→   701→    .progress-section {
+   702→   702→      background: #f0fdf4;
+   703→   703→      border: 1px solid #bbf7d0;
+   704→   704→      border-radius: 6px;
+   705→   705→      padding: 16px 20px;
+   706→   706→      text-align: center;
+   707→   707→      margin-bottom: 22px;
+   708→   708→    }
+   709→   709→    .progress-big {
+   710→   710→      font-size: 48px;
+   711→   711→      font-weight: 800;
+   712→   712→      color: #059669;
+   713→   713→      line-height: 1;
+   714→   714→    }
+   715→   715→    .progress-label {
+   716→   716→      font-size: 13px;
+   717→   717→      color: #374151;
+   718→   718→      font-weight: 600;
+   719→   719→      margin-top: 4px;
+   720→   720→    }
+   721→   721→    .progress-bar-container {
+   722→   722→      width: 100%;
+   723→   723→      height: 16px;
+   724→   724→      background: #d1fae5;
+   725→   725→      border-radius: 8px;
+   726→   726→      overflow: hidden;
+   727→   727→      margin-top: 10px;
+   728→   728→    }
+   729→   729→    .progress-bar-fill {
+   730→   730→      height: 100%;
+   731→   731→      background: linear-gradient(90deg, #059669, #10b981);
+   732→   732→      border-radius: 8px;
+   733→   733→      transition: width 0.3s;
+   734→   734→    }
+   735→   735→    .category-table {
+   736→   736→      width: 100%;
+   737→   737→      border-collapse: collapse;
+   738→   738→      font-size: 12px;
+   739→   739→    }
+   740→   740→    .category-table th {
+   741→   741→      background: #f3f4f6;
+   742→   742→      font-weight: 600;
+   743→   743→      text-align: left;
+   744→   744→      padding: 8px 10px;
+   745→   745→      border: 1px solid #d1d5db;
+   746→   746→      color: #374151;
+   747→   747→      font-size: 11px;
+   748→   748→      text-transform: uppercase;
+   749→   749→      letter-spacing: 0.5px;
+   750→   750→    }
+   751→   751→    .category-table td {
+   752→   752→      padding: 8px 10px;
+   753→   753→      border: 1px solid #e5e7eb;
+   754→   754→      vertical-align: top;
+   755→   755→    }
+   756→   756→    .category-table tr:nth-child(even) td {
+   757→   757→      background: #f9fafb;
+   758→   758→    }
+   759→   759→    .status-completed { color: #059669; font-weight: 600; }
+   760→   760→    .status-on-track { color: #16a34a; font-weight: 600; }
+   761→   761→    .status-needs-attention { color: #d97706; font-weight: 600; }
+   762→   762→    .status-behind { color: #dc2626; font-weight: 600; }
+   763→   763→    .mini-bar {
+   764→   764→      display: inline-block;
+   765→   765→      width: 60px;
+   766→   766→      height: 8px;
+   767→   767→      background: #e5e7eb;
+   768→   768→      border-radius: 4px;
+   769→   769→      overflow: hidden;
+   770→   770→      vertical-align: middle;
+   771→   771→      margin-left: 6px;
+   772→   772→    }
+   773→   773→    .mini-bar-fill {
+   774→   774→      height: 100%;
+   775→   775→      border-radius: 4px;
+   776→   776→    }
+   777→   777→    .item-list {
+   778→   778→      list-style: none;
+   779→   779→      padding: 0;
+   780→   780→    }
+   781→   781→    .item-list li {
+   782→   782→      padding: 5px 0;
+   783→   783→      font-size: 12px;
+   784→   784→      border-bottom: 1px solid #f3f4f6;
+   785→   785→      display: flex;
+   786→   786→      gap: 6px;
+   787→   787→    }
+   788→   788→    .item-list li:last-child { border-bottom: none; }
+   789→   789→    .check { color: #059669; font-weight: 700; }
+   790→   790→    .cross { color: #dc2626; font-weight: 700; }
+   791→   791→    .warn { color: #d97706; font-weight: 700; }
+   792→   792→    .star { color: #d97706; }
+   793→   793→    .two-col {
+   794→   794→      display: grid;
+   795→   795→      grid-template-columns: 1fr 1fr;
+   796→   796→      gap: 16px;
+   797→   797→    }
+   798→   798→    .col-box {
+   799→   799→      border: 1px solid #e5e7eb;
+   800→   800→      border-radius: 4px;
+   801→   801→      padding: 12px;
+   802→   802→    }
+   803→   803→    .col-box h4 {
+   804→   804→      font-size: 12px;
+   805→   805→      font-weight: 700;
+   806→   806→      text-transform: uppercase;
+   807→   807→      letter-spacing: 0.5px;
+   808→   808→      margin-bottom: 8px;
+   809→   809→      padding-bottom: 4px;
+   810→   810→      border-bottom: 1px solid #e5e7eb;
+   811→   811→    }
+   812→   812→    .col-box.achievements h4 { color: #059669; }
+   813→   813→    .col-box.attention h4 { color: #d97706; }
+   814→   814→    .footer {
+   815→   815→      margin-top: 32px;
+   816→   816→      padding-top: 16px;
+   817→   817→      border-top: 2px solid #059669;
+   818→   818→      text-align: center;
+   819→   819→    }
+   820→   820→    .footer p {
+   821→   821→      font-size: 10px;
+   822→   822→      color: #9ca3af;
+   823→   823→    }
+   824→   824→    .footer .generated {
+   825→   825→      font-size: 11px;
+   826→   826→      color: #6b7280;
+   827→   827→      margin-bottom: 6px;
+   828→   828→    }
+   829→   829→    .footer .privacy {
+   830→   830→      font-style: italic;
+   831→   831→      margin-top: 8px;
+   832→   832→      font-size: 9px;
+   833→   833→      color: #9ca3af;
+   834→   834→    }
+   835→   835→    @media print {
+   836→   836→      body { padding: 0; }
+   837→   837→      .page { padding: 20px 30px; }
+   838→   838→    }
+   839→   839→  </style>
+   840→   840→</head>
+   841→   841→<body>
+   842→   842→  <div class="page">
+   843→   843→    <!-- Header -->
+   844→   844→    <div class="header">
+   845→   845→      <h1>REUNIFICATION COMPLIANCE REPORT</h1>
+   846→   846→      <div class="case-num">Case #${caseNumber}</div>
+   847→   847→      <div class="date">Report Generated: ${today}</div>
+   848→   848→    </div>
+   849→   849→
+   850→   850→    <!-- Case Info -->
+   851→   851→    <div class="section">
+   852→   852→      <div class="section-title">Case Information</div>
+   853→   853→      <div class="info-grid">
+   854→   854→        <div class="info-item"><span class="info-label">Court:</span><span class="info-value">${caseData.courtName || 'Not specified'}</span></div>
+   855→   855→        <div class="info-item"><span class="info-label">Judge:</span><span class="info-value">${caseData.judgeName || 'Not specified'}</span></div>
+   856→   856→        <div class="info-item"><span class="info-label">Caseworker:</span><span class="info-value">${caseData.caseworkerName || 'Not specified'}${caseData.caseworkerPhone ? ' (' + caseData.caseworkerPhone + ')' : ''}</span></div>
+   857→   857→        <div class="info-item"><span class="info-label">Attorney:</span><span class="info-value">${caseData.attorneyName || 'Not specified'}${caseData.attorneyPhone ? ' (' + caseData.attorneyPhone + ')' : ''}</span></div>
+   858→   858→        <div class="info-item"><span class="info-label">Removal Date:</span><span class="info-value">${formatDate(caseData.removalDate as string | null)}</span></div>
+   859→   859→        <div class="info-item"><span class="info-label">Target Date:</span><span class="info-value">${formatDate(caseData.targetReunificationDate as string | null)}</span></div>
+   860→   860→      </div>
+   861→   861→    </div>
+   862→   862→
+   863→   863→    <!-- Overall Progress -->
+   864→   864→    <div class="progress-section">
+   865→   865→      <div class="progress-big">${overallProgress}%</div>
+   866→   866→      <div class="progress-label">Overall Reunification Progress</div>
+   867→   867→      <div class="progress-bar-container">
+   868→   868→        <div class="progress-bar-fill" style="width: ${overallProgress}%"></div>
+   869→   869→      </div>
+   870→   870→      <div style="font-size:11px; color:#374151; margin-top:6px">
+   871→   871→        ${completedReqs.length} of ${requirements.length} requirements completed
+   872→   872→      </div>
+   873→   873→    </div>
+   874→   874→
+   875→   875→    <!-- Compliance Breakdown -->
+   876→   876→    <div class="section">
+   877→   877→      <div class="section-title">Compliance Breakdown</div>
+   878→   878→      <table class="category-table">
+   879→   879→        <thead>
+   880→   880→          <tr>
+   881→   881→            <th>Category</th>
+   882→   882→            <th>Progress</th>
+   883→   883→            <th>Details</th>
+   884→   884→            <th>Status</th>
+   885→   885→          </tr>
+   886→   886→        </thead>
+   887→   887→        <tbody>
+   888→   888→          <tr>
+   889→   889→            <td><strong>Counseling</strong></td>
+   890→   890→            <td>${counselingSessions.length > 0 ? Math.round((completedSessions.length / counselingSessions.length) * 100) : 0}%
+   891→   891→              <span class="mini-bar"><span class="mini-bar-fill" style="width:${counselingSessions.length > 0 ? Math.round((completedSessions.length / counselingSessions.length) * 100) : 0}%;background:#10b981"></span></span>
+   892→   892→            </td>
+   893→   893→            <td>${completedSessions.length}/${counselingSessions.length} sessions completed</td>
+   894→   894→            <td class="status-${counselingSessions.length > 0 ? (completedSessions.length / counselingSessions.length >= 1 ? 'completed' : completedSessions.length / counselingSessions.length >= 0.6 ? 'on-track' : completedSessions.length / counselingSessions.length >= 0.3 ? 'needs-attention' : 'behind') : 'behind'}">
+   895→   895→              ${counselingSessions.length > 0 ? (completedSessions.length / counselingSessions.length >= 1 ? 'Completed' : completedSessions.length / counselingSessions.length >= 0.6 ? 'On Track' : completedSessions.length / counselingSessions.length >= 0.3 ? 'Needs Attention' : 'Behind') : 'No Data'}
+   896→   896→            </td>
+   897→   897→          </tr>
+   898→   898→          <tr>
+   899→   899→            <td><strong>Drug Testing</strong></td>
+   900→   900→            <td>${drugPassRate}%
+   901→   901→              <span class="mini-bar"><span class="mini-bar-fill" style="width:${drugPassRate}%;background:${drugPassRate >= 80 ? '#10b981' : drugPassRate >= 50 ? '#f59e0b' : '#ef4444'}"></span></span>
+   902→   902→            </td>
+   903→   903→            <td>${passedTests.length} clean of ${drugTests.length} total (${drugPassRate}% clean rate)${cleanStreak > 0 ? ', ' + cleanStreak + ' clean streak' : ''}${failedTests.length > 0 ? ', ' + failedTests.length + ' positive' : ''}</td>
+   904→   904→            <td class="status-${drugTests.length > 0 ? (drugPassRate >= 100 ? 'completed' : drugPassRate >= 80 ? 'on-track' : drugPassRate >= 50 ? 'needs-attention' : 'behind') : 'behind'}">
+   905→   905→              ${drugTests.length > 0 ? (drugPassRate >= 100 ? 'Completed' : drugPassRate >= 80 ? 'On Track' : drugPassRate >= 50 ? 'Needs Attention' : 'Behind') : 'No Data'}
+   906→   906→            </td>
+   907→   907→          </tr>
+   908→   908→          <tr>
+   909→   909→            <td><strong>NA Steps (12-Step)</strong></td>
+   910→   910→            <td>${completedSteps.length}/12
+   911→   911→              <span class="mini-bar"><span class="mini-bar-fill" style="width:${Math.round((completedSteps.length / 12) * 100)}%;background:#8b5cf6"></span></span>
+   912→   912→            </td>
+   913→   913→            <td>${completedSteps.length}/12 steps completed${sponsorVerifiedCount > 0 ? ', ' + sponsorVerifiedCount + ' sponsor-verified' : ''}${naSteps.length > 0 && completedSteps.length < naSteps.length ? ' (' + (naSteps.length - completedSteps.length) + ' remaining)' : ''}</td>
+   914→   914→            <td class="status-${completedSteps.length >= 12 ? 'completed' : completedSteps.length >= 7 ? 'on-track' : completedSteps.length >= 3 ? 'needs-attention' : 'behind'}">
+   915→   915→              ${completedSteps.length >= 12 ? 'Completed' : completedSteps.length >= 7 ? 'On Track' : completedSteps.length >= 3 ? 'Needs Attention' : 'Behind'}
+   916→   916→            </td>
+   917→   917→          </tr>
+   918→   918→          <tr>
+   919→   919→            <td><strong>NA Meetings</strong></td>
+   920→   920→            <td>${naMeetings.length > 0 ? Math.round((verifiedMeetings.length / naMeetings.length) * 100) : 0}%
+   921→   921→              <span class="mini-bar"><span class="mini-bar-fill" style="width:${naMeetings.length > 0 ? Math.round((verifiedMeetings.length / naMeetings.length) * 100) : 0}%;background:#8b5cf6"></span></span>
+   922→   922→            </td>
+   923→   923→            <td>${naMeetings.length} attended, ${verifiedMeetings.length} verified</td>
+   924→   924→            <td class="status-${naMeetings.length > 0 ? (verifiedMeetings.length / naMeetings.length >= 1 ? 'completed' : verifiedMeetings.length / naMeetings.length >= 0.6 ? 'on-track' : verifiedMeetings.length / naMeetings.length >= 0.3 ? 'needs-attention' : 'behind') : 'behind'}">
+   925→   925→              ${naMeetings.length > 0 ? (verifiedMeetings.length / naMeetings.length >= 1 ? 'Completed' : verifiedMeetings.length / naMeetings.length >= 0.6 ? 'On Track' : verifiedMeetings.length / naMeetings.length >= 0.3 ? 'Needs Attention' : 'Behind') : 'No Data'}
+   926→   926→            </td>
+   927→   927→          </tr>
+   928→   928→          <tr>
+   929→   929→            <td><strong>Supervised Visits</strong></td>
+   930→   930→            <td>${visits.length > 0 ? Math.round((completedVisits.length / visits.length) * 100) : 0}%
+   931→   931→              <span class="mini-bar"><span class="mini-bar-fill" style="width:${visits.length > 0 ? Math.round((completedVisits.length / visits.length) * 100) : 0}%;background:#0ea5e9"></span></span>
+   932→   932→            </td>
+   933→   933→            <td>${completedVisits.length}/${visits.length} completed, Current Level: ${visitLevelLabel}</td>
+   934→   934→            <td class="status-${visits.length > 0 ? (completedVisits.length / visits.length >= 1 ? 'completed' : completedVisits.length / visits.length >= 0.6 ? 'on-track' : completedVisits.length / visits.length >= 0.3 ? 'needs-attention' : 'behind') : 'behind'}">
+   935→   935→              ${visits.length > 0 ? (completedVisits.length / visits.length >= 1 ? 'Completed' : completedVisits.length / visits.length >= 0.6 ? 'On Track' : completedVisits.length / visits.length >= 0.3 ? 'Needs Attention' : 'Behind') : 'No Data'}
+   936→   936→            </td>
+   937→   937→          </tr>
+   938→   938→          <tr>
+   939→   939→            <td><strong>Parenting Classes</strong></td>
+   940→   940→            <td>${parentingClasses.length > 0 ? Math.round((completedClasses.length / parentingClasses.length) * 100) : 0}%
+   941→   941→              <span class="mini-bar"><span class="mini-bar-fill" style="width:${parentingClasses.length > 0 ? Math.round((completedClasses.length / parentingClasses.length) * 100) : 0}%;background:#f43f5e"></span></span>
+   942→   942→            </td>
+   943→   943→            <td>${completedClasses.length}/${parentingClasses.length} completed, ${certificatesEarned} certificates earned</td>
+   944→   944→            <td class="status-${parentingClasses.length > 0 ? (completedClasses.length / parentingClasses.length >= 1 ? 'completed' : completedClasses.length / parentingClasses.length >= 0.6 ? 'on-track' : completedClasses.length / parentingClasses.length >= 0.3 ? 'needs-attention' : 'behind') : 'behind'}">
+   945→   945→              ${parentingClasses.length > 0 ? (completedClasses.length / parentingClasses.length >= 1 ? 'Completed' : completedClasses.length / parentingClasses.length >= 0.6 ? 'On Track' : completedClasses.length / parentingClasses.length >= 0.3 ? 'Needs Attention' : 'Behind') : 'No Data'}
+   946→   946→            </td>
+   947→   947→          </tr>
+   948→   948→          <tr>
+   949→   949→            <td><strong>Court Dates</strong></td>
+   950→   950→            <td>${courtDates.length > 0 ? Math.round((completedCourtDates.length / courtDates.length) * 100) : 0}%
+   951→   951→              <span class="mini-bar"><span class="mini-bar-fill" style="width:${courtDates.length > 0 ? Math.round((completedCourtDates.length / courtDates.length) * 100) : 0}%;background:#64748b"></span></span>
+   952→   952→            </td>
+   953→   953→            <td>${completedCourtDates.length}/${courtDates.length} completed${nextCourtDate ? ', Next: ' + formatDate(nextCourtDate.date as string) : ', No upcoming dates'}</td>
+   954→   954→            <td class="status-${courtDates.length > 0 ? (completedCourtDates.length / courtDates.length >= 1 ? 'completed' : completedCourtDates.length / courtDates.length >= 0.6 ? 'on-track' : completedCourtDates.length / courtDates.length >= 0.3 ? 'needs-attention' : 'behind') : 'behind'}">
+   955→   955→              ${courtDates.length > 0 ? (completedCourtDates.length / courtDates.length >= 1 ? 'Completed' : completedCourtDates.length / courtDates.length >= 0.6 ? 'On Track' : completedCourtDates.length / courtDates.length >= 0.3 ? 'Needs Attention' : 'Behind') : 'No Data'}
+   956→   956→            </td>
+   957→   957→          </tr>
+   958→   958→        </tbody>
+   959→   959→      </table>
+   960→   960→    </div>
+   961→   961→
+   962→   962→    <!-- Achievements & Areas Needing Attention -->
+   963→   963→    <div class="two-col">
+   964→   964→      <div class="col-box achievements">
+   965→   965→        <h4>Achievements & Completed Items</h4>
+   966→   966→        <ul class="item-list">
+   967→   967→          ${completedReqs.length > 0 ? completedReqs.map((r) => '<li><span class="check">\u2713</span> ' + r.title + ' (' + r.category + ')' + (r.completedAt ? ' \u2013 ' + formatDate(r.completedAt as string) : '') + '</li>').join('') : '<li style="color:#9ca3af">No requirements completed yet</li>'}
+   968→   968→          ${completedMilestones.length > 0 ? '<li style="padding-top:8px;border-top:1px solid #e5e7eb"><strong>Milestones:</strong></li>' + completedMilestones.map((m) => '<li><span class="star">\u2605</span> ' + m.title + (m.completedAt ? ' \u2013 ' + formatDate(m.completedAt as string) : '') + '</li>').join('') : ''}
+   969→   969→        </ul>
+   970→   970→      </div>
+   971→   971→      <div class="col-box attention">
+   972→   972→        <h4>Areas Needing Attention</h4>
+   973→   973→        <ul class="item-list">
+   974→   974→          ${incompleteReqs.length > 0 ? incompleteReqs.map((r) => '<li><span class="cross">\u25CB</span> ' + r.title + ' (' + r.category + ')' + (r.dueDate ? ' \u2013 Due: ' + formatDate(r.dueDate as string) : '') + '</li>').join('') : '<li style="color:#059669"><span class="check">\u2713</span> All requirements completed!</li>'}
+   975→   975→          ${behindCategories.length > 0 ? '<li style="padding-top:8px;border-top:1px solid #e5e7eb"><strong>Behind Schedule:</strong></li>' + behindCategories.map(c => '<li><span class="cross">\u2717</span> ' + c.label + ': ' + c.progress + '% \u2013 ' + c.statValue + '</li>').join('') : ''}
+   976→   976→          ${needsAttentionCategories.length > 0 ? '<li style="padding-top:8px;border-top:1px solid #e5e7eb"><strong>Needs Attention:</strong></li>' + needsAttentionCategories.map(c => '<li><span class="warn">\u26A0</span> ' + c.label + ': ' + c.progress + '% \u2013 ' + c.statValue + '</li>').join('') : ''}
+   977→   977→        </ul>
+   978→   978→      </div>
+   979→   979→    </div>
+   980→   980→
+   981→   981→    <!-- NA Steps Detail -->
+   982→   982→    ${naSteps.length > 0 ? `
+   983→   983→    <div class="section" style="margin-top:22px">
+   984→   984→      <div class="section-title">NA Steps Detail</div>
+   985→   985→      <table class="category-table">
+   986→   986→        <thead>
+   987→   987→          <tr><th>Step</th><th>Status</th><th>Sponsor Verified</th><th>Completed Date</th></tr>
+   988→   988→        </thead>
+   989→   989→        <tbody>
+   990→   990→          ${naSteps.map(s => '<tr><td>Step ' + s.stepNumber + '</td><td class="' + (s.isCompleted ? 'status-completed' : '') + '">' + (s.isCompleted ? 'Completed' : 'Incomplete') + '</td><td>' + (s.sponsorVerified ? 'Yes' + (s.sponsorName ? ' (' + s.sponsorName + ')' : '') : 'No') + '</td><td>' + (s.completedAt ? formatDate(s.completedAt as string) : '\u2014') + '</td></tr>').join('')}
+   991→   991→        </tbody>
+   992→   992→      </table>
+   993→   993→    </div>` : ''}
+   994→   994→
+   995→   995→    <!-- Footer -->
+   996→   996→    <div class="footer">
+   997→   997→      <p class="generated">Generated by Reunify on ${today}</p>
+   998→   998→      <p class="privacy">CONFIDENTIAL: This report contains sensitive case information. Store securely and share only with authorized parties such as your attorney, caseworker, or judge. All data is stored locally on the user's device and is not transmitted to any external servers.</p>
+   999→   999→    </div>
+  1000→  1000→  </div>
+  1001→  1001→</body>
+  1002→  1002→</html>`
+  1003→  1003→
+  1004→  1004→  const printWindow = window.open('', '_blank')
+  1005→  1005→  if (!printWindow) {
+  1006→  1006→    toast.error('Please allow popups to generate the PDF report')
+  1007→  1007→    return
+  1008→  1008→  }
+  1009→  1009→  printWindow.document.write(html)
+  1010→  1010→  printWindow.document.close()
+  1011→  1011→  // Wait for content to render then print
+  1012→  1012→  printWindow.onload = () => {
+  1013→  1013→    setTimeout(() => {
+  1014→  1014→      printWindow.print()
+  1015→  1015→    }, 300)
+  1016→  1016→  }
+  1017→  1017→}
+  1018→  1018→
+  1019→  1019→export function ProgressView() {
+  1020→  1020→  const { activeCaseId } = useAppStore()
+  1021→  1021→  const { data: caseData, isLoading } = useCase(activeCaseId)
+  1022→  1022→  const [exporting, setExporting] = useState(false)
+  1023→  1023→  const [summaryOpen, setSummaryOpen] = useState(false)
+  1024→  1024→  const { tier, setUpgradeDialogOpen } = useSubscriptionStore()
+  1025→  1025→  const isPro = tier === 'pro'
+  1026→  1026→
+  1027→  1027→  async function handleExport() {
+  1028→  1028→    if (!activeCaseId) return
+  1029→  1029→    try {
+  1030→  1030→      setExporting(true)
+  1031→  1031→      const res = await fetch(`/api/export?caseId=${activeCaseId}`)
+  1032→  1032→      if (!res.ok) throw new Error('Export failed')
+  1033→  1033→      const data = await res.json()
+  1034→  1034→      const blob = new Blob([JSON.stringify(data, null, 2)], {
+  1035→  1035→        type: 'application/json',
+  1036→  1036→      })
+  1037→  1037→      const url = URL.createObjectURL(blob)
+  1038→  1038→      const a = document.createElement('a')
+  1039→  1039→      a.href = url
+  1040→  1040→      a.download = `reunify-export-${data.case.caseNumber}-${new Date().toISOString().split('T')[0]}.json`
+  1041→  1041→      document.body.appendChild(a)
+  1042→  1042→      a.click()
+  1043→  1043→      document.body.removeChild(a)
+  1044→  1044→      URL.revokeObjectURL(url)
+  1045→  1045→      toast.success('Case data exported successfully')
+  1046→  1046→    } catch (error) {
+  1047→  1047→      console.error('Export error:', error)
+  1048→  1048→      toast.error('Failed to export case data')
+  1049→  1049→    } finally {
+  1050→  1050→      setExporting(false)
+  1051→  1051→    }
+  1052→  1052→  }
+  1053→  1053→
+  1054→  1054→  if (isLoading || !caseData) {
+  1055→  1055→    return (
+  1056→  1056→      <div className="space-y-6">
+  1057→  1057→        <div className="flex flex-col items-center py-8">
+  1058→  1058→          <Skeleton className="size-44 rounded-full" />
+  1059→  1059→          <Skeleton className="mt-4 h-6 w-48" />
+  1060→  1060→          <Skeleton className="mt-2 h-4 w-64" />
+  1061→  1061→        </div>
+  1062→  1062→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  1063→  1063→          {Array.from({ length: 4 }).map((_, i) => (
+  1064→  1064→            <Card key={i}>
+  1065→  1065→              <CardContent className="p-4">
+  1066→  1066→                <Skeleton className="h-4 w-24" />
+  1067→  1067→                <Skeleton className="mt-2 h-8 w-16" />
+  1068→  1068→                <Skeleton className="mt-2 h-2 w-full" />
+  1069→  1069→              </CardContent>
+  1070→  1070→            </Card>
+  1071→  1071→          ))}
+  1072→  1072→        </div>
+  1073→  1073→      </div>
+  1074→  1074→    )
+  1075→  1075→  }
+  1076→  1076→
+  1077→  1077→  // Calculate category progress
+  1078→  1078→  const {
+  1079→  1079→    requirements = [],
+  1080→  1080→    counselingSessions = [],
+  1081→  1081→    drugTests = [],
+  1082→  1082→    naSteps = [],
+  1083→  1083→    naMeetings = [],
+  1084→  1084→    supervisedVisits = [],
+  1085→  1085→    parentingClasses = [],
+  1086→  1086→    courtDates = [],
+  1087→  1087→    milestones = [],
+  1088→  1088→  } = caseData
+  1089→  1089→
+  1090→  1090→  // Counseling
+  1091→  1091→  const totalCounseling = counselingSessions.length
+  1092→  1092→  const completedCounseling = counselingSessions.filter(
+  1093→  1093→    (s) => s.isCompleted
+  1094→  1094→  ).length
+  1095→  1095→  const counselingRate =
+  1096→  1096→    totalCounseling > 0
+  1097→  1097→      ? Math.round((completedCounseling / totalCounseling) * 100)
+  1098→  1098→      : 0
+  1099→  1099→
+  1100→  1100→  // Drug Testing
+  1101→  1101→  const totalDrugTests = drugTests.length
+  1102→  1102→  const passedTests = drugTests.filter(
+  1103→  1103→    (t) => t.result === 'negative'
+  1104→  1104→  ).length
+  1105→  1105→  const drugPassRate =
+  1106→  1106→    totalDrugTests > 0 ? Math.round((passedTests / totalDrugTests) * 100) : 0
+  1107→  1107→
+  1108→  1108→  // Calculate clean streak
+  1109→  1109→  const sortedTests = [...drugTests].sort(
+  1110→  1110→    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  1111→  1111→  )
+  1112→  1112→  let cleanStreak = 0
+  1113→  1113→  for (const test of sortedTests) {
+  1114→  1114→    if (test.result === 'negative') {
+  1115→  1115→      cleanStreak++
+  1116→  1116→    } else {
+  1117→  1117→      break
+  1118→  1118→    }
+  1119→  1119→  }
+  1120→  1120→
+  1121→  1121→  // NA Steps
+  1122→  1122→  const completedSteps = naSteps.filter((s) => s.isCompleted).length
+  1123→  1123→  const stepsProgress =
+  1124→  1124→    naSteps.length > 0
+  1125→  1125→      ? Math.round((completedSteps / 12) * 100)
+  1126→  1126→      : 0
+  1127→  1127→
+  1128→  1128→  // NA Meetings
+  1129→  1129→  const totalMeetings = naMeetings.length
+  1130→  1130→  const verifiedMeetings = naMeetings.filter((m) => m.isVerified).length
+  1131→  1131→  const verificationRate =
+  1132→  1132→    totalMeetings > 0
+  1133→  1133→      ? Math.round((verifiedMeetings / totalMeetings) * 100)
+  1134→  1134→      : 0
+  1135→  1135→
+  1136→  1136→  // Supervised Visits
+  1137→  1137→  const totalVisits = supervisedVisits.length
+  1138→  1138→  const completedVisits = supervisedVisits.filter(
+  1139→  1139→    (v) => v.isCompleted
+  1140→  1140→  ).length
+  1141→  1141→  const visitProgress =
+  1142→  1142→    totalVisits > 0 ? Math.round((completedVisits / totalVisits) * 100) : 0
+  1143→  1143→
+  1144→  1144→  // Determine visit type level
+  1145→  1145→  const completedVisitsList = supervisedVisits
+  1146→  1146→    .filter((v) => v.isCompleted)
+  1147→  1147→    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  1148→  1148→  const latestVisitType =
+  1149→  1149→    completedVisitsList[0]?.visitType || 'supervised'
+  1150→  1150→  const visitLevelLabel =
+  1151→  1151→    latestVisitType === 'unsupervised'
+  1152→  1152→      ? 'Unsupervised'
+  1153→  1153→      : latestVisitType === 'semi-supervised'
+  1154→  1154→        ? 'Semi-Supervised'
+  1155→  1155→        : 'Supervised'
+  1156→  1156→
+  1157→  1157→  // Parenting Classes
+  1158→  1158→  const totalClasses = parentingClasses.length
+  1159→  1159→  const completedClasses = parentingClasses.filter(
+  1160→  1160→    (c) => c.isCompleted
+  1161→  1161→  ).length
+  1162→  1162→  const certificatesEarned = parentingClasses.filter(
+  1163→  1163→    (c) => c.hasCertificate
+  1164→  1164→  ).length
+  1165→  1165→  const classProgress =
+  1166→  1166→    totalClasses > 0 ? Math.round((completedClasses / totalClasses) * 100) : 0
+  1167→  1167→
+  1168→  1168→  // Court Dates
+  1169→  1169→  const totalCourtDates = courtDates.length
+  1170→  1170→  const completedCourtDates = courtDates.filter(
+  1171→  1171→    (c) => c.isCompleted
+  1172→  1172→  ).length
+  1173→  1173→  const nextCourtDate = courtDates
+  1174→  1174→    .filter((c) => !c.isCompleted && new Date(c.date) > new Date())
+  1175→  1175→    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0]
+  1176→  1176→
+  1177→  1177→  // Requirements
+  1178→  1178→  const totalRequirements = requirements.length
+  1179→  1179→  const completedRequirements = requirements.filter(
+  1180→  1180→    (r) => r.isCompleted
+  1181→  1181→  ).length
+  1182→  1182→  const reqProgress =
+  1183→  1183→    totalRequirements > 0
+  1184→  1184→      ? Math.round((completedRequirements / totalRequirements) * 100)
+  1185→  1185→      : 0
+  1186→  1186→
+  1187→  1187→  // Overall progress
+  1188→  1188→  const overallProgress =
+  1189→  1189→    totalRequirements > 0
+  1190→  1190→      ? Math.round((completedRequirements / totalRequirements) * 100)
+  1191→  1191→      : 0
+  1192→  1192→
+  1193→  1193→  // Determine statuses
+  1194→  1194→  function getStatus(progress: number): CategoryProgress['status'] {
+  1195→  1195→    if (progress >= 100) return 'completed'
+  1196→  1196→    if (progress >= 60) return 'on-track'
+  1197→  1197→    if (progress >= 30) return 'needs-attention'
+  1198→  1198→    return 'behind'
+  1199→  1199→  }
+  1200→  1200→
+  1201→  1201→  const categories: CategoryProgress[] = [
+  1202→  1202→    {
+  1203→  1203→      key: 'counseling',
+  1204→  1204→      label: 'Counseling',
+  1205→  1205→      icon: <Heart className="size-5 text-emerald-600" />,
+  1206→  1206→      progress: counselingRate,
+  1207→  1207→      statLabel: 'Sessions',
+  1208→  1208→      statValue: `${completedCounseling}/${totalCounseling}`,
+  1209→  1209→      status: getStatus(counselingRate),
+  1210→  1210→      color: 'emerald',
+  1211→  1211→    },
+  1212→  1212→    {
+  1213→  1213→      key: 'drug-testing',
+  1214→  1214→      label: 'Drug Testing',
+  1215→  1215→      icon: <TestTube2 className="size-5 text-amber-600" />,
+  1216→  1216→      progress: drugPassRate,
+  1217→  1217→      statLabel: 'Pass Rate',
+  1218→  1218→      statValue: `${drugPassRate}% (${cleanStreak} clean)`,
+  1219→  1219→      status: getStatus(drugPassRate),
+  1220→  1220→      color: 'amber',
+  1221→  1221→    },
+  1222→  1222→    {
+  1223→  1223→      key: 'na-steps',
+  1224→  1224→      label: '12 Steps',
+  1225→  1225→      icon: <Footprints className="size-5 text-purple-600" />,
+  1226→  1226→      progress: stepsProgress,
+  1227→  1227→      statLabel: 'Steps Completed',
+  1228→  1228→      statValue: `${completedSteps}/12`,
+  1229→  1229→      status: getStatus(stepsProgress),
+  1230→  1230→      color: 'purple',
+  1231→  1231→    },
+  1232→  1232→    {
+  1233→  1233→      key: 'na-meetings',
+  1234→  1234→      label: 'NA Meetings',
+  1235→  1235→      icon: <Users className="size-5 text-violet-600" />,
+  1236→  1236→      progress: verificationRate,
+  1237→  1237→      statLabel: 'Verified',
+  1238→  1238→      statValue: `${verifiedMeetings}/${totalMeetings}`,
+  1239→  1239→      status: getStatus(verificationRate),
+  1240→  1240→      color: 'violet',
+  1241→  1241→    },
+  1242→  1242→    {
+  1243→  1243→      key: 'visits',
+  1244→  1244→      label: 'Visits',
+  1245→  1245→      icon: <Baby className="size-5 text-sky-600" />,
+  1246→  1246→      progress: visitProgress,
+  1247→  1247→      statLabel: 'Level',
+  1248→  1248→      statValue: visitLevelLabel,
+  1249→  1249→      status: getStatus(visitProgress),
+  1250→  1250→      color: 'sky',
+  1251→  1251→    },
+  1252→  1252→    {
+  1253→  1253→      key: 'parenting-classes',
+  1254→  1254→      label: 'Parenting Classes',
+  1255→  1255→      icon: <GraduationCap className="size-5 text-rose-600" />,
+  1256→  1256→      progress: classProgress,
+  1257→  1257→      statLabel: 'Certificates',
+  1258→  1258→      statValue: `${certificatesEarned} earned`,
+  1259→  1259→      status: getStatus(classProgress),
+  1260→  1260→      color: 'rose',
+  1261→  1261→    },
+  1262→  1262→    {
+  1263→  1263→      key: 'court-dates',
+  1264→  1264→      label: 'Court Dates',
+  1265→  1265→      icon: <Scale className="size-5 text-slate-600" />,
+  1266→  1266→      progress:
+  1267→  1267→        totalCourtDates > 0
+  1268→  1268→          ? Math.round((completedCourtDates / totalCourtDates) * 100)
+  1269→  1269→          : 0,
+  1270→  1270→      statLabel: 'Next Date',
+  1271→  1271→      statValue: nextCourtDate
+  1272→  1272→        ? new Date(nextCourtDate.date).toLocaleDateString('en-US', {
+  1273→  1273→            month: 'short',
+  1274→  1274→            day: 'numeric',
+  1275→  1275→          })
+  1276→  1276→        : 'None scheduled',
+  1277→  1277→      status:
+  1278→  1278→        totalCourtDates > 0
+  1279→  1279→          ? getStatus(
+  1280→  1280→              Math.round((completedCourtDates / totalCourtDates) * 100)
+  1281→  1281→            )
+  1282→  1282→          : 'behind',
+  1283→  1283→      color: 'slate',
+  1284→  1284→    },
+  1285→  1285→    {
+  1286→  1286→      key: 'requirements',
+  1287→  1287→      label: 'Overall Requirements',
+  1288→  1288→      icon: <ClipboardCheck className="size-5 text-teal-600" />,
+  1289→  1289→      progress: reqProgress,
+  1290→  1290→      statLabel: 'Completed',
+  1291→  1291→      statValue: `${completedRequirements}/${totalRequirements}`,
+  1292→  1292→      status: getStatus(reqProgress),
+  1293→  1293→      color: 'teal',
+  1294→  1294→    },
+  1295→  1295→  ]
+  1296→  1296→
+  1297→  1297→  const motivation = getMotivationalMessage(overallProgress)
+  1298→  1298→
+  1299→  1299→  // Chart data
+  1300→  1300→  const radarData = categories.map((cat) => ({
+  1301→  1301→    category: cat.label,
+  1302→  1302→    progress: cat.progress,
+  1303→  1303→    fullMark: 100,
+  1304→  1304→  }))
+  1305→  1305→
+  1306→  1306→  const barData = categories.map((cat) => ({
+  1307→  1307→    name: cat.label.length > 12 ? cat.label.slice(0, 12) + '…' : cat.label,
+  1308→  1308→    progress: cat.progress,
+  1309→  1309→    fill:
+  1310→  1310→      cat.status === 'completed'
+  1311→  1311→        ? '#10b981'
+  1312→  1312→        : cat.status === 'on-track'
+  1313→  1313→          ? '#22c55e'
+  1314→  1314→          : cat.status === 'needs-attention'
+  1315→  1315→            ? '#f59e0b'
+  1316→  1316→            : '#ef4444',
+  1317→  1317→  }))
+  1318→  1318→
+  1319→  1319→  const chartConfig = {
+  1320→  1320→    progress: { label: 'Progress', color: '#10b981' },
+  1321→  1321→    fullMark: { label: 'Target', color: '#e2e8f0' },
+  1322→  1322→  }
+  1323→  1323→
+  1324→  1324→  return (
+  1325→  1325→    <div className="space-y-6 overflow-x-hidden">
+  1326→  1326→      {/* Overall Progress */}
+  1327→  1327→      <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/20 dark:to-background overflow-hidden">
+  1328→  1328→        <CardContent className="p-4 sm:p-6 md:p-8">
+  1329→  1329→          <div className="flex flex-col items-center gap-4 sm:gap-6 sm:flex-row sm:items-center sm:justify-center">
+  1330→  1330→            <div className="w-[140px] h-[140px] sm:w-[180px] sm:h-[180px]">
+  1331→  1331→              <CircularProgress value={overallProgress} size={180} />
+  1332→  1332→            </div>
+  1333→  1333→            <div className="text-center sm:text-left max-w-md">
+  1334→  1334→              <div className="flex items-center justify-center gap-2 sm:justify-start">
+  1335→  1335→                <Sparkles className="size-5 text-emerald-600" />
+  1336→  1336→                <h2 className="text-xl font-bold text-foreground">
+  1337→  1337→                  Your Reunification Journey
+  1338→  1338→                </h2>
+  1339→  1339→              </div>
+  1340→  1340→              <p className="mt-1 text-lg font-semibold text-emerald-700 dark:text-emerald-400">
+  1341→  1341→                {motivation.title}
+  1342→  1342→              </p>
+  1343→  1343→              <p className="mt-2 text-sm text-muted-foreground">
+  1344→  1344→                {motivation.message}
+  1345→  1345→              </p>
+  1346→  1346→              <div className="mt-3 flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+  1347→  1347→                <Button
+  1348→  1348→                  className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+  1349→  1349→                  onClick={() => {
+  1350→  1350→                    if (!isPro) {
+  1351→  1351→                      setUpgradeDialogOpen(true)
+  1352→  1352→                    } else {
+  1353→  1353→                      setSummaryOpen(true)
+  1354→  1354→                    }
+  1355→  1355→                  }}
+  1356→  1356→                >
+  1357→  1357→                  <ClipboardCheck className="size-4" />
+  1358→  1358→                  View Summary
+  1359→  1359→                  {!isPro && <ProBadge />}
+  1360→  1360→                </Button>
+  1361→  1361→                <Button
+  1362→  1362→                  variant="outline"
+  1363→  1363→                  className="gap-2"
+  1364→  1364→                  onClick={() => {
+  1365→  1365→                    if (!isPro) {
+  1366→  1366→                      setUpgradeDialogOpen(true)
+  1367→  1367→                    } else if (caseData) {
+  1368→  1368→                      generatePDFReport(caseData as unknown as Record<string, unknown>, categories)
+  1369→  1369→                    }
+  1370→  1370→                  }}
+  1371→  1371→                >
+  1372→  1372→                  <FileText className="size-4" />
+  1373→  1373→                  PDF Report
+  1374→  1374→                  {!isPro && <ProBadge />}
+  1375→  1375→                </Button>
+  1376→  1376→              </div>
+  1377→  1377→              <div className="mt-4 flex items-center gap-4 justify-center sm:justify-start">
+  1378→  1378→                <div className="text-center">
+  1379→  1379→                  <p className="text-2xl font-bold text-foreground">
+  1380→  1380→                    {completedRequirements}
+  1381→  1381→                  </p>
+  1382→  1382→                  <p className="text-xs text-muted-foreground">Completed</p>
+  1383→  1383→                </div>
+  1384→  1384→                <ArrowRight className="size-4 text-muted-foreground" />
+  1385→  1385→                <div className="text-center">
+  1386→  1386→                  <p className="text-2xl font-bold text-foreground">
+  1387→  1387→                    {totalRequirements}
+  1388→  1388→                  </p>
+  1389→  1389→                  <p className="text-xs text-muted-foreground">Total Goals</p>
+  1390→  1390→                </div>
+  1391→  1391→              </div>
+  1392→  1392→            </div>
+  1393→  1393→          </div>
+  1394→  1394→        </CardContent>
+  1395→  1395→      </Card>
+  1396→  1396→
+  1397→  1397→      {/* Category Breakdown */}
+  1398→  1398→      <div>
+  1399→  1399→        <h2 className="text-lg font-semibold text-foreground mb-4">
+  1400→  1400→          Progress by Category
+  1401→  1401→        </h2>
+  1402→  1402→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  1403→  1403→          {categories.map((cat) => (
+  1404→  1404→            <Card
+  1405→  1405→              key={cat.key}
+  1406→  1406→              className={`border-l-4 ${getStatusColor(cat.status)}`}
+  1407→  1407→            >
+  1408→  1408→              <CardContent className="p-4">
+  1409→  1409→                <div className="flex items-center justify-between mb-2">
+  1410→  1410→                  <div className="flex items-center gap-2">
+  1411→  1411→                    {cat.icon}
+  1412→  1412→                    <span className="font-medium text-sm text-foreground">
+  1413→  1413→                      {cat.label}
+  1414→  1414→                    </span>
+  1415→  1415→                  </div>
+  1416→  1416→                  {getStatusBadge(cat.status)}
+  1417→  1417→                </div>
+  1418→  1418→                <div className="mt-3 space-y-1">
+  1419→  1419→                  <div className="flex items-center justify-between text-xs">
+  1420→  1420→                    <span className="text-muted-foreground">
+  1421→  1421→                      {cat.statLabel}
+  1422→  1422→                    </span>
+  1423→  1423→                    <span className="font-semibold text-foreground">
+  1424→  1424→                      {cat.statValue}
+  1425→  1425→                    </span>
+  1426→  1426→                  </div>
+  1427→  1427→                  <Progress value={cat.progress} className="h-2" />
+  1428→  1428→                  <p className="text-xs text-muted-foreground text-right">
+  1429→  1429→                    {cat.progress}%
+  1430→  1430→                  </p>
+  1431→  1431→                </div>
+  1432→  1432→              </CardContent>
+  1433→  1433→            </Card>
+  1434→  1434→          ))}
+  1435→  1435→        </div>
+  1436→  1436→      </div>
+  1437→  1437→
+  1438→  1438→      {/* Charts — Pro Feature */}
+  1439→  1439→      <div className="relative">
+  1440→  1440→        {!isPro && (
+  1441→  1441→          <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center gap-3 p-6">
+  1442→  1442→            <Lock className="size-8 text-muted-foreground" />
+  1443→  1443→            <p className="text-sm font-medium text-foreground">Detailed Charts</p>
+  1444→  1444→            <p className="text-xs text-muted-foreground text-center">Upgrade to Pro to see radar and comparison charts</p>
+  1445→  1445→            <Button
+  1446→  1446→              size="sm"
+  1447→  1447→              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+  1448→  1448→              onClick={() => setUpgradeDialogOpen(true)}
+  1449→  1449→            >
+  1450→  1450→              <Sparkles className="size-3.5" />
+  1451→  1451→              Upgrade to Pro
+  1452→  1452→            </Button>
+  1453→  1453→          </div>
+  1454→  1454→        )}
+  1455→  1455→        <div className={`grid gap-6 lg:grid-cols-2 ${!isPro ? 'pointer-events-none' : ''}`}>
+  1456→  1456→        <Card>
+  1457→  1457→          <CardHeader>
+  1458→  1458→            <CardTitle className="text-base">Progress Radar</CardTitle>
+  1459→  1459→          </CardHeader>
+  1460→  1460→          <CardContent>
+  1461→  1461→            <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[220px] sm:max-h-[300px] w-full">
+  1462→  1462→              <RadarChart data={radarData}>
+  1463→  1463→                <PolarGrid />
+  1464→  1464→                <PolarAngleAxis
+  1465→  1465→                  dataKey="category"
+  1466→  1466→                  tick={{ fontSize: 10 }}
+  1467→  1467→                />
+  1468→  1468→                <PolarRadiusAxis
+  1469→  1469→                  angle={30}
+  1470→  1470→                  domain={[0, 100]}
+  1471→  1471→                  tick={{ fontSize: 10 }}
+  1472→  1472→                />
+  1473→  1473→                <Radar
+  1474→  1474→                  name="Progress"
+  1475→  1475→                  dataKey="progress"
+  1476→  1476→                  stroke="#10b981"
+  1477→  1477→                  fill="#10b981"
+  1478→  1478→                  fillOpacity={0.3}
+  1479→  1479→                  strokeWidth={2}
+  1480→  1480→                />
+  1481→  1481→              </RadarChart>
+  1482→  1482→            </ChartContainer>
+  1483→  1483→          </CardContent>
+  1484→  1484→        </Card>
+  1485→  1485→        <Card>
+  1486→  1486→          <CardHeader>
+  1487→  1487→            <CardTitle className="text-base">Category Comparison</CardTitle>
+  1488→  1488→          </CardHeader>
+  1489→  1489→          <CardContent>
+  1490→  1490→            <ChartContainer config={chartConfig} className="aspect-video w-full">
+  1491→  1491→              <BarChart data={barData} layout="vertical">
+  1492→  1492→                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+  1493→  1493→                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} />
+  1494→  1494→                <YAxis
+  1495→  1495→                  dataKey="name"
+  1496→  1496→                  type="category"
+  1497→  1497→                  width={100}
+  1498→  1498→                  tick={{ fontSize: 10 }}
+  1499→  1499→                />
+  1500→  1500→                <Tooltip
+  1501→  1501→                  formatter={(value: number) => [`${value}%`, 'Progress']}
+  1502→  1502→                />
+  1503→  1503→                <Bar dataKey="progress" radius={[0, 4, 4, 0]} />
+  1504→  1504→              </BarChart>
+  1505→  1505→            </ChartContainer>
+  1506→  1506→          </CardContent>
+  1507→  1507→        </Card>
+  1508→  1508→        </div>
+  1509→  1509→      </div>
+  1510→  1510→
+  1511→  1511→      {/* Timeline Summary */}
+  1512→  1512→      <Card>
+  1513→  1513→        <CardHeader>
+  1514→  1514→          <CardTitle className="text-base flex items-center gap-2">
+  1515→  1515→            <TrendingUp className="size-5 text-emerald-600" />
+  1516→  1516→            Key Milestones Timeline
+  1517→  1517→          </CardTitle>
+  1518→  1518→        </CardHeader>
+  1519→  1519→        <CardContent>
+  1520→  1520→          {milestones.length === 0 ? (
+  1521→  1521→            <p className="text-sm text-muted-foreground text-center py-4">
+  1522→  1522→              No milestones tracked yet. Complete activities to see your
+  1523→  1523→              progress here.
+  1524→  1524→            </p>
+  1525→  1525→          ) : (
+  1526→  1526→            <TimelineSummary milestones={milestones} caseData={caseData} />
+  1527→  1527→          )}
+  1528→  1528→        </CardContent>
+  1529→  1529→      </Card>
+  1530→  1530→
+  1531→  1531→      {/* Export & Report */}
+  1532→  1532→      <Separator />
+  1533→  1533→      <div className="space-y-4 py-4">
+  1534→  1534→        <div className="flex flex-col items-center gap-3">
+  1535→  1535→          <p className="text-sm text-muted-foreground text-center">
+  1536→  1536→            Export your complete case data or print a progress report to share
+  1537→  1537→            with your caseworker, attorney, or judge.
+  1538→  1538→          </p>
+  1539→  1539→          <div className="flex flex-wrap items-center justify-center gap-3">
+  1540→  1540→            <Button
+  1541→  1541→              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+  1542→  1542→              onClick={() => {
+  1543→  1543→                if (!isPro) {
+  1544→  1544→                  setUpgradeDialogOpen(true)
+  1545→  1545→                } else {
+  1546→  1546→                  setSummaryOpen(true)
+  1547→  1547→                }
+  1548→  1548→              }}
+  1549→  1549→            >
+  1550→  1550→              <ClipboardCheck className="size-4" />
+  1551→  1551→              Summary
+  1552→  1552→              {!isPro && <ProBadge />}
+  1553→  1553→            </Button>
+  1554→  1554→            <Button
+  1555→  1555→              className="gap-2"
+  1556→  1556→              onClick={() => {
+  1557→  1557→                if (!isPro) {
+  1558→  1558→                  setUpgradeDialogOpen(true)
+  1559→  1559→                } else {
+  1560→  1560→                  handleExport()
+  1561→  1561→                }
+  1562→  1562→              }}
+  1563→  1563→              disabled={exporting && isPro}
+  1564→  1564→            >
+  1565→  1565→              {exporting ? (
+  1566→  1566→                <Loader2 className="size-4 animate-spin" />
+  1567→  1567→              ) : (
+  1568→  1568→                <Download className="size-4" />
+  1569→  1569→              )}
+  1570→  1570→              {exporting ? 'Exporting...' : 'Export Case Data'}
+  1571→  1571→              {!isPro && <ProBadge />}
+  1572→  1572→            </Button>
+  1573→  1573→            <Button
+  1574→  1574→              variant="outline"
+  1575→  1575→              className="gap-2"
+  1576→  1576→              onClick={() => {
+  1577→  1577→                if (!isPro) {
+  1578→  1578→                  setUpgradeDialogOpen(true)
+  1579→  1579→                } else if (caseData) {
+  1580→  1580→                  generatePDFReport(caseData as unknown as Record<string, unknown>, categories)
+  1581→  1581→                }
+  1582→  1582→              }}
+  1583→  1583→            >
+  1584→  1584→              <FileText className="size-4" />
+  1585→  1585→              PDF Report
+  1586→  1586→              {!isPro && <ProBadge />}
+  1587→  1587→            </Button>
+  1588→  1588→            <Button
+  1589→  1589→              variant="outline"
+  1590→  1590→              className="gap-2"
+  1591→  1591→              onClick={() => window.print()}
+  1592→  1592→            >
+  1593→  1593→              <Printer className="size-4" />
+  1594→  1594→              Print
+  1595→  1595→            </Button>
+  1596→  1596→          </div>
+  1597→  1597→        </div>
+  1598→  1598→        <PrivacyNotice />
+  1599→  1599→      </div>
+  1600→  1600→
+  1601→  1601→      <SummaryDialog
+  1602→  1602→        open={summaryOpen}
+  1603→  1603→        onOpenChange={setSummaryOpen}
+  1604→  1604→        caseData={caseData}
+  1605→  1605→        categories={categories}
+  1606→  1606→      />
+  1607→  1607→    </div>
+  1608→  1608→  )
+  1609→  1609→}
+  1610→  1610→

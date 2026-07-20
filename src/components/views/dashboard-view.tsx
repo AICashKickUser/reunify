@@ -31,6 +31,7 @@ import {
   Activity,
   FileText,
   Lock,
+  ArrowRight,
 } from 'lucide-react'
 import {
   format,
@@ -124,6 +125,7 @@ function StatCard({
   progressLabel,
   icon,
   colorClass,
+  onClick,
 }: {
   title: string
   value: string | number
@@ -132,17 +134,28 @@ function StatCard({
   progressLabel?: string
   icon: React.ReactNode
   colorClass: string
+  onClick?: () => void
 }) {
+  const isClickable = !!onClick
   return (
-    <Card className="relative overflow-hidden">
+    <Card 
+      className={`relative overflow-hidden ${isClickable ? 'cursor-pointer hover:shadow-md hover:border-primary/30 transition-all active:scale-[0.98]' : ''}`}
+      onClick={onClick}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={isClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } : undefined}
+    >
       <div className={`absolute top-0 left-0 w-1 h-full ${colorClass}`} />
       <CardHeader className="pb-2 pl-5">
         <div className="flex items-center justify-between">
           <CardDescription className="text-xs font-medium uppercase tracking-wider">
             {title}
           </CardDescription>
-          <div className={`flex size-8 items-center justify-center rounded-lg ${colorClass} bg-opacity-10`}>
-            {icon}
+          <div className="flex items-center gap-1.5">
+            {isClickable && <ArrowRight className="size-3.5 text-muted-foreground/50" />}
+            <div className={`flex size-8 items-center justify-center rounded-lg ${colorClass} bg-opacity-10`}>
+              {icon}
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -499,6 +512,7 @@ export function DashboardView() {
           progressLabel={`${stats.reqProgress}% complete`}
           icon={<ClipboardList className="size-4 text-emerald-600" />}
           colorClass="bg-emerald-500"
+          onClick={() => setActiveView('case-plan')}
         />
         <StatCard
           title="Clean Drug Tests"
@@ -508,6 +522,7 @@ export function DashboardView() {
           progressLabel="Keep it up!"
           icon={<TestTube2 className="size-4 text-amber-600" />}
           colorClass="bg-amber-500"
+          onClick={() => setActiveView('drug-testing')}
         />
         <StatCard
           title="NA Steps Completed"
@@ -517,6 +532,7 @@ export function DashboardView() {
           progressLabel={`${stats.stepProgress}% through the steps`}
           icon={<Footprints className="size-4 text-purple-600" />}
           colorClass="bg-purple-500"
+          onClick={() => setActiveView('na-steps')}
         />
         <StatCard
           title="Counseling Sessions"
@@ -524,6 +540,7 @@ export function DashboardView() {
           subtitle={`${stats.upcomingSessions} upcoming`}
           icon={<Heart className="size-4 text-green-600" />}
           colorClass="bg-green-500"
+          onClick={() => setActiveView('counseling')}
         />
         <StatCard
           title="Supervised Visits"
@@ -531,6 +548,7 @@ export function DashboardView() {
           subtitle={stats.visitProgression}
           icon={<Eye className="size-4 text-sky-600" />}
           colorClass="bg-sky-500"
+          onClick={() => setActiveView('supervised-visits')}
         />
         <StatCard
           title="Days in Case"
@@ -542,6 +560,7 @@ export function DashboardView() {
           }
           icon={<CalendarDays className="size-4 text-slate-500" />}
           colorClass="bg-slate-400"
+          onClick={() => setActiveView('timeline')}
         />
       </div>
 
