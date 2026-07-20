@@ -53,3 +53,5 @@ server.log
 # Skills directory
 /skills/# Android build artifacts
 android-build/twa-project/
+.jdks/
+android-build/
