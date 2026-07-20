@@ -20,8 +20,8 @@
     "path": "/home/z/my-project/android-build/reunify-key.jks",
     "alias": "reunify"
   },
-  "appVersionName": "1.2.0",
-  "appVersionCode": 3,
+  "appVersionName": "1.3.0",
+  "appVersionCode": 4,
   "shortcuts": [],
   "generatorApp": "unknown",
   "webManifestUrl": "https://reunify-six.vercel.app/manifest.json",
@@ -43,5 +43,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "1.2.0"
+  "appVersion": "1.3.0"
 }
