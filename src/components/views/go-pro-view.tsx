@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Crown, Check, Sparkles, ExternalLink, AlertCircle, AlertTriangle } from 'lucide-react'
+import { Crown, Check, Sparkles, ExternalLink, AlertCircle, AlertTriangle, RefreshCw, Copy } from 'lucide-react'
 import { useSubscriptionStore, PRO_FEATURES, PRO_PRICE_MONTHLY, PRO_PRICE_YEARLY, BillingPeriod } from '@/lib/subscription'
 import { toast } from 'sonner'
 
@@ -28,19 +28,21 @@ export function GoProView() {
   const [configLoading, setConfigLoading] = useState(true)
 
   useEffect(() => {
-    async function checkConfig() {
-      try {
-        const res = await fetch('/api/stripe/config')
-        const data = await res.json()
-        setStripeConfig(data)
-      } catch {
-        setStripeConfig({ configured: false, details: { stripeKey: 'ERROR', monthlyPrice: 'ERROR', yearlyPrice: 'ERROR', publicUrl: 'ERROR' }, missing: ['Could not check config'] })
-      } finally {
-        setConfigLoading(false)
-      }
-    }
     checkConfig()
   }, [])
+
+  async function checkConfig() {
+    setConfigLoading(true)
+    try {
+      const res = await fetch('/api/stripe/config')
+      const data = await res.json()
+      setStripeConfig(data)
+    } catch {
+      setStripeConfig({ configured: false, details: { stripeKey: 'ERROR', monthlyPrice: 'ERROR', yearlyPrice: 'ERROR', publicUrl: 'ERROR' }, missing: ['Could not check config'] })
+    } finally {
+      setConfigLoading(false)
+    }
+  }
 
   const isPro = tier === 'pro'
   const price = billingPeriod === 'monthly' ? PRO_PRICE_MONTHLY : PRO_PRICE_YEARLY
@@ -51,7 +53,7 @@ export function GoProView() {
     // If config isn't ready, check first
     if (stripeConfig && !stripeConfig.configured) {
       toast.error('Payment not set up yet', {
-        description: `Missing: ${stripeConfig.missing.join(', ')}. These need to be configured in the server environment.`,
+        description: `Missing: ${stripeConfig.missing.join(', ')}. These need to be configured in your Vercel dashboard.`,
         duration: 8000,
       })
       return
@@ -128,12 +130,12 @@ export function GoProView() {
     const periodEnd = currentPeriodEnd ? new Date(currentPeriodEnd * 1000).toLocaleDateString() : null
 
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <div className="flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 shadow-lg mb-4">
-          <Crown className="size-10 text-white" />
+      <div className="flex flex-col items-center justify-center py-8 sm:py-12 px-4">
+        <div className="flex size-16 sm:size-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 shadow-lg mb-4">
+          <Crown className="size-8 sm:size-10 text-white" />
         </div>
-        <h2 className="text-2xl font-bold text-foreground mb-2">You&apos;re a Pro Member!</h2>
-        <p className="text-muted-foreground text-center max-w-md">
+        <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">You&apos;re a Pro Member!</h2>
+        <p className="text-muted-foreground text-center max-w-md text-sm sm:text-base">
           You have access to all Pro features. Keep making progress on your reunification journey!
         </p>
 
@@ -184,22 +186,22 @@ export function GoProView() {
 
   // Upgrade view
   return (
-    <div className="max-w-2xl mx-auto py-6 space-y-6">
+    <div className="max-w-2xl mx-auto py-4 sm:py-6 space-y-6 px-1">
       {/* Header */}
       <div className="text-center space-y-3">
-        <div className="flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 shadow-lg mx-auto">
-          <Crown className="size-10 text-white" />
+        <div className="flex size-16 sm:size-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 shadow-lg mx-auto">
+          <Crown className="size-8 sm:size-10 text-white" />
         </div>
-        <h2 className="text-2xl font-bold text-foreground">Upgrade to Reunify Pro</h2>
-        <p className="text-muted-foreground max-w-md mx-auto">
+        <h2 className="text-xl sm:text-2xl font-bold text-foreground">Upgrade to Reunify Pro</h2>
+        <p className="text-muted-foreground max-w-md mx-auto text-sm sm:text-base">
           Unlock powerful tools to track, report, and share your reunification journey
         </p>
       </div>
 
-      {/* Config Warning */}
+      {/* Config Warning with Setup Guide */}
       {!configLoading && stripeConfig && !stripeConfig.configured && (
         <Card className="border-orange-300 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20">
-          <CardContent className="p-4">
+          <CardContent className="p-4 space-y-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="size-5 text-orange-600 shrink-0 mt-0.5" />
               <div className="space-y-2">
@@ -207,18 +209,72 @@ export function GoProView() {
                   Payment setup incomplete
                 </p>
                 <p className="text-xs text-orange-700 dark:text-orange-400">
-                  The following environment variables need to be set in your Vercel dashboard:
-                </p>
-                <ul className="text-xs text-orange-700 dark:text-orange-400 list-disc pl-4 space-y-1">
-                  {stripeConfig.missing.map((m) => (
-                    <li key={m}>{m}</li>
-                  ))}
-                </ul>
-                <p className="text-xs text-orange-600 dark:text-orange-500 mt-2">
-                  Go to Vercel → Your Project → Settings → Environment Variables to add these.
+                  The following need to be configured before accepting payments:
                 </p>
               </div>
             </div>
+
+            {/* Missing variables list */}
+            <div className="space-y-2">
+              {stripeConfig.missing.map((m) => (
+                <div key={m} className="flex items-center gap-2 px-3 py-1.5 rounded bg-orange-100/80 dark:bg-orange-900/30">
+                  <span className="text-xs font-mono font-medium text-orange-800 dark:text-orange-300">{m}</span>
+                  {m === 'STRIPE_SECRET_KEY' && (
+                    <span className="text-[10px] text-orange-600 dark:text-orange-400 ml-auto">sk_test_... or sk_live_...</span>
+                  )}
+                  {m === 'STRIPE_PRICE_MONTHLY_ID' && (
+                    <span className="text-[10px] text-orange-600 dark:text-orange-400 ml-auto">price_...</span>
+                  )}
+                  {m === 'STRIPE_PRICE_YEARLY_ID' && (
+                    <span className="text-[10px] text-orange-600 dark:text-orange-400 ml-auto">price_...</span>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Step-by-step setup guide */}
+            <div className="space-y-3 pt-2">
+              <p className="text-xs font-semibold text-orange-800 dark:text-orange-300 uppercase tracking-wider">
+                Quick Setup Guide
+              </p>
+              <ol className="space-y-2 text-xs text-orange-700 dark:text-orange-400">
+                <li className="flex gap-2">
+                  <span className="shrink-0 size-5 rounded-full bg-orange-200 dark:bg-orange-800 flex items-center justify-center text-[10px] font-bold text-orange-800 dark:text-orange-200">1</span>
+                  <span>Go to <strong>Stripe Dashboard → Products</strong> and create a &quot;Reunify Pro&quot; product</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="shrink-0 size-5 rounded-full bg-orange-200 dark:bg-orange-800 flex items-center justify-center text-[10px] font-bold text-orange-800 dark:text-orange-200">2</span>
+                  <span>Add two prices: <strong>$4.99/month</strong> (recurring) and <strong>$39.99/year</strong> (recurring)</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="shrink-0 size-5 rounded-full bg-orange-200 dark:bg-orange-800 flex items-center justify-center text-[10px] font-bold text-orange-800 dark:text-orange-200">3</span>
+                  <span>Copy the <strong>price IDs</strong> (they start with &quot;price_&quot;) for each price</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="shrink-0 size-5 rounded-full bg-orange-200 dark:bg-orange-800 flex items-center justify-center text-[10px] font-bold text-orange-800 dark:text-orange-200">4</span>
+                  <span>Go to <strong>Vercel → Your Project → Settings → Environment Variables</strong></span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="shrink-0 size-5 rounded-full bg-orange-200 dark:bg-orange-800 flex items-center justify-center text-[10px] font-bold text-orange-800 dark:text-orange-200">5</span>
+                  <span>Add <code className="px-1 py-0.5 rounded bg-orange-200 dark:bg-orange-800">STRIPE_SECRET_KEY</code>, <code className="px-1 py-0.5 rounded bg-orange-200 dark:bg-orange-800">STRIPE_PRICE_MONTHLY_ID</code>, and <code className="px-1 py-0.5 rounded bg-orange-200 dark:bg-orange-800">STRIPE_PRICE_YEARLY_ID</code></span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="shrink-0 size-5 rounded-full bg-orange-200 dark:bg-orange-800 flex items-center justify-center text-[10px] font-bold text-orange-800 dark:text-orange-200">6</span>
+                  <span>Redeploy your app on Vercel, then come back and click the upgrade button!</span>
+                </li>
+              </ol>
+            </div>
+
+            {/* Refresh button */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-2 border-orange-300 text-orange-700 hover:bg-orange-100 dark:border-orange-700 dark:text-orange-300 dark:hover:bg-orange-900/50"
+              onClick={checkConfig}
+            >
+              <RefreshCw className="size-3.5" />
+              Re-check Configuration
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -227,7 +283,7 @@ export function GoProView() {
       <div className="flex items-center justify-center gap-2">
         <button
           onClick={() => setBillingPeriod('monthly')}
-          className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${
+          className={`px-4 sm:px-5 py-2 rounded-full text-sm font-medium transition-colors ${
             billingPeriod === 'monthly'
               ? 'bg-emerald-600 text-white'
               : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -237,7 +293,7 @@ export function GoProView() {
         </button>
         <button
           onClick={() => setBillingPeriod('yearly')}
-          className={`px-5 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${
+          className={`px-4 sm:px-5 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${
             billingPeriod === 'yearly'
               ? 'bg-emerald-600 text-white'
               : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -252,7 +308,7 @@ export function GoProView() {
 
       {/* Price */}
       <div className="text-center">
-        <span className="text-4xl font-bold text-foreground">${price}</span>
+        <span className="text-3xl sm:text-4xl font-bold text-foreground">${price}</span>
         <span className="text-muted-foreground">{periodLabel}</span>
         {billingPeriod === 'yearly' && (
           <p className="text-xs text-muted-foreground mt-1">
@@ -293,6 +349,11 @@ export function GoProView() {
         >
           {upgrading ? (
             <span className="animate-pulse">Redirecting to checkout...</span>
+          ) : (!configLoading && stripeConfig !== null && !stripeConfig.configured) ? (
+            <>
+              <AlertTriangle className="size-4" />
+              Payment Not Ready
+            </>
           ) : (
             <>
               <Sparkles className="size-4" />

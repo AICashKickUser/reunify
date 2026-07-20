@@ -1,6 +1,6 @@
 'use client'
 
-import { Plus, Sparkles } from 'lucide-react'
+import { Plus, Sparkles, ArrowLeft } from 'lucide-react'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -23,12 +23,13 @@ const VIEW_ADD_LABELS: Partial<Record<ViewType, string>> = {
 }
 
 export function AppHeader() {
-  const { activeView, activeCaseId, triggerAddDialog, setActiveView } = useAppStore()
+  const { activeView, activeCaseId, triggerAddDialog, setActiveView, viewHistory, goBack } = useAppStore()
   const title = VIEW_LABELS[activeView]
   const { data: caseData } = useCase(activeCaseId)
   const addLabel = VIEW_ADD_LABELS[activeView]
   const { tier, setUpgradeDialogOpen } = useSubscriptionStore()
   const isPro = tier === 'pro'
+  const canGoBack = viewHistory.length > 0
 
   // Calculate overall progress from requirements
   const requirements = caseData?.requirements ?? []
@@ -37,10 +38,27 @@ export function AppHeader() {
   const overallProgress = totalReqs > 0 ? Math.round((completedReqs / totalReqs) * 100) : 0
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4 transition-[width,height] ease-linear">
-      <SidebarTrigger className="-ml-1" />
-      <Separator orientation="vertical" className="mr-2 h-4" />
-      <h1 className="text-base font-semibold text-foreground flex-1">
+    <header className="flex h-14 shrink-0 items-center gap-1 sm:gap-2 border-b bg-background px-2 sm:px-4 transition-[width,height] ease-linear">
+      {/* Back button - shown when there's history to go back to */}
+      {canGoBack ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-9 shrink-0"
+          onClick={() => {
+            goBack()
+            // Also go back in browser history to stay in sync
+            window.history.back()
+          }}
+          aria-label="Go back"
+        >
+          <ArrowLeft className="size-4" />
+        </Button>
+      ) : (
+        <SidebarTrigger className="-ml-1" />
+      )}
+      <Separator orientation="vertical" className="mr-1 sm:mr-2 h-4" />
+      <h1 className="text-sm sm:text-base font-semibold text-foreground flex-1 truncate">
         {title}
       </h1>
 
@@ -65,7 +83,7 @@ export function AppHeader() {
           onClick={() => setActiveView('go-pro')}
         >
           <Sparkles className="size-3.5" />
-          <span>Go Pro</span>
+          <span className="hidden xs:inline sm:inline">Go Pro</span>
         </Button>
       )}
 
