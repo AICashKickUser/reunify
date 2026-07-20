@@ -26,6 +26,7 @@ export function GoProView() {
   const [managing, setManaging] = useState(false)
   const [stripeConfig, setStripeConfig] = useState<StripeConfig | null>(null)
   const [configLoading, setConfigLoading] = useState(true)
+  const [hasCheckedOnce, setHasCheckedOnce] = useState(false)
 
   useEffect(() => {
     checkConfig()
@@ -33,14 +34,27 @@ export function GoProView() {
 
   async function checkConfig() {
     setConfigLoading(true)
+    const isManualRecheck = hasCheckedOnce
     try {
       const res = await fetch('/api/stripe/config')
       const data = await res.json()
       setStripeConfig(data)
+      
+      if (data.configured) {
+        toast.success('Stripe is configured!', {
+          description: 'Payment is ready. You can now upgrade to Pro!',
+        })
+      } else if (isManualRecheck && data.missing && data.missing.length > 0) {
+        toast.info('Still not configured', {
+          description: `Missing: ${data.missing.join(', ')}. Make sure you've redeployed on Vercel after adding env vars.`,
+          duration: 8000,
+        })
+      }
     } catch {
       setStripeConfig({ configured: false, details: { stripeKey: 'ERROR', monthlyPrice: 'ERROR', yearlyPrice: 'ERROR', publicUrl: 'ERROR' }, missing: ['Could not check config'] })
     } finally {
       setConfigLoading(false)
+      setHasCheckedOnce(true)
     }
   }
 
@@ -256,11 +270,20 @@ export function GoProView() {
                 </li>
                 <li className="flex gap-2">
                   <span className="shrink-0 size-5 rounded-full bg-orange-200 dark:bg-orange-800 flex items-center justify-center text-[10px] font-bold text-orange-800 dark:text-orange-200">5</span>
-                  <span>Add <code className="px-1 py-0.5 rounded bg-orange-200 dark:bg-orange-800">STRIPE_SECRET_KEY</code>, <code className="px-1 py-0.5 rounded bg-orange-200 dark:bg-orange-800">STRIPE_PRICE_MONTHLY_ID</code>, and <code className="px-1 py-0.5 rounded bg-orange-200 dark:bg-orange-800">STRIPE_PRICE_YEARLY_ID</code></span>
+                  <span>Add these 4 variables:<br/>
+                    <code className="px-1 py-0.5 rounded bg-orange-200 dark:bg-orange-800">STRIPE_SECRET_KEY</code> = your Stripe secret key<br/>
+                    <code className="px-1 py-0.5 rounded bg-orange-200 dark:bg-orange-800">STRIPE_PRICE_MONTHLY_ID</code> = monthly price ID<br/>
+                    <code className="px-1 py-0.5 rounded bg-orange-200 dark:bg-orange-800">STRIPE_PRICE_YEARLY_ID</code> = yearly price ID<br/>
+                    <code className="px-1 py-0.5 rounded bg-orange-200 dark:bg-orange-800">NEXT_PUBLIC_URL</code> = your app URL (e.g. https://yourapp.vercel.app)
+                  </span>
                 </li>
                 <li className="flex gap-2">
                   <span className="shrink-0 size-5 rounded-full bg-orange-200 dark:bg-orange-800 flex items-center justify-center text-[10px] font-bold text-orange-800 dark:text-orange-200">6</span>
-                  <span>Redeploy your app on Vercel, then come back and click the upgrade button!</span>
+                  <span><strong>Redeploy</strong> on Vercel (Deployments → click ⋯ → Redeploy) — env vars only take effect after redeploy!</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="shrink-0 size-5 rounded-full bg-orange-200 dark:bg-orange-800 flex items-center justify-center text-[10px] font-bold text-orange-800 dark:text-orange-200">7</span>
+                  <span>Come back here and click <strong>Re-check Configuration</strong> below</span>
                 </li>
               </ol>
             </div>
