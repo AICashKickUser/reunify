@@ -38,6 +38,7 @@ export function GoProView() {
 
   const checkConfig = useCallback(async () => {
     setConfigLoading(true)
+    // Read the current value from state to avoid stale closure
     const isManualRecheck = hasCheckedOnce
     try {
       const res = await fetch('/api/stripe/config')
@@ -62,7 +63,7 @@ export function GoProView() {
       setConfigLoading(false)
       setHasCheckedOnce(true)
     }
-  }, [hasCheckedOnce])
+  }, [])
 
   // Owner activation code handler
   function handleActivation() {
@@ -181,63 +182,80 @@ export function GoProView() {
     const isOwner = stripeSessionId === 'owner-activation'
 
     return (
-      <div className="flex flex-col items-center justify-center py-6 sm:py-12 px-4">
-        <div className="flex size-14 sm:size-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 shadow-lg mb-3 sm:mb-4">
-          <Crown className="size-7 sm:size-10 text-white" />
-        </div>
-        <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">You&apos;re a Pro Member!</h2>
-        <p className="text-muted-foreground text-center max-w-md text-sm sm:text-base">
-          You have access to all Pro features. Keep making progress on your reunification journey!
-        </p>
-
-        {/* Subscription status info */}
-        <div className="mt-3 sm:mt-4 text-center space-y-1">
-          {isOwner && (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800">
-              <Key className="size-3.5 text-emerald-600" />
-              <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
-                Owner Access — Full Pro
-              </span>
-            </div>
-          )}
-          {trialActive && (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
-              <Sparkles className="size-3.5 text-amber-600" />
-              <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                Free Trial — {trialEnd ? `${Math.ceil((trialEnd - Date.now() / 1000) / 86400)} days left` : 'Active'}
-              </span>
-            </div>
-          )}
-          {cancelAtPeriodEnd && periodEnd && (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800">
-              <AlertCircle className="size-3.5 text-orange-600" />
-              <span className="text-sm font-medium text-orange-700 dark:text-orange-400">
-                Cancels on {periodEnd}
-              </span>
-            </div>
+      <div className="max-w-2xl mx-auto py-3 sm:py-6 space-y-4 sm:space-y-6 px-3 sm:px-4 overflow-y-auto max-h-[calc(100vh-8rem)]">
+        {/* Back button - always visible for Pro member view too */}
+        <div className="sticky top-0 z-10 -mx-3 sm:-mx-4 -mt-3 sm:-mt-6 px-3 sm:px-4 pt-3 sm:pt-6 pb-2 bg-background/95 backdrop-blur-sm">
+          {viewHistory.length > 0 ? (
+            <button
+              onClick={() => { goBack(); window.history.back() }}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="size-4" />
+              Back to Dashboard
+            </button>
+          ) : (
+            <div className="h-5" />
           )}
         </div>
 
-        {/* Manage subscription */}
-        {stripeSessionId && !isOwner && (
-          <Button
-            variant="outline"
-            className="mt-3 sm:mt-4 gap-2"
-            onClick={handleManageSubscription}
-            disabled={managing}
-          >
-            <ExternalLink className="size-4" />
-            {managing ? 'Opening...' : 'Manage Subscription'}
-          </Button>
-        )}
+        <div className="flex flex-col items-center justify-center px-2">
+          <div className="flex size-14 sm:size-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 shadow-lg mb-3 sm:mb-4">
+            <Crown className="size-7 sm:size-10 text-white" />
+          </div>
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">You&apos;re a Pro Member!</h2>
+          <p className="text-muted-foreground text-center max-w-md text-sm sm:text-base">
+            You have access to all Pro features. Keep making progress on your reunification journey!
+          </p>
 
-        <div className="mt-4 sm:mt-6 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 max-w-lg w-full">
-          {PRO_FEATURES.slice(0, 4).map((f) => (
-            <div key={f.key} className="text-center p-2 sm:p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20">
-              <Check className="size-4 text-emerald-600 mx-auto mb-1" />
-              <p className="text-xs font-medium">{f.label}</p>
-            </div>
-          ))}
+          {/* Subscription status info */}
+          <div className="mt-3 sm:mt-4 text-center space-y-1">
+            {isOwner && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800">
+                <Key className="size-3.5 text-emerald-600" />
+                <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                  Owner Access — Full Pro
+                </span>
+              </div>
+            )}
+            {trialActive && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+                <Sparkles className="size-3.5 text-amber-600" />
+                <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                  Free Trial — {trialEnd ? `${Math.ceil((trialEnd - Date.now() / 1000) / 86400)} days left` : 'Active'}
+                </span>
+              </div>
+            )}
+            {cancelAtPeriodEnd && periodEnd && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800">
+                <AlertCircle className="size-3.5 text-orange-600" />
+                <span className="text-sm font-medium text-orange-700 dark:text-orange-400">
+                  Cancels on {periodEnd}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Manage subscription */}
+          {stripeSessionId && !isOwner && (
+            <Button
+              variant="outline"
+              className="mt-3 sm:mt-4 gap-2"
+              onClick={handleManageSubscription}
+              disabled={managing}
+            >
+              <ExternalLink className="size-4" />
+              {managing ? 'Opening...' : 'Manage Subscription'}
+            </Button>
+          )}
+
+          <div className="mt-4 sm:mt-6 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 max-w-lg w-full">
+            {PRO_FEATURES.slice(0, 4).map((f) => (
+              <div key={f.key} className="text-center p-2 sm:p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20">
+                <Check className="size-4 text-emerald-600 mx-auto mb-1" />
+                <p className="text-xs font-medium">{f.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     )
@@ -245,17 +263,21 @@ export function GoProView() {
 
   // Upgrade view
   return (
-    <div className="max-w-2xl mx-auto py-3 sm:py-6 space-y-4 sm:space-y-6 px-2 sm:px-4 overflow-y-auto">
-      {/* Back button for mobile */}
-      {viewHistory.length > 0 && (
-        <button
-          onClick={() => { goBack(); window.history.back() }}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2"
-        >
-          <ArrowLeft className="size-4" />
-          Back
-        </button>
-      )}
+    <div className="max-w-2xl mx-auto py-3 sm:py-6 space-y-4 sm:space-y-6 px-3 sm:px-4 overflow-y-auto max-h-[calc(100vh-8rem)]">
+      {/* Back button - always visible, sticky at top for mobile */}
+      <div className="sticky top-0 z-10 -mx-3 sm:-mx-4 -mt-3 sm:-mt-6 px-3 sm:px-4 pt-3 sm:pt-6 pb-2 bg-background/95 backdrop-blur-sm">
+        {viewHistory.length > 0 ? (
+          <button
+            onClick={() => { goBack(); window.history.back() }}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="size-4" />
+            Back to Dashboard
+          </button>
+        ) : (
+          <div className="h-5" />
+        )}
+      </div>
 
       {/* Header */}
       <div className="text-center space-y-2 sm:space-y-3">
@@ -409,18 +431,21 @@ export function GoProView() {
         {!showActivation ? (
           <button
             onClick={() => setShowActivation(true)}
-            className="mx-auto flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="mx-auto flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-foreground transition-colors py-2"
           >
             <Key className="size-3" />
             Have an activation code?
           </button>
         ) : (
-          <Card className="border-dashed">
+          <Card className="border-dashed border-emerald-300 dark:border-emerald-700">
             <CardContent className="p-3 sm:p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Key className="size-4 text-muted-foreground" />
+                <Key className="size-4 text-emerald-600" />
                 <p className="text-sm font-medium">Enter Activation Code</p>
               </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                If you received a Pro activation code, enter it below to unlock all features instantly.
+              </p>
               <div className="flex gap-2">
                 <input
                   type="text"
