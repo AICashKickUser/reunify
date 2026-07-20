@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCase } from '@/lib/data-hooks'
-import { useAppStore } from '@/lib/store'
+import { useAppStore, type ViewType } from '@/lib/store'
 import { useSubscriptionStore } from '@/lib/subscription'
 import { ProBadge } from '@/components/pro-badge'
 import { CATEGORY_COLORS } from '@/lib/types'
@@ -478,6 +478,21 @@ export function DashboardView() {
     return c
   }
 
+  // Map event type to the corresponding view for navigation
+  const eventTypeToView = (type: string): ViewType => {
+    switch (type) {
+      case 'counseling': return 'counseling'
+      case 'drug-testing': return 'drug-testing'
+      case 'na-meetings': return 'na-meetings'
+      case 'na-steps': return 'na-steps'
+      case 'supervised-visits': return 'supervised-visits'
+      case 'legal': return 'court-dates'
+      case 'parenting-classes': return 'parenting-classes'
+      case 'milestone': return 'case-plan'
+      default: return 'timeline'
+    }
+  }
+
   const formatEventDate = (dateStr: string) => {
     try {
       const d = parseISO(dateStr)
@@ -591,7 +606,11 @@ export function DashboardView() {
                   return (
                     <div
                       key={event.id}
-                      className={`flex items-center gap-3 rounded-lg border p-3 ${style.bg} ${style.border} transition-colors hover:opacity-80`}
+                      className={`flex items-center gap-3 rounded-lg border p-3 ${style.bg} ${style.border} transition-colors hover:opacity-80 cursor-pointer active:scale-[0.98]`}
+                      onClick={() => setActiveView(eventTypeToView(event.type))}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveView(eventTypeToView(event.type)) } }}
                     >
                       <div className="flex size-8 items-center justify-center rounded-md bg-white/60 dark:bg-black/20 shrink-0">
                         {event.icon}
@@ -639,7 +658,11 @@ export function DashboardView() {
                   return (
                     <div
                       key={event.id}
-                      className="flex items-center gap-3 rounded-lg border p-3 bg-background hover:bg-accent/50 transition-colors"
+                      className="flex items-center gap-3 rounded-lg border p-3 bg-background hover:bg-accent/50 transition-colors cursor-pointer active:scale-[0.98]"
+                      onClick={() => setActiveView(eventTypeToView(event.type))}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveView(eventTypeToView(event.type)) } }}
                     >
                       <div className="flex size-7 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 shrink-0">
                         <CheckCircle2 className="size-4 text-emerald-600" />
@@ -688,22 +711,34 @@ export function DashboardView() {
             <div className="space-y-3">
               {/* Basic Summary - always visible */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 p-3 text-center">
+                <button
+                  className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 p-3 text-center hover:opacity-80 transition-opacity cursor-pointer active:scale-[0.97]"
+                  onClick={() => setActiveView('case-plan')}
+                >
                   <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400">{stats.reqProgress}%</p>
                   <p className="text-xs text-emerald-600 dark:text-emerald-400/70">Overall Progress</p>
-                </div>
-                <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 p-3 text-center">
+                </button>
+                <button
+                  className="rounded-lg bg-amber-50 dark:bg-amber-950/20 p-3 text-center hover:opacity-80 transition-opacity cursor-pointer active:scale-[0.97]"
+                  onClick={() => setActiveView('case-plan')}
+                >
                   <p className="text-xl font-bold text-amber-700 dark:text-amber-400">{stats.completedReqs}/{stats.totalReqs}</p>
                   <p className="text-xs text-amber-600 dark:text-amber-400/70">Requirements</p>
-                </div>
-                <div className="rounded-lg bg-sky-50 dark:bg-sky-950/20 p-3 text-center">
+                </button>
+                <button
+                  className="rounded-lg bg-sky-50 dark:bg-sky-950/20 p-3 text-center hover:opacity-80 transition-opacity cursor-pointer active:scale-[0.97]"
+                  onClick={() => setActiveView('drug-testing')}
+                >
                   <p className="text-xl font-bold text-sky-700 dark:text-sky-400">{stats.drugTestPct}%</p>
                   <p className="text-xs text-sky-600 dark:text-sky-400/70">Clean Tests</p>
-                </div>
-                <div className="rounded-lg bg-violet-50 dark:bg-violet-950/20 p-3 text-center">
+                </button>
+                <button
+                  className="rounded-lg bg-violet-50 dark:bg-violet-950/20 p-3 text-center hover:opacity-80 transition-opacity cursor-pointer active:scale-[0.97]"
+                  onClick={() => setActiveView('na-steps')}
+                >
                   <p className="text-xl font-bold text-violet-700 dark:text-violet-400">{stats.completedSteps}/12</p>
                   <p className="text-xs text-violet-600 dark:text-violet-400/70">NA Steps</p>
-                </div>
+                </button>
               </div>
 
               {/* Free basic text summary */}

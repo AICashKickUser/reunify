@@ -1,56 +1,24 @@
 ---
 Task ID: 1
-Agent: Main Agent
-Task: Fix mobile bugs - Android back button, viewport zoom, progress view stuck, Stripe payment buttons
+Agent: main
+Task: Fix all outstanding Reunify bugs from previous session
 
 Work Log:
-- Read entire codebase to understand architecture (store, views, layout, API routes)
-- Added viewHistory tracking to Zustand store with goBack() function
-- Created useNavigationHistory hook that syncs browser history with app navigation
-  - Pushes history entries when views change
-  - Listens for popstate events (Android back button)
-  - Restores view from URL hash on page reload
-- Updated page.tsx to use useNavigationHistory hook
-- Updated app-header.tsx with back button (ArrowLeft) that shows when navigation history exists
-- Fixed viewport meta tag: changed maximumScale from 1 to 5, added userScalable: true, viewportFit: cover
-- Fixed progress view mobile responsiveness:
-  - Made CircularProgress use SVG viewBox for responsive scaling
-  - Added responsive container for progress circle (140px mobile, 180px desktop)
-  - Made chart containers smaller on mobile (220px vs 300px)
-  - Added overflow-x-hidden to main container
-- Enhanced Go Pro view with 6-step Stripe setup guide and re-check button
-- Updated globals.css with mobile fixes:
-  - overflow-x: hidden on html/body
-  - overscroll-behavior-y: contain (prevent pull-to-refresh)
-  - touch-action: manipulation for buttons
-  - max-width constraints for Recharts on mobile
-- Bumped service worker cache version (v1 → v2)
+- Fixed Pro page mobile overflow: Added max-height constraint with `max-h-[calc(100vh-8rem)]`, `overflow-y-auto`, and sticky back button at top of both Pro member view and upgrade view
+- Fixed Pro page navigation trap: Added sticky "Back to Dashboard" button that's always visible, even when scrolled
+- Fixed Timeline crash on mobile: Default to list view on mobile (width < 768), removed unused imports, added proper containment with `overflow-y-auto max-h-[calc(100vh-8rem)]`
+- Fixed Re-check Configuration button: Removed stale closure dependency by using empty dependency array for useCallback
+- Made dashboard clickable: Added onClick handlers to stat cards (already had them), upcoming events, recent activity items, and summary stat boxes - all navigate to their corresponding views
+- Added eventTypeToView mapping function to convert event types to ViewType for navigation
+- Enhanced admin bypass: Activation code section already existed (code: "reunify-owner-2024"), improved visibility with better styling and helper text
+- Added dark mode support to CATEGORY_COLORS in types.ts
+- Fixed main content area overflow in page.tsx with `overflow-hidden` on main and `overflow-y-auto` on content div
+- Browser verification passed: all views load correctly, navigation works, no console errors, responsive layout works at mobile width
 
 Stage Summary:
-- Android back button now navigates within app instead of exiting
-- Back button (←) appears in header on non-Dashboard views
-- Viewport allows proper scaling/zooming on mobile
-- Progress/summary view is mobile responsive
-- Go Pro view shows step-by-step Stripe setup guide when not configured
-- All lint checks pass
-- Agent Browser verified all features working
----
-Task ID: 1-6
-Agent: Main Agent
-Task: Fix mobile layout issues, add clickable dashboard cards, owner Pro bypass, and improve timeline stability
-
-Work Log:
-- Fixed Go Pro page mobile layout: added responsive spacing, back button, scrollable container, activation code section
-- Made dashboard stat cards clickable: each card now navigates to its corresponding view (Case Plan, Drug Testing, NA Steps, Counseling, Visits, Timeline)
-- Added owner/developer Pro bypass: activation code "reunify-owner-2024" grants full Pro access without payment
-- Fixed "Re-check Configuration" button: changed to useCallback to prevent full page refresh
-- Made basic summary always accessible for free users (both in progress view and dashboard)
-- Fixed progress view for mobile: responsive CircularProgress, smaller chart fonts, mobile-friendly chart containers
-- Added timeline error recovery UI for mobile crashes
-- Pushed all changes to git (local commit; GitHub push failed due to expired token)
-
-Stage Summary:
-- All browser tests pass: stat card navigation, Go Pro page, activation code, Pro features, timeline, progress view
-- Zero JS errors or crashes in browser testing
-- GitHub push failed - user needs to push with a valid token or set up SSH key
-- Activation code for owner Pro access: reunify-owner-2024
+- All 5 bugs/features addressed and verified
+- Pro page: constrained height, scrollable, always-visible back button
+- Timeline: defaults to list on mobile, proper containment
+- Dashboard: all cards/events are clickable and navigate to correct views
+- Admin bypass: activation code "reunify-owner-2024" grants Pro access
+- Clean lint, no errors, all API endpoints returning 200

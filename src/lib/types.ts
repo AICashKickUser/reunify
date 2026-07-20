@@ -160,19 +160,19 @@ export interface DailyCheckIn {
 
 // Category colors for visual consistency
 export const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  'counseling': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-  'drug-testing': { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-  'na-meetings': { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200' },
-  'na-steps': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
-  'supervised-visits': { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200' },
-  'parenting-classes': { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
-  'housing': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
-  'employment': { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' },
-  'legal': { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200' },
-  'family': { bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200' },
-  'education': { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200' },
-  'milestone': { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
-  'other': { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' },
+  'counseling': { bg: 'bg-emerald-50 dark:bg-emerald-950/20', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800' },
+  'drug-testing': { bg: 'bg-amber-50 dark:bg-amber-950/20', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-800' },
+  'na-meetings': { bg: 'bg-violet-50 dark:bg-violet-950/20', text: 'text-violet-700 dark:text-violet-400', border: 'border-violet-200 dark:border-violet-800' },
+  'na-steps': { bg: 'bg-purple-50 dark:bg-purple-950/20', text: 'text-purple-700 dark:text-purple-400', border: 'border-purple-200 dark:border-purple-800' },
+  'supervised-visits': { bg: 'bg-sky-50 dark:bg-sky-950/20', text: 'text-sky-700 dark:text-sky-400', border: 'border-sky-200 dark:border-sky-800' },
+  'parenting-classes': { bg: 'bg-rose-50 dark:bg-rose-950/20', text: 'text-rose-700 dark:text-rose-400', border: 'border-rose-200 dark:border-rose-800' },
+  'housing': { bg: 'bg-orange-50 dark:bg-orange-950/20', text: 'text-orange-700 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-800' },
+  'employment': { bg: 'bg-teal-50 dark:bg-teal-950/20', text: 'text-teal-700 dark:text-teal-400', border: 'border-teal-200 dark:border-teal-800' },
+  'legal': { bg: 'bg-slate-50 dark:bg-slate-950/20', text: 'text-slate-700 dark:text-slate-400', border: 'border-slate-200 dark:border-slate-800' },
+  'family': { bg: 'bg-pink-50 dark:bg-pink-950/20', text: 'text-pink-700 dark:text-pink-400', border: 'border-pink-200 dark:border-pink-800' },
+  'education': { bg: 'bg-cyan-50 dark:bg-cyan-950/20', text: 'text-cyan-700 dark:text-cyan-400', border: 'border-cyan-200 dark:border-cyan-800' },
+  'milestone': { bg: 'bg-indigo-50 dark:bg-indigo-950/20', text: 'text-indigo-700 dark:text-indigo-400', border: 'border-indigo-200 dark:border-indigo-800' },
+  'other': { bg: 'bg-gray-50 dark:bg-gray-950/20', text: 'text-gray-700 dark:text-gray-400', border: 'border-gray-200 dark:border-gray-800' },
 }
 
 export const NA_STEP_TITLES: Record<number, string> = {

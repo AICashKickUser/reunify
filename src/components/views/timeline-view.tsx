@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useCallback, ComponentType } from 'react'
+import { useMemo, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -305,7 +305,11 @@ export function TimelineView() {
     }
   })
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [viewMode, setViewMode] = useState<'week' | 'list'>('week')
+  // Default to list view on mobile for better performance
+  const [viewMode, setViewMode] = useState<'week' | 'list'>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return 'list'
+    return 'week'
+  })
   const [activeFilters, setActiveFilters] = useState<Set<string>>(
     new Set(CATEGORY_FILTERS.map((f) => f.key))
   )
@@ -593,7 +597,7 @@ export function TimelineView() {
   if (!caseData) return <EmptyTimeline />
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-8rem)]">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Timeline</h1>
@@ -605,7 +609,7 @@ export function TimelineView() {
       {/* Filter Controls */}
       <Card>
         <CardContent className="py-4">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground mr-1">
               Filter:
             </span>

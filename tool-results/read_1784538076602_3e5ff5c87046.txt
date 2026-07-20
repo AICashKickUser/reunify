@@ -1,0 +1,807 @@
+     1→'use client'
+     2→
+     3→import { useMemo } from 'react'
+     4→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+     5→import { Badge } from '@/components/ui/badge'
+     6→import { Button } from '@/components/ui/button'
+     7→import { Progress } from '@/components/ui/progress'
+     8→import { Skeleton } from '@/components/ui/skeleton'
+     9→import { useCase } from '@/lib/data-hooks'
+    10→import { useAppStore } from '@/lib/store'
+    11→import { useSubscriptionStore } from '@/lib/subscription'
+    12→import { ProBadge } from '@/components/pro-badge'
+    13→import { CATEGORY_COLORS } from '@/lib/types'
+    14→import {
+    15→  CheckCircle2,
+    16→  ClipboardList,
+    17→  TestTube2,
+    18→  Footprints,
+    19→  Heart,
+    20→  Eye,
+    21→  CalendarDays,
+    22→  Sparkles,
+    23→  FlaskConical,
+    24→  MessageSquareHeart,
+    25→  CircleCheckBig,
+    26→  Clock,
+    27→  Gavel,
+    28→  Users,
+    29→  BookOpen,
+    30→  Flag,
+    31→  Activity,
+    32→  FileText,
+    33→  Lock,
+    34→  ArrowRight,
+    35→} from 'lucide-react'
+    36→import {
+    37→  format,
+    38→  differenceInDays,
+    39→  isToday,
+    40→  isTomorrow,
+    41→  isFuture,
+    42→  parseISO,
+    43→  isWithinInterval,
+    44→  addDays,
+    45→  startOfDay,
+    46→} from 'date-fns'
+    47→
+    48→// --- Timeline Event Type ---
+    49→interface TimelineEvent {
+    50→  id: string
+    51→  date: string
+    52→  type: string
+    53→  category: string
+    54→  title: string
+    55→  status: 'completed' | 'upcoming' | 'pending' | 'missed'
+    56→  icon: React.ReactNode
+    57→}
+    58→
+    59→// --- Loading Skeleton ---
+    60→function DashboardSkeleton() {
+    61→  return (
+    62→    <div className="space-y-6">
+    63→      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
+    64→        {Array.from({ length: 6 }).map((_, i) => (
+    65→          <Card key={i}>
+    66→            <CardHeader className="pb-2">
+    67→              <Skeleton className="h-4 w-28" />
+    68→            </CardHeader>
+    69→            <CardContent className="space-y-2">
+    70→              <Skeleton className="h-8 w-20" />
+    71→              <Skeleton className="h-2 w-full" />
+    72→            </CardContent>
+    73→          </Card>
+    74→        ))}
+    75→      </div>
+    76→      <div className="grid gap-4 md:grid-cols-2">
+    77→        <Card>
+    78→          <CardHeader>
+    79→            <Skeleton className="h-5 w-40" />
+    80→            <Skeleton className="h-4 w-56" />
+    81→          </CardHeader>
+    82→          <CardContent className="space-y-3">
+    83→            {Array.from({ length: 4 }).map((_, i) => (
+    84→              <Skeleton key={i} className="h-12 w-full" />
+    85→            ))}
+    86→          </CardContent>
+    87→        </Card>
+    88→        <Card>
+    89→          <CardHeader>
+    90→            <Skeleton className="h-5 w-40" />
+    91→            <Skeleton className="h-4 w-56" />
+    92→          </CardHeader>
+    93→          <CardContent className="space-y-3">
+    94→            {Array.from({ length: 4 }).map((_, i) => (
+    95→              <Skeleton key={i} className="h-12 w-full" />
+    96→            ))}
+    97→          </CardContent>
+    98→        </Card>
+    99→      </div>
+   100→    </div>
+   101→  )
+   102→}
+   103→
+   104→// --- Empty State ---
+   105→function EmptyDashboard() {
+   106→  return (
+   107→    <div className="flex flex-col items-center justify-center py-16 px-4">
+   108→      <div className="flex size-16 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 mb-4">
+   109→        <Sparkles className="size-8 text-emerald-600 dark:text-emerald-400" />
+   110→      </div>
+   111→      <h3 className="text-lg font-semibold text-foreground mb-2">Your Dashboard is Ready</h3>
+   112→      <p className="text-muted-foreground text-sm text-center max-w-sm">
+   113→        Once you add data to your case plan, your progress overview will appear here. Start by logging your first activity!
+   114→      </p>
+   115→    </div>
+   116→  )
+   117→}
+   118→
+   119→// --- Stat Card ---
+   120→function StatCard({
+   121→  title,
+   122→  value,
+   123→  subtitle,
+   124→  progress,
+   125→  progressLabel,
+   126→  icon,
+   127→  colorClass,
+   128→  onClick,
+   129→}: {
+   130→  title: string
+   131→  value: string | number
+   132→  subtitle: string
+   133→  progress?: number
+   134→  progressLabel?: string
+   135→  icon: React.ReactNode
+   136→  colorClass: string
+   137→  onClick?: () => void
+   138→}) {
+   139→  const isClickable = !!onClick
+   140→  return (
+   141→    <Card 
+   142→      className={`relative overflow-hidden ${isClickable ? 'cursor-pointer hover:shadow-md hover:border-primary/30 transition-all active:scale-[0.98]' : ''}`}
+   143→      onClick={onClick}
+   144→      role={isClickable ? 'button' : undefined}
+   145→      tabIndex={isClickable ? 0 : undefined}
+   146→      onKeyDown={isClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } : undefined}
+   147→    >
+   148→      <div className={`absolute top-0 left-0 w-1 h-full ${colorClass}`} />
+   149→      <CardHeader className="pb-2 pl-5">
+   150→        <div className="flex items-center justify-between">
+   151→          <CardDescription className="text-xs font-medium uppercase tracking-wider">
+   152→            {title}
+   153→          </CardDescription>
+   154→          <div className="flex items-center gap-1.5">
+   155→            {isClickable && <ArrowRight className="size-3.5 text-muted-foreground/50" />}
+   156→            <div className={`flex size-8 items-center justify-center rounded-lg ${colorClass} bg-opacity-10`}>
+   157→              {icon}
+   158→            </div>
+   159→          </div>
+   160→        </div>
+   161→      </CardHeader>
+   162→      <CardContent className="pl-5 space-y-2">
+   163→        <div className="text-2xl font-bold">{value}</div>
+   164→        <p className="text-xs text-muted-foreground">{subtitle}</p>
+   165→        {progress !== undefined && (
+   166→          <div className="space-y-1">
+   167→            <Progress value={progress} className="h-2" />
+   168→            {progressLabel && (
+   169→              <p className="text-xs text-muted-foreground">{progressLabel}</p>
+   170→            )}
+   171→          </div>
+   172→        )}
+   173→      </CardContent>
+   174→    </Card>
+   175→  )
+   176→}
+   177→
+   178→// --- Main Dashboard ---
+   179→export function DashboardView() {
+   180→  const { activeCaseId, setActiveView } = useAppStore()
+   181→  const { data: caseData, isLoading } = useCase(activeCaseId)
+   182→  const { tier, setUpgradeDialogOpen } = useSubscriptionStore()
+   183→  const isPro = tier === 'pro'
+   184→
+   185→  // Build unified timeline events
+   186→  const allEvents = useMemo<TimelineEvent[]>(() => {
+   187→    if (!caseData) return []
+   188→
+   189→    try {
+   190→    const events: TimelineEvent[] = []
+   191→
+   192→    // Safe date parser
+   193→    function safeParseDate(dateStr: string | null | undefined): Date | null {
+   194→      if (!dateStr) return null
+   195→      try {
+   196→        const d = parseISO(dateStr)
+   197→        if (isNaN(d.getTime())) return null
+   198→        return d
+   199→      } catch {
+   200→        return null
+   201→      }
+   202→    }
+   203→
+   204→    function safeEventStatus(dateStr: string | null | undefined, isCompleted: boolean): 'completed' | 'upcoming' | 'pending' {
+   205→      if (isCompleted) return 'completed'
+   206→      const d = safeParseDate(dateStr)
+   207→      if (!d) return 'pending'
+   208→      try {
+   209→        return isFuture(d) ? 'upcoming' : 'pending'
+   210→      } catch {
+   211→        return 'pending'
+   212→      }
+   213→    }
+   214→
+   215→    // Counseling sessions
+   216→    const counselingSessions = Array.isArray(caseData.counselingSessions) ? caseData.counselingSessions : []
+   217→    counselingSessions.forEach((s) => {
+   218→      if (!s?.date) return
+   219→      try {
+   220→        events.push({
+   221→          id: s.id,
+   222→          date: s.date,
+   223→          type: 'counseling',
+   224→          category: 'counseling',
+   225→          title: `${s.sessionType || 'Counseling'} Session${s.counselorName ? ` with ${s.counselorName}` : ''}`,
+   226→          status: safeEventStatus(s.date, s.isCompleted),
+   227→          icon: <Heart className="size-3.5" />,
+   228→        })
+   229→      } catch { /* skip */ }
+   230→    })
+   231→
+   232→    // Drug tests
+   233→    const drugTests = Array.isArray(caseData.drugTests) ? caseData.drugTests : []
+   234→    drugTests.forEach((t) => {
+   235→      if (!t?.date) return
+   236→      try {
+   237→        const resultLabel = t.result === 'negative' ? 'Negative' : t.result === 'positive' ? 'Positive' : t.result === 'diluted' ? 'Diluted' : 'Pending'
+   238→        events.push({
+   239→          id: t.id,
+   240→          date: t.date,
+   241→          type: 'drug-testing',
+   242→          category: 'drug-testing',
+   243→          title: `${t.testType || 'Drug'} Test — ${resultLabel}${t.isRandom ? ' (Random)' : ''}`,
+   244→          status: t.result ? 'completed' : 'upcoming',
+   245→          icon: <FlaskConical className="size-3.5" />,
+   246→        })
+   247→      } catch { /* skip */ }
+   248→    })
+   249→
+   250→    // NA meetings
+   251→    const naMeetings = Array.isArray(caseData.naMeetings) ? caseData.naMeetings : []
+   252→    naMeetings.forEach((m) => {
+   253→      if (!m?.date) return
+   254→      try {
+   255→        events.push({
+   256→          id: m.id,
+   257→          date: m.date,
+   258→          type: 'na-meetings',
+   259→          category: 'na-meetings',
+   260→          title: `NA Meeting${m.meetingName ? `: ${m.meetingName}` : ''}${m.isVerified ? ' ✓ Verified' : ''}`,
+   261→          status: m.isVerified ? 'completed' : 'upcoming',
+   262→          icon: <Users className="size-3.5" />,
+   263→        })
+   264→      } catch { /* skip */ }
+   265→    })
+   266→
+   267→    // Supervised visits
+   268→    const supervisedVisits = Array.isArray(caseData.supervisedVisits) ? caseData.supervisedVisits : []
+   269→    supervisedVisits.forEach((v) => {
+   270→      if (!v?.date) return
+   271→      try {
+   272→        events.push({
+   273→          id: v.id,
+   274→          date: v.date,
+   275→          type: 'supervised-visits',
+   276→          category: 'supervised-visits',
+   277→          title: `${v.visitType || 'Supervised'} Visit${v.supervisorName ? ` with ${v.supervisorName}` : ''}`,
+   278→          status: safeEventStatus(v.date, v.isCompleted),
+   279→          icon: <Eye className="size-3.5" />,
+   280→        })
+   281→      } catch { /* skip */ }
+   282→    })
+   283→
+   284→    // Court dates
+   285→    const courtDates = Array.isArray(caseData.courtDates) ? caseData.courtDates : []
+   286→    courtDates.forEach((c) => {
+   287→      if (!c?.date) return
+   288→      try {
+   289→        events.push({
+   290→          id: c.id,
+   291→          date: c.date,
+   292→          type: 'legal',
+   293→          category: 'legal',
+   294→          title: `${c.hearingType || 'Court'} Hearing${c.outcome ? ` — ${c.outcome}` : ''}`,
+   295→          status: c.isCompleted ? 'completed' : 'upcoming',
+   296→          icon: <Gavel className="size-3.5" />,
+   297→        })
+   298→      } catch { /* skip */ }
+   299→    })
+   300→
+   301→    // Parenting classes
+   302→    const parentingClasses = Array.isArray(caseData.parentingClasses) ? caseData.parentingClasses : []
+   303→    parentingClasses.forEach((p) => {
+   304→      if (!p?.date) return
+   305→      try {
+   306→        events.push({
+   307→          id: p.id,
+   308→          date: p.date,
+   309→          type: 'parenting-classes',
+   310→          category: 'parenting-classes',
+   311→          title: `Parenting Class${p.className ? `: ${p.className}` : ''}${p.hasCertificate ? ' 🏅' : ''}`,
+   312→          status: safeEventStatus(p.date, p.isCompleted),
+   313→          icon: <BookOpen className="size-3.5" />,
+   314→        })
+   315→      } catch { /* skip */ }
+   316→    })
+   317→
+   318→    // Milestones
+   319→    const milestones = Array.isArray(caseData.milestones) ? caseData.milestones : []
+   320→    milestones.forEach((m) => {
+   321→      if (!m) return
+   322→      try {
+   323→        events.push({
+   324→          id: m.id,
+   325→          date: m.completedAt || m.targetDate || caseData.createdAt,
+   326→          type: 'milestone',
+   327→          category: m.category,
+   328→          title: m.title,
+   329→          status: m.isCompleted ? 'completed' : 'upcoming',
+   330→          icon: <Flag className="size-3.5" />,
+   331→        })
+   332→      } catch { /* skip */ }
+   333→    })
+   334→
+   335→    return events.sort((a, b) => {
+   336→      try {
+   337→        return new Date(a.date).getTime() - new Date(b.date).getTime()
+   338→      } catch {
+   339→        return 0
+   340→      }
+   341→    })
+   342→    } catch {
+   343→      return []
+   344→    }
+   345→  }, [caseData])
+   346→
+   347→  // Computed stats
+   348→  const stats = useMemo(() => {
+   349→    if (!caseData) return null
+   350→
+   351→    try {
+   352→    const requirements = caseData.requirements || []
+   353→    const completedReqs = requirements.filter((r) => r.isCompleted).length
+   354→    const totalReqs = requirements.length
+   355→
+   356→    const drugTests = Array.isArray(caseData.drugTests) ? caseData.drugTests : []
+   357→    const negativeTests = drugTests.filter((t) => t.result === 'negative').length
+   358→    const totalTests = drugTests.filter((t) => t.result).length
+   359→
+   360→    const naSteps = caseData.naSteps || []
+   361→    const completedSteps = naSteps.filter((s) => s.isCompleted).length
+   362→    const totalSteps = naSteps.length || 12
+   363→
+   364→    const counselingSessions = Array.isArray(caseData.counselingSessions) ? caseData.counselingSessions : []
+   365→    const completedSessions = counselingSessions.filter((s) => s.isCompleted).length
+   366→    const upcomingSessions = counselingSessions.filter(
+   367→      (s) => {
+   368→        if (s.isCompleted) return false
+   369→        try {
+   370→          const d = parseISO(s.date)
+   371→          return isFuture(d)
+   372→        } catch {
+   373→          return false
+   374→        }
+   375→      }
+   376→    ).length
+   377→
+   378→    const visits = Array.isArray(caseData.supervisedVisits) ? caseData.supervisedVisits : []
+   379→    const completedVisits = visits.filter((v) => v.isCompleted).length
+   380→    const visitTypes = [...new Set(visits.filter((v) => v.isCompleted).map((v) => v.visitType).filter(Boolean))]
+   381→    const visitProgression = visitTypes.join(' → ') || 'Starting visits'
+   382→
+   383→    let daysInCase = 0
+   384→    let daysUntilTarget: number | null = null
+   385→    try {
+   386→      const removalDate = caseData.removalDate ? parseISO(caseData.removalDate) : null
+   387→      const targetDate = caseData.targetReunificationDate ? parseISO(caseData.targetReunificationDate) : null
+   388→      daysInCase = removalDate ? Math.max(0, differenceInDays(new Date(), removalDate)) : 0
+   389→      daysUntilTarget = targetDate ? Math.max(0, differenceInDays(targetDate, new Date())) : null
+   390→    } catch {
+   391→      // Use defaults
+   392→    }
+   393→
+   394→    return {
+   395→      completedReqs,
+   396→      totalReqs,
+   397→      reqProgress: totalReqs > 0 ? Math.round((completedReqs / totalReqs) * 100) : 0,
+   398→      negativeTests,
+   399→      totalTests,
+   400→      drugTestPct: totalTests > 0 ? Math.round((negativeTests / totalTests) * 100) : 0,
+   401→      completedSteps,
+   402→      totalSteps,
+   403→      stepProgress: Math.round((completedSteps / totalSteps) * 100),
+   404→      completedSessions,
+   405→      upcomingSessions,
+   406→      completedVisits,
+   407→      visitProgression,
+   408→      daysInCase,
+   409→      daysUntilTarget,
+   410→    }
+   411→    } catch {
+   412→      return null
+   413→    }
+   414→  }, [caseData])
+   415→
+   416→  // Upcoming events (next 7 days)
+   417→  const upcomingEvents = useMemo(() => {
+   418→    try {
+   419→      const now = startOfDay(new Date())
+   420→      const weekLater = addDays(now, 7)
+   421→      return allEvents
+   422→        .filter((e) => {
+   423→          try {
+   424→            const d = parseISO(e.date)
+   425→            return isFuture(d) || isToday(d)
+   426→          } catch {
+   427→            return false
+   428→          }
+   429→        })
+   430→        .filter((e) => {
+   431→          try {
+   432→            return isWithinInterval(parseISO(e.date), { start: now, end: weekLater })
+   433→          } catch {
+   434→            return false
+   435→          }
+   436→        })
+   437→        .slice(0, 10)
+   438→    } catch {
+   439→      return []
+   440→    }
+   441→  }, [allEvents])
+   442→
+   443→  // Recent activity (last 7 days, completed)
+   444→  const recentActivity = useMemo(() => {
+   445→    try {
+   446→      const now = startOfDay(new Date())
+   447→      const weekAgo = addDays(now, -7)
+   448→      return allEvents
+   449→        .filter((e) => e.status === 'completed')
+   450→        .filter((e) => {
+   451→          try {
+   452→            const d = parseISO(e.date)
+   453→            return isWithinInterval(d, { start: weekAgo, end: now }) || isToday(d)
+   454→          } catch {
+   455→            return false
+   456→          }
+   457→        })
+   458→        .sort((a, b) => {
+   459→          try {
+   460→            return new Date(b.date).getTime() - new Date(a.date).getTime()
+   461→          } catch {
+   462→            return 0
+   463→          }
+   464→        })
+   465→        .slice(0, 10)
+   466→    } catch {
+   467→      return []
+   468→    }
+   469→  }, [allEvents])
+   470→
+   471→  // --- RENDER ---
+   472→  if (isLoading) return <DashboardSkeleton />
+   473→  if (!caseData) return <EmptyDashboard />
+   474→  if (!stats) return <EmptyDashboard />
+   475→
+   476→  const getCategoryStyle = (category: string) => {
+   477→    const c = CATEGORY_COLORS[category] || CATEGORY_COLORS['other']
+   478→    return c
+   479→  }
+   480→
+   481→  const formatEventDate = (dateStr: string) => {
+   482→    try {
+   483→      const d = parseISO(dateStr)
+   484→      if (isNaN(d.getTime())) return dateStr
+   485→      if (isToday(d)) return 'Today'
+   486→      if (isTomorrow(d)) return 'Tomorrow'
+   487→      return format(d, 'EEE, MMM d')
+   488→    } catch {
+   489→      return dateStr
+   490→    }
+   491→  }
+   492→
+   493→  return (
+   494→    <div className="space-y-6">
+   495→      {/* Header */}
+   496→      <div>
+   497→        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+   498→        <p className="text-muted-foreground text-sm mt-1">
+   499→          {stats.daysInCase > 0
+   500→            ? `Day ${stats.daysInCase} of your journey — every step counts. Keep going!`
+   501→            : 'Your case overview at a glance'}
+   502→        </p>
+   503→      </div>
+   504→
+   505→      {/* Stat Cards */}
+   506→      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
+   507→        <StatCard
+   508→          title="Case Plan Progress"
+   509→          value={`${stats.completedReqs}/${stats.totalReqs}`}
+   510→          subtitle="Requirements completed"
+   511→          progress={stats.reqProgress}
+   512→          progressLabel={`${stats.reqProgress}% complete`}
+   513→          icon={<ClipboardList className="size-4 text-emerald-600" />}
+   514→          colorClass="bg-emerald-500"
+   515→          onClick={() => setActiveView('case-plan')}
+   516→        />
+   517→        <StatCard
+   518→          title="Clean Drug Tests"
+   519→          value={`${stats.negativeTests}/${stats.totalTests}`}
+   520→          subtitle={`${stats.drugTestPct}% clean rate`}
+   521→          progress={stats.drugTestPct}
+   522→          progressLabel="Keep it up!"
+   523→          icon={<TestTube2 className="size-4 text-amber-600" />}
+   524→          colorClass="bg-amber-500"
+   525→          onClick={() => setActiveView('drug-testing')}
+   526→        />
+   527→        <StatCard
+   528→          title="NA Steps Completed"
+   529→          value={`${stats.completedSteps}/${stats.totalSteps}`}
+   530→          subtitle="Steps in the program"
+   531→          progress={stats.stepProgress}
+   532→          progressLabel={`${stats.stepProgress}% through the steps`}
+   533→          icon={<Footprints className="size-4 text-purple-600" />}
+   534→          colorClass="bg-purple-500"
+   535→          onClick={() => setActiveView('na-steps')}
+   536→        />
+   537→        <StatCard
+   538→          title="Counseling Sessions"
+   539→          value={stats.completedSessions}
+   540→          subtitle={`${stats.upcomingSessions} upcoming`}
+   541→          icon={<Heart className="size-4 text-green-600" />}
+   542→          colorClass="bg-green-500"
+   543→          onClick={() => setActiveView('counseling')}
+   544→        />
+   545→        <StatCard
+   546→          title="Supervised Visits"
+   547→          value={stats.completedVisits}
+   548→          subtitle={stats.visitProgression}
+   549→          icon={<Eye className="size-4 text-sky-600" />}
+   550→          colorClass="bg-sky-500"
+   551→          onClick={() => setActiveView('supervised-visits')}
+   552→        />
+   553→        <StatCard
+   554→          title="Days in Case"
+   555→          value={stats.daysInCase}
+   556→          subtitle={
+   557→            stats.daysUntilTarget !== null
+   558→              ? `${stats.daysUntilTarget} days until target date`
+   559→              : 'No target date set'
+   560→          }
+   561→          icon={<CalendarDays className="size-4 text-slate-500" />}
+   562→          colorClass="bg-slate-400"
+   563→          onClick={() => setActiveView('timeline')}
+   564→        />
+   565→      </div>
+   566→
+   567→      {/* Middle Section: Two Columns */}
+   568→      <div className="grid gap-4 md:grid-cols-2">
+   569→        {/* Upcoming Deadlines & Events */}
+   570→        <Card>
+   571→          <CardHeader>
+   572→            <CardTitle className="flex items-center gap-2 text-base">
+   573→              <Clock className="size-4 text-amber-600" />
+   574→              Upcoming Deadlines & Events
+   575→            </CardTitle>
+   576→            <CardDescription>Next 7 days</CardDescription>
+   577→          </CardHeader>
+   578→          <CardContent>
+   579→            {upcomingEvents.length === 0 ? (
+   580→              <div className="flex flex-col items-center py-8 text-center">
+   581→                <Sparkles className="size-8 text-emerald-300 mb-2" />
+   582→                <p className="text-sm font-medium text-foreground">Nothing on the horizon!</p>
+   583→                <p className="text-xs text-muted-foreground mt-1">
+   584→                  No upcoming events in the next 7 days. Enjoy the calm or add new activities.
+   585→                </p>
+   586→              </div>
+   587→            ) : (
+   588→              <div className="space-y-2 max-h-96 overflow-y-auto pr-1" style={{ scrollbarGutter: 'stable' }}>
+   589→                {upcomingEvents.map((event) => {
+   590→                  const style = getCategoryStyle(event.category)
+   591→                  return (
+   592→                    <div
+   593→                      key={event.id}
+   594→                      className={`flex items-center gap-3 rounded-lg border p-3 ${style.bg} ${style.border} transition-colors hover:opacity-80`}
+   595→                    >
+   596→                      <div className="flex size-8 items-center justify-center rounded-md bg-white/60 dark:bg-black/20 shrink-0">
+   597→                        {event.icon}
+   598→                      </div>
+   599→                      <div className="flex-1 min-w-0">
+   600→                        <p className="text-sm font-medium truncate">{event.title}</p>
+   601→                        <p className="text-xs text-muted-foreground">{formatEventDate(event.date)}</p>
+   602→                      </div>
+   603→                      <Badge
+   604→                        variant="outline"
+   605→                        className={`text-xs shrink-0 ${style.text} ${style.border}`}
+   606→                      >
+   607→                        {event.type.replace('-', ' ')}
+   608→                      </Badge>
+   609→                    </div>
+   610→                  )
+   611→                })}
+   612→              </div>
+   613→            )}
+   614→          </CardContent>
+   615→        </Card>
+   616→
+   617→        {/* Recent Activity */}
+   618→        <Card>
+   619→          <CardHeader>
+   620→            <CardTitle className="flex items-center gap-2 text-base">
+   621→              <Activity className="size-4 text-emerald-600" />
+   622→              Recent Activity
+   623→            </CardTitle>
+   624→            <CardDescription>Last 7 days</CardDescription>
+   625→          </CardHeader>
+   626→          <CardContent>
+   627→            {recentActivity.length === 0 ? (
+   628→              <div className="flex flex-col items-center py-8 text-center">
+   629→                <CircleCheckBig className="size-8 text-muted-foreground/30 mb-2" />
+   630→                <p className="text-sm font-medium text-foreground">No recent activity</p>
+   631→                <p className="text-xs text-muted-foreground mt-1">
+   632→                  Complete activities to see your progress here. You&apos;re doing great!
+   633→                </p>
+   634→              </div>
+   635→            ) : (
+   636→              <div className="space-y-2 max-h-96 overflow-y-auto pr-1" style={{ scrollbarGutter: 'stable' }}>
+   637→                {recentActivity.map((event) => {
+   638→                  const style = getCategoryStyle(event.category)
+   639→                  return (
+   640→                    <div
+   641→                      key={event.id}
+   642→                      className="flex items-center gap-3 rounded-lg border p-3 bg-background hover:bg-accent/50 transition-colors"
+   643→                    >
+   644→                      <div className="flex size-7 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 shrink-0">
+   645→                        <CheckCircle2 className="size-4 text-emerald-600" />
+   646→                      </div>
+   647→                      <div className="flex-1 min-w-0">
+   648→                        <p className="text-sm font-medium truncate">{event.title}</p>
+   649→                        <p className="text-xs text-muted-foreground">{formatEventDate(event.date)}</p>
+   650→                      </div>
+   651→                      <Badge
+   652→                        variant="outline"
+   653→                        className={`text-xs shrink-0 ${style.text} ${style.border}`}
+   654→                      >
+   655→                        {event.type.replace('-', ' ')}
+   656→                      </Badge>
+   657→                    </div>
+   658→                  )
+   659→                })}
+   660→              </div>
+   661→            )}
+   662→          </CardContent>
+   663→        </Card>
+   664→      </div>
+   665→
+   666→      {/* Quick Summary Card */}
+   667→      <Card className={isPro ? 'border-emerald-200 dark:border-emerald-800' : 'border-amber-200 dark:border-amber-800'}>
+   668→        <CardHeader className="pb-3">
+   669→          <div className="flex items-center justify-between">
+   670→            <CardTitle className="flex items-center gap-2 text-base">
+   671→              <FileText className="size-4 text-emerald-600" />
+   672→              Case Summary
+   673→              {isPro && <ProBadge size="sm" />}
+   674→            </CardTitle>
+   675→            <Button 
+   676→              variant="outline" 
+   677→              size="sm" 
+   678→              className="gap-1.5"
+   679→              onClick={() => setActiveView('progress')}
+   680→            >
+   681→              <FileText className="size-3.5" />
+   682→              Full Report
+   683→            </Button>
+   684→          </div>
+   685→        </CardHeader>
+   686→        <CardContent>
+   687→          {stats ? (
+   688→            <div className="space-y-3">
+   689→              {/* Basic Summary - always visible */}
+   690→              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   691→                <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 p-3 text-center">
+   692→                  <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400">{stats.reqProgress}%</p>
+   693→                  <p className="text-xs text-emerald-600 dark:text-emerald-400/70">Overall Progress</p>
+   694→                </div>
+   695→                <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 p-3 text-center">
+   696→                  <p className="text-xl font-bold text-amber-700 dark:text-amber-400">{stats.completedReqs}/{stats.totalReqs}</p>
+   697→                  <p className="text-xs text-amber-600 dark:text-amber-400/70">Requirements</p>
+   698→                </div>
+   699→                <div className="rounded-lg bg-sky-50 dark:bg-sky-950/20 p-3 text-center">
+   700→                  <p className="text-xl font-bold text-sky-700 dark:text-sky-400">{stats.drugTestPct}%</p>
+   701→                  <p className="text-xs text-sky-600 dark:text-sky-400/70">Clean Tests</p>
+   702→                </div>
+   703→                <div className="rounded-lg bg-violet-50 dark:bg-violet-950/20 p-3 text-center">
+   704→                  <p className="text-xl font-bold text-violet-700 dark:text-violet-400">{stats.completedSteps}/12</p>
+   705→                  <p className="text-xs text-violet-600 dark:text-violet-400/70">NA Steps</p>
+   706→                </div>
+   707→              </div>
+   708→
+   709→              {/* Free basic text summary */}
+   710→              <div className="bg-muted/50 rounded-lg p-3 border">
+   711→                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Basic Overview</p>
+   712→                <p className="text-sm text-foreground whitespace-pre-line">
+   713→                  {`Case: ${caseData?.caseNumber || 'N/A'} — ${stats.reqProgress}% complete\n` +
+   714→                   `${stats.completedReqs} of ${stats.totalReqs} requirements done • ${stats.completedSessions} counseling sessions\n` +
+   715→                   `${stats.negativeTests} clean drug tests • ${stats.completedSteps}/12 NA steps • ${stats.completedVisits} visits completed`}
+   716→                </p>
+   717→              </div>
+   718→
+   719→              {/* Pro preview / upgrade prompt for free users */}
+   720→              {!isPro && (
+   721→                <div className="relative">
+   722→                  <div className="absolute inset-0 z-10 bg-background/70 backdrop-blur-sm rounded-lg flex items-center justify-center gap-3 p-4">
+   723→                    <div className="text-center">
+   724→                      <div className="flex items-center justify-center gap-1.5 mb-2">
+   725→                        <Lock className="size-4 text-amber-500" />
+   726→                        <span className="font-semibold text-sm text-foreground">Pro Report Available</span>
+   727→                      </div>
+   728→                      <p className="text-xs text-muted-foreground max-w-xs mx-auto mb-3">
+   729→                        Get the full court-ready report with achievements, compliance details, areas needing attention, and professional formatting.
+   730→                      </p>
+   731→                      <Button
+   732→                        size="sm"
+   733→                        className="gap-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white border-0"
+   734→                        onClick={() => setUpgradeDialogOpen(true)}
+   735→                      >
+   736→                        <Sparkles className="size-3.5" />
+   737→                        Upgrade to Pro — $4.99/mo
+   738→                      </Button>
+   739→                    </div>
+   740→                  </div>
+   741→                  <div className="pointer-events-none select-none bg-muted/30 rounded-lg p-3 border opacity-60">
+   742→                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Pro Report Includes:</p>
+   743→                    <div className="space-y-1.5 text-xs text-muted-foreground">
+   744→                      <p>✓ Achievements & completed milestones</p>
+   745→                      <p>✓ Compliance details by category</p>
+   746→                      <p>✓ Areas on track vs. needing attention</p>
+   747→                      <p>✓ Remaining requirements with due dates</p>
+   748→                      <p>✓ Professional court-ready formatting</p>
+   749→                    </div>
+   750→                  </div>
+   751→                </div>
+   752→              )}
+   753→            </div>
+   754→          ) : (
+   755→            <p className="text-sm text-muted-foreground text-center py-4">
+   756→              Add data to your case to see a summary
+   757→            </p>
+   758→          )}
+   759→        </CardContent>
+   760→      </Card>
+   761→
+   762→      {/* Quick Actions */}
+   763→      <Card>
+   764→        <CardHeader className="pb-3">
+   765→          <CardTitle className="flex items-center gap-2 text-base">
+   766→            <Sparkles className="size-4 text-emerald-600" />
+   767→            Quick Actions
+   768→          </CardTitle>
+   769→          <CardDescription>Log your progress quickly</CardDescription>
+   770→        </CardHeader>
+   771→        <CardContent>
+   772→          <div className="flex flex-wrap gap-3">
+   773→            <Button
+   774→              variant="outline"
+   775→              className="gap-2 border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950"
+   776→              onClick={() => setActiveView('drug-testing')}
+   777→            >
+   778→              <FlaskConical className="size-4" />
+   779→              Log Drug Test
+   780→            </Button>
+   781→            <Button
+   782→              variant="outline"
+   783→              className="gap-2 border-sky-200 text-sky-700 hover:bg-sky-50 hover:text-sky-800 dark:border-sky-800 dark:text-sky-400 dark:hover:bg-sky-950"
+   784→              onClick={() => setActiveView('supervised-visits')}
+   785→            >
+   786→              <Eye className="size-4" />
+   787→              Record Visit
+   788→            </Button>
+   789→            <Button
+   790→              variant="outline"
+   791→              className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950"
+   792→              onClick={() => setActiveView('counseling')}
+   793→            >
+   794→              <MessageSquareHeart className="size-4" />
+   795→              Add Counseling Session
+   796→            </Button>
+   797→            <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setActiveView('daily-checkins')}>
+   798→              <CircleCheckBig className="size-4" />
+   799→              Check In Today
+   800→            </Button>
+   801→          </div>
+   802→        </CardContent>
+   803→      </Card>
+   804→    </div>
+   805→  )
+   806→}
+   807→

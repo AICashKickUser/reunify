@@ -303,8 +303,8 @@ export default function Home() {
       <SidebarInset>
         <div className="flex min-h-screen flex-col">
           <AppHeader />
-          <main className="flex-1">
-            <div className="p-4 md:p-6">
+          <main className="flex-1 overflow-hidden">
+            <div className="p-4 md:p-6 h-full overflow-y-auto">
               {activeView === 'go-pro' ? (
                 <ActiveView />
               ) : activeCaseId ? (
