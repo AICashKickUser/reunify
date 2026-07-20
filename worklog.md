@@ -1,24 +1,36 @@
 ---
 Task ID: 1
-Agent: main
-Task: Fix three bugs: Go Pro not visible, Timeline crashes, Prisma schema mismatch
+Agent: Main Agent
+Task: Fix mobile bugs - Android back button, viewport zoom, progress view stuck, Stripe payment buttons
 
 Work Log:
-- Investigated all three reported bugs by reading source files
-- Found ROOT CAUSE: Prisma schema was set to "postgresql" but local DATABASE_URL uses SQLite (file: protocol). This was changed in a previous session for Vercel deployment but broke local development. ALL database operations were failing, causing every feature to break.
-- Fixed Prisma schema mismatch: Changed provider back to "sqlite" for local dev
-- Created scripts/setup-db-provider.js to dynamically switch between SQLite and PostgreSQL based on DATABASE_URL
-- Updated package.json build scripts and vercel.json to use the dynamic provider setup
-- Fixed Go Pro visibility: Removed `sm:inline` class that hid "Go Pro" text on mobile screens in app-header.tsx
-- Added safe lazy loading with error fallback in page.tsx (safeLazy function)
-- Added null check for ViewComponent in ActiveView
-- Added safer date initialization in timeline-view.tsx
-- Added eslint ignore for scripts/ directory
-- All code changes pass lint check
+- Read entire codebase to understand architecture (store, views, layout, API routes)
+- Added viewHistory tracking to Zustand store with goBack() function
+- Created useNavigationHistory hook that syncs browser history with app navigation
+  - Pushes history entries when views change
+  - Listens for popstate events (Android back button)
+  - Restores view from URL hash on page reload
+- Updated page.tsx to use useNavigationHistory hook
+- Updated app-header.tsx with back button (ArrowLeft) that shows when navigation history exists
+- Fixed viewport meta tag: changed maximumScale from 1 to 5, added userScalable: true, viewportFit: cover
+- Fixed progress view mobile responsiveness:
+  - Made CircularProgress use SVG viewBox for responsive scaling
+  - Added responsive container for progress circle (140px mobile, 180px desktop)
+  - Made chart containers smaller on mobile (220px vs 300px)
+  - Added overflow-x-hidden to main container
+- Enhanced Go Pro view with 6-step Stripe setup guide and re-check button
+- Updated globals.css with mobile fixes:
+  - overflow-x: hidden on html/body
+  - overscroll-behavior-y: contain (prevent pull-to-refresh)
+  - touch-action: manipulation for buttons
+  - max-width constraints for Recharts on mobile
+- Bumped service worker cache version (v1 → v2)
 
 Stage Summary:
-- ROOT CAUSE of "nothing works" was Prisma schema mismatch (postgresql vs sqlite)
-- Go Pro button text was hidden on mobile - now always visible
-- Timeline view has additional error protection
-- Free summary + pro upsell preview was already implemented in progress-view.tsx
-- Dynamic DB provider script allows same codebase to work locally (SQLite) and on Vercel (PostgreSQL)
+- Android back button now navigates within app instead of exiting
+- Back button (←) appears in header on non-Dashboard views
+- Viewport allows proper scaling/zooming on mobile
+- Progress/summary view is mobile responsive
+- Go Pro view shows step-by-step Stripe setup guide when not configured
+- All lint checks pass
+- Agent Browser verified all features working

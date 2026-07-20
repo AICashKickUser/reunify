@@ -15,6 +15,7 @@ import { OnboardingDialog } from '@/components/onboarding-dialog'
 import { useSubscriptionStore } from '@/lib/subscription'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { toast } from 'sonner'
+import { useNavigationHistory } from '@/hooks/use-navigation-history'
 
 // Safe lazy load helper - catches import errors
 function safeLazy<T extends React.ComponentType>(
@@ -244,6 +245,9 @@ export default function Home() {
   const { activeCaseId, activeView } = useAppStore()
   const { setTier, setSubscriptionData } = useSubscriptionStore()
 
+  // Enable browser history management for Android back button support
+  useNavigationHistory()
+
   // Handle Stripe checkout return
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -283,13 +287,13 @@ export default function Home() {
           })
         })
 
-      // Clean up URL
-      window.history.replaceState({}, '', '/')
+      // Clean up URL but preserve history state
+      window.history.replaceState({ view: 'dashboard', timestamp: Date.now() }, '', '/#dashboard')
     } else if (checkoutStatus === 'cancel') {
       toast.info('Checkout canceled', {
         description: 'No worries — you can upgrade anytime!',
       })
-      window.history.replaceState({}, '', '/')
+      window.history.replaceState({ view: 'go-pro', timestamp: Date.now() }, '', '/#go-pro')
     }
   }, [setTier, setSubscriptionData])
 

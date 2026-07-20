@@ -122,8 +122,10 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
+  html, body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
@@ -206,4 +208,29 @@
 .dark .sidebar-active-tint {
   background-color: oklch(0.269 0.04 155.586);
   color: oklch(0.927 0.06 155.586);
+}
+
+/* Mobile-specific fixes for PWA on Android */
+@layer base {
+  /* Prevent pull-to-refresh in PWA standalone mode */
+  html {
+    overscroll-behavior-y: contain;
+  }
+
+  /* Better touch targets on mobile */
+  @media (max-width: 640px) {
+    /* Prevent text selection issues on touch */
+    button, a, [role="button"] {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+  }
+}
+
+/* Prevent charts and large content from overflowing on mobile */
+@media (max-width: 640px) {
+  .recharts-wrapper,
+  .recharts-surface {
+    max-width: 100% !important;
+  }
 }
