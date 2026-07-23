@@ -16,6 +16,7 @@ import {
   CalendarCheck,
   Trash2,
   Sparkles,
+  HardDriveDownload,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -103,6 +104,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Reports',
     items: [
       { view: 'progress', label: 'Progress Report', icon: BarChart3 },
+      { view: 'backup', label: 'Backup & Restore', icon: HardDriveDownload },
       { view: 'go-pro', label: 'Upgrade to Pro', icon: Sparkles },
     ],
   },

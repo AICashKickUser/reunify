@@ -59,6 +59,7 @@ const ParentingClassesView = safeLazy(() => import('@/components/views/parenting
 const ProgressView = safeLazy(() => import('@/components/views/progress-view'), 'ProgressView')
 const DailyCheckinsView = safeLazy(() => import('@/components/views/daily-checkins-view'), 'DailyCheckinsView')
 const GoProView = safeLazy(() => import('@/components/views/go-pro-view'), 'GoProView')
+const BackupView = safeLazy(() => import('@/components/views/backup-view'), 'BackupView')
 
 const VIEW_MAP: Record<ViewType, React.ComponentType> = {
   'dashboard': DashboardView,
@@ -73,6 +74,7 @@ const VIEW_MAP: Record<ViewType, React.ComponentType> = {
   'parenting-classes': ParentingClassesView,
   'daily-checkins': DailyCheckinsView,
   'progress': ProgressView,
+  'backup': BackupView,
   'go-pro': GoProView,
 }
 
