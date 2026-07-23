@@ -307,7 +307,7 @@ export default function Home() {
           <AppHeader />
           <main className="flex-1 overflow-hidden">
             <div className="p-4 md:p-6 h-full overflow-y-auto">
-              {activeView === 'go-pro' ? (
+              {activeView === 'go-pro' || activeView === 'backup' ? (
                 <ActiveView />
               ) : activeCaseId ? (
                 <ActiveView />
