@@ -23,11 +23,14 @@ export async function POST(request: NextRequest) {
       data: {
         caseId: body.caseId,
         date: new Date(body.date),
-        testType: body.testType,
+        testType: body.testType ?? 'urine',
         isRandom: body.isRandom ?? false,
-        result: body.result,
-        testingFacility: body.testingFacility,
-        notes: body.notes,
+        result: body.result ?? null,
+        testingFacility: body.testingFacility ?? null,
+        notes: body.notes ?? null,
+        callMade: body.callMade ?? false,
+        callResult: body.callResult ?? null,
+        tested: body.tested ?? false,
       },
     })
     return NextResponse.json(drugTest, { status: 201 })

@@ -55,6 +55,9 @@ export interface DrugTest {
   result: string | null
   testingFacility: string | null
   notes: string | null
+  callMade: boolean
+  callResult: string | null
+  tested: boolean
   createdAt: string
   updatedAt: string
 }

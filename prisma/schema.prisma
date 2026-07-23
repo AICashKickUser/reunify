@@ -77,6 +77,10 @@ model DrugTest {
   result          String?  // negative, positive, pending, diluted, refused
   testingFacility String?
   notes           String?
+  // CPS daily call workflow fields
+  callMade        Boolean  @default(false)  // Did you call the hotline today?
+  callResult      String?  // 'not-required' = told not to test, 'required' = told to test
+  tested          Boolean  @default(false)  // Did you actually go and test?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

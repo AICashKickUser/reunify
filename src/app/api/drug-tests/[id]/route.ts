@@ -17,6 +17,9 @@ export async function PUT(
         result: body.result,
         testingFacility: body.testingFacility,
         notes: body.notes,
+        callMade: body.callMade,
+        callResult: body.callResult,
+        tested: body.tested,
       },
     })
     return NextResponse.json(drugTest)
