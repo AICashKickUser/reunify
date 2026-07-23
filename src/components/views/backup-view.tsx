@@ -20,7 +20,6 @@ import {
   Archive,
   RefreshCw,
 } from 'lucide-react'
-import { UpgradeDialog } from '@/components/upgrade-dialog'
 
 interface ExportData {
   exportDate: string
@@ -45,7 +44,7 @@ export function BackupView() {
   const proFeature = useProFeature('data_export')
   const isPro = tier === 'pro'
 
-  const [exporting, setExporting] = useState(false)
+  const [exporting, setExporting] = useState<string | null>(null) // 'json', 'pdf', 'email'
   const [lastBackupDate, setLastBackupDate] = useState<string | null>(null)
   const [restoring, setRestoring] = useState(false)
   const [confirmRestore, setConfirmRestore] = useState(false)
@@ -54,22 +53,18 @@ export function BackupView() {
 
   // Load last backup date from localStorage
   useState(() => {
-    const stored = localStorage.getItem('reunify-last-backup')
-    if (stored) setLastBackupDate(stored)
+    try {
+      const stored = localStorage.getItem('reunify-last-backup')
+      if (stored) setLastBackupDate(stored)
+    } catch { /* ignore */ }
   })
 
-  // Export case data as JSON and download
+  // Save JSON download
   const handleExportJSON = async () => {
-    if (!isPro) {
-      proFeature.showUpgrade()
-      return
-    }
-    if (!activeCaseId) {
-      toast.error('No active case to backup')
-      return
-    }
+    if (!isPro) { proFeature.showUpgrade(); return }
+    if (!activeCaseId) { toast.error('No active case to backup'); return }
 
-    setExporting(true)
+    setExporting('json')
     try {
       const res = await fetch(`/api/export?caseId=${activeCaseId}`)
       if (!res.ok) throw new Error('Export failed')
@@ -95,37 +90,26 @@ export function BackupView() {
     } catch {
       toast.error('Export failed', { description: 'Could not export your data. Please try again.' })
     } finally {
-      setExporting(false)
+      setExporting(null)
     }
   }
 
-  // Export as printable PDF-style report (opens print dialog)
+  // Print court report (opens server-generated HTML in new tab)
   const handleExportPDF = async () => {
-    if (!isPro) {
-      proFeature.showUpgrade()
-      return
-    }
-    if (!activeCaseId) {
-      toast.error('No active case to backup')
-      return
-    }
+    if (!isPro) { proFeature.showUpgrade(); return }
+    if (!activeCaseId) { toast.error('No active case to backup'); return }
 
-    setExporting(true)
+    setExporting('pdf')
     try {
-      const res = await fetch(`/api/export?caseId=${activeCaseId}`)
-      if (!res.ok) throw new Error('Export failed')
-      const data: ExportData = await res.json()
+      const res = await fetch(`/api/export/pdf?caseId=${activeCaseId}`)
+      if (!res.ok) throw new Error('Report failed')
+      const html = await res.text()
 
-      // Generate a printable HTML report
-      const reportHTML = generatePrintReport(data)
       const printWindow = window.open('', '_blank')
       if (printWindow) {
-        printWindow.document.write(reportHTML)
+        printWindow.document.write(html)
         printWindow.document.close()
-        // Wait a moment for content to render then trigger print
-        setTimeout(() => {
-          printWindow.print()
-        }, 500)
+        setTimeout(() => { printWindow.print() }, 500)
         toast.success('Report ready!', { description: 'Use the print dialog to save as PDF or print.' })
       } else {
         toast.error('Could not open print window', { description: 'Please allow popups for this site.' })
@@ -133,32 +117,21 @@ export function BackupView() {
     } catch {
       toast.error('Report generation failed', { description: 'Could not generate your report. Please try again.' })
     } finally {
-      setExporting(false)
+      setExporting(null)
     }
   }
 
-  // Email backup to caseworker/attorney/self
+  // Email backup (server generates subject/body, opens mailto)
   const handleEmailBackup = async () => {
-    if (!isPro) {
-      proFeature.showUpgrade()
-      return
-    }
-    if (!activeCaseId) {
-      toast.error('No active case to backup')
-      return
-    }
+    if (!isPro) { proFeature.showUpgrade(); return }
+    if (!activeCaseId) { toast.error('No active case to backup'); return }
 
-    setExporting(true)
+    setExporting('email')
     try {
-      const res = await fetch(`/api/export?caseId=${activeCaseId}`)
-      if (!res.ok) throw new Error('Export failed')
-      const data: ExportData = await res.json()
+      const res = await fetch(`/api/export/email?caseId=${activeCaseId}`)
+      if (!res.ok) throw new Error('Email failed')
+      const { subject, body } = await res.json()
 
-      // Generate a plain text summary for email body
-      const subject = `Reunify Case Progress Report — ${data.case.caseNumber || 'Case'}`
-      const body = generateEmailBody(data)
-
-      // Open mailto link
       const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
       window.open(mailtoUrl, '_self')
 
@@ -172,16 +145,13 @@ export function BackupView() {
     } catch {
       toast.error('Email generation failed', { description: 'Could not prepare your email. Please try again.' })
     } finally {
-      setExporting(false)
+      setExporting(null)
     }
   }
 
   // Handle file upload for restore
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!isPro) {
-      proFeature.showUpgrade()
-      return
-    }
+    if (!isPro) { proFeature.showUpgrade(); return }
 
     const file = e.target.files?.[0]
     if (!file) return
@@ -196,7 +166,6 @@ export function BackupView() {
       const text = await file.text()
       const data = JSON.parse(text) as ExportData
 
-      // Validate it's a Reunify backup
       if (!data.exportType || !data.case) {
         toast.error('Invalid backup file', { description: 'This file doesn\'t appear to be a Reunify backup.' })
         e.target.value = ''
@@ -217,17 +186,14 @@ export function BackupView() {
 
     setRestoring(true)
     try {
-      // Send each category of data to the appropriate API endpoint
       const caseData = restorePreview.case
 
-      // Update the case info first
       await fetch(`/api/cases/${activeCaseId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(caseData),
       })
 
-      // Restore each data category
       const endpoints = [
         { data: restorePreview.counselingSessions, endpoint: 'counseling-sessions' },
         { data: restorePreview.drugTests, endpoint: 'drug-tests' },
@@ -251,7 +217,6 @@ export function BackupView() {
         }
       }
 
-      // Restore NA steps
       if (restorePreview.naSteps && restorePreview.naSteps.length > 0) {
         for (const step of restorePreview.naSteps) {
           await fetch(`/api/na-steps`, {
@@ -326,7 +291,6 @@ export function BackupView() {
             </div>
           </div>
         </div>
-        <UpgradeDialog />
       </div>
     )
   }
@@ -354,12 +318,7 @@ export function BackupView() {
               <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Last backup saved</p>
               <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80">
                 {new Date(lastBackupDate).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
+                  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
                 })}
               </p>
             </div>
@@ -375,10 +334,10 @@ export function BackupView() {
         </h3>
 
         {/* JSON Download */}
-        <Card className="hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors cursor-pointer" onClick={handleExportJSON}>
+        <Card className="hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors cursor-pointer" onClick={exporting ? undefined : handleExportJSON}>
           <CardContent className="p-4 flex items-center gap-4">
             <div className="flex size-12 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30 shrink-0">
-              <Download className="size-6 text-emerald-600 dark:text-emerald-400" />
+              {exporting === 'json' ? <Loader2 className="size-6 animate-spin text-emerald-600" /> : <Download className="size-6 text-emerald-600 dark:text-emerald-400" />}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-foreground">Download Backup File</p>
@@ -386,24 +345,18 @@ export function BackupView() {
                 Save all your case data as a file on your phone. You can restore it later if you switch devices.
               </p>
             </div>
-            <div className="shrink-0">
-              {exporting ? (
-                <Loader2 className="size-5 animate-spin text-emerald-600" />
-              ) : (
-                <Button size="sm" variant="outline" className="gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-950/30">
-                  <Download className="size-4" />
-                  Save
-                </Button>
-              )}
-            </div>
+            <Button size="sm" variant="outline" className="gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-950/30" disabled={exporting === 'json'}>
+              <Download className="size-4" />
+              Save
+            </Button>
           </CardContent>
         </Card>
 
         {/* Email to Caseworker */}
-        <Card className="hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors cursor-pointer" onClick={handleEmailBackup}>
+        <Card className="hover:border-sky-300 dark:hover:border-sky-700 transition-colors cursor-pointer" onClick={exporting ? undefined : handleEmailBackup}>
           <CardContent className="p-4 flex items-center gap-4">
             <div className="flex size-12 items-center justify-center rounded-xl bg-sky-100 dark:bg-sky-900/30 shrink-0">
-              <Mail className="size-6 text-sky-600 dark:text-sky-400" />
+              {exporting === 'email' ? <Loader2 className="size-6 animate-spin text-sky-600" /> : <Mail className="size-6 text-sky-600 dark:text-sky-400" />}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-foreground">Email to Caseworker</p>
@@ -411,24 +364,18 @@ export function BackupView() {
                 Open an email with your progress summary. Add your caseworker's or attorney's email and send it directly.
               </p>
             </div>
-            <div className="shrink-0">
-              {exporting ? (
-                <Loader2 className="size-5 animate-spin text-sky-600" />
-              ) : (
-                <Button size="sm" variant="outline" className="gap-1.5 text-sky-700 border-sky-200 hover:bg-sky-50 dark:text-sky-400 dark:border-sky-800 dark:hover:bg-sky-950/30">
-                  <Mail className="size-4" />
-                  Email
-                </Button>
-              )}
-            </div>
+            <Button size="sm" variant="outline" className="gap-1.5 text-sky-700 border-sky-200 hover:bg-sky-50 dark:text-sky-400 dark:border-sky-800 dark:hover:bg-sky-950/30" disabled={exporting === 'email'}>
+              <Mail className="size-4" />
+              Email
+            </Button>
           </CardContent>
         </Card>
 
         {/* Print Court Report */}
-        <Card className="hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors cursor-pointer" onClick={handleExportPDF}>
+        <Card className="hover:border-rose-300 dark:hover:border-rose-700 transition-colors cursor-pointer" onClick={exporting ? undefined : handleExportPDF}>
           <CardContent className="p-4 flex items-center gap-4">
             <div className="flex size-12 items-center justify-center rounded-xl bg-rose-100 dark:bg-rose-900/30 shrink-0">
-              <FileText className="size-6 text-rose-600 dark:text-rose-400" />
+              {exporting === 'pdf' ? <Loader2 className="size-6 animate-spin text-rose-600" /> : <FileText className="size-6 text-rose-600 dark:text-rose-400" />}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-foreground">Print Court Report</p>
@@ -436,16 +383,10 @@ export function BackupView() {
                 Generate a professional progress report you can print and bring to court. Save as PDF from the print dialog.
               </p>
             </div>
-            <div className="shrink-0">
-              {exporting ? (
-                <Loader2 className="size-5 animate-spin text-rose-600" />
-              ) : (
-                <Button size="sm" variant="outline" className="gap-1.5 text-rose-700 border-rose-200 hover:bg-rose-50 dark:text-rose-400 dark:border-rose-800 dark:hover:bg-rose-950/30">
-                  <FileText className="size-4" />
-                  Print
-                </Button>
-              )}
-            </div>
+            <Button size="sm" variant="outline" className="gap-1.5 text-rose-700 border-rose-200 hover:bg-rose-50 dark:text-rose-400 dark:border-rose-800 dark:hover:bg-rose-950/30" disabled={exporting === 'pdf'}>
+              <FileText className="size-4" />
+              Print
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -481,11 +422,7 @@ export function BackupView() {
               onClick={() => fileInputRef.current?.click()}
               disabled={restoring}
             >
-              {restoring ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Upload className="size-4" />
-              )}
+              {restoring ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
               {restoring ? 'Restoring...' : 'Choose Backup File'}
             </Button>
           </CardContent>
@@ -568,10 +505,7 @@ export function BackupView() {
                 <Button
                   variant="outline"
                   className="flex-1"
-                  onClick={() => {
-                    setConfirmRestore(false)
-                    setRestorePreview(null)
-                  }}
+                  onClick={() => { setConfirmRestore(false); setRestorePreview(null) }}
                   disabled={restoring}
                 >
                   Cancel
@@ -600,250 +534,4 @@ export function BackupView() {
       </Card>
     </div>
   )
-}
-
-// Generate a printable HTML report for court/caseworker
-function generatePrintReport(data: ExportData): string {
-  const c = data.case
-  const s = data.summary as Record<string, number>
-
-  const formatDate = (d: string | null) => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'
-
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Reunify Progress Report — ${c.caseNumber || 'Case'}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1a1a1a; line-height: 1.5; }
-    h1 { font-size: 24px; margin-bottom: 4px; color: #059669; }
-    h2 { font-size: 18px; margin: 20px 0 10px; border-bottom: 2px solid #059669; color: #047857; }
-    h3 { font-size: 14px; margin: 12px 0 6px; color: #065f46; }
-    .header { margin-bottom: 20px; border-bottom: 1px solid #e5e7eb; padding-bottom: 16px; }
-    .header p { font-size: 12px; color: #6b7280; }
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
-    .info-item { font-size: 12px; }
-    .info-item strong { color: #374151; }
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0; }
-    .stat-card { background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 12px; text-align: center; }
-    .stat-card .number { font-size: 20px; font-weight: bold; color: #059669; }
-    .stat-card .label { font-size: 11px; color: #065f46; }
-    table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; }
-    th { background: #ecfdf5; color: #065f46; font-size: 12px; text-align: left; padding: 8px; border: 1px solid #a7f3d0; }
-    td { font-size: 11px; padding: 6px 8px; border: 1px solid #e5e7eb; }
-    .completed { color: #059669; font-weight: bold; }
-    .pending { color: #d97706; }
-    .negative { color: #059669; font-weight: bold; }
-    .positive { color: #dc2626; }
-    .footer { margin-top: 32px; border-top: 1px solid #e5e7eb; padding-top: 16px; font-size: 11px; color: #6b7280; text-align: center; }
-    @media print { body { padding: 20px; } }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>Reunify Progress Report</h1>
-    <p>CPS Reunification Case Compliance Documentation</p>
-    <p>Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-  </div>
-
-  <h2>Case Information</h2>
-  <div class="info-grid">
-    <div class="info-item"><strong>Case Number:</strong> ${c.caseNumber || 'N/A'}</div>
-    <div class="info-item"><strong>Court:</strong> ${c.court || 'N/A'}</div>
-    <div class="info-item"><strong>Caseworker:</strong> ${c.caseworker || 'N/A'}</div>
-    <div class="info-item"><strong>Caseworker Phone:</strong> ${c.caseworkerPhone || 'N/A'}</div>
-    <div class="info-item"><strong>Judge:</strong> ${c.judge || 'N/A'}</div>
-    <div class="info-item"><strong>Attorney:</strong> ${c.attorney || 'N/A'}</div>
-    <div class="info-item"><strong>Removal Date:</strong> ${formatDate(c.removalDate as string)}</div>
-    <div class="info-item"><strong>Target Reunification:</strong> ${formatDate(c.targetReunificationDate as string)}</div>
-    <div class="info-item"><strong>Case Status:</strong> ${c.status || 'Active'}</div>
-  </div>
-
-  <h2>Compliance Summary</h2>
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="number">${s.completedRequirements || 0}/${s.totalRequirements || 0}</div>
-      <div class="label">Requirements Completed</div>
-    </div>
-    <div class="stat-card">
-      <div class="number">${s.negativeDrugTests || 0}/${s.totalDrugTests || 0}</div>
-      <div class="label">Clean Drug Tests</div>
-    </div>
-    <div class="stat-card">
-      <div class="number">${s.completedNASteps || 0}/12</div>
-      <div class="label">NA Steps Completed</div>
-    </div>
-    <div class="stat-card">
-      <div class="number">${s.completedMilestones || 0}</div>
-      <div class="label">Milestones Achieved</div>
-    </div>
-  </div>
-
-  ${data.requirements.length > 0 ? `
-  <h2>Case Plan Requirements</h2>
-  <table>
-    <tr><th>Category</th><th>Requirement</th><th>Frequency</th><th>Status</th><th>Completed</th></tr>
-    ${data.requirements.map(r => `
-    <tr>
-      <td>${r.category || ''}</td>
-      <td>${r.title || ''}</td>
-      <td>${r.frequency || 'N/A'}</td>
-      <td>${r.isCompleted ? '<span class="completed">Completed</span>' : '<span class="pending">In Progress</span>'}</td>
-      <td>${formatDate(r.completedAt as string)}</td>
-    </tr>`).join('')}
-  </table>` : ''}
-
-  ${data.counselingSessions.length > 0 ? `
-  <h2>Counseling Sessions</h2>
-  <table>
-    <tr><th>Date</th><th>Counselor</th><th>Type</th><th>Duration</th><th>Status</th></tr>
-    ${data.counselingSessions.map(s => `
-    <tr>
-      <td>${formatDate(s.date as string)}</td>
-      <td>${s.counselor || 'N/A'}</td>
-      <td>${s.type || 'N/A'}</td>
-      <td>${s.duration || 'N/A'}</td>
-      <td>${s.completed ? '<span class="completed">Completed</span>' : '<span class="pending">Scheduled</span>'}</td>
-    </tr>`).join('')}
-  </table>` : ''}
-
-  ${data.drugTests.length > 0 ? `
-  <h2>Drug Tests</h2>
-  <table>
-    <tr><th>Date</th><th>Type</th><th>Random</th><th>Result</th><th>Facility</th></tr>
-    ${data.drugTests.map(t => `
-    <tr>
-      <td>${formatDate(t.date as string)}</td>
-      <td>${t.type || 'N/A'}</td>
-      <td>${t.random ? 'Yes' : 'No'}</td>
-      <td>${t.result === 'negative' ? '<span class="negative">Negative</span>' : t.result === 'positive' ? '<span class="positive">Positive</span>' : t.result || 'Pending'}</td>
-      <td>${t.facility || 'N/A'}</td>
-    </tr>`).join('')}
-  </table>` : ''}
-
-  ${data.naMeetings.length > 0 ? `
-  <h2>NA/AA Meetings</h2>
-  <table>
-    <tr><th>Date</th><th>Meeting</th><th>Location</th><th>Topic</th><th>Verified</th></tr>
-    ${data.naMeetings.map(m => `
-    <tr>
-      <td>${formatDate(m.date as string)}</td>
-      <td>${m.name || 'N/A'}</td>
-      <td>${m.location || 'N/A'}</td>
-      <td>${m.topic || 'N/A'}</td>
-      <td>${m.verified ? '<span class="completed">Verified</span>' : 'Unverified'}</td>
-    </tr>`).join('')}
-  </table>` : ''}
-
-  ${data.supervisedVisits.length > 0 ? `
-  <h2>Supervised Visits</h2>
-  <table>
-    <tr><th>Date</th><th>Type</th><th>Location</th><th>Supervisor</th><th>Duration</th><th>Status</th></tr>
-    ${data.supervisedVisits.map(v => `
-    <tr>
-      <td>${formatDate(v.date as string)}</td>
-      <td>${v.type || 'N/A'}</td>
-      <td>${v.location || 'N/A'}</td>
-      <td>${v.supervisor || 'N/A'}</td>
-      <td>${v.duration || 'N/A'}</td>
-      <td>${v.completed ? '<span class="completed">Completed</span>' : '<span class="pending">Scheduled</span>'}</td>
-    </tr>`).join('')}
-  </table>` : ''}
-
-  ${data.parentingClasses.length > 0 ? `
-  <h2>Parenting Classes</h2>
-  <table>
-    <tr><th>Date</th><th>Class</th><th>Provider</th><th>Topic</th><th>Status</th><th>Certificate</th></tr>
-    ${data.parentingClasses.map(p => `
-    <tr>
-      <td>${formatDate(p.date as string)}</td>
-      <td>${p.name || 'N/A'}</td>
-      <td>${p.provider || 'N/A'}</td>
-      <td>${p.topic || 'N/A'}</td>
-      <td>${p.completed ? '<span class="completed">Completed</span>' : '<span class="pending">Upcoming</span>'}</td>
-      <td>${p.hasCertificate ? 'Yes' : 'No'}</td>
-    </tr>`).join('')}
-  </table>` : ''}
-
-  ${data.courtDates.length > 0 ? `
-  <h2>Court Dates</h2>
-  <table>
-    <tr><th>Date</th><th>Hearing Type</th><th>Outcome</th><th>Next Steps</th></tr>
-    ${data.courtDates.map(cd => `
-    <tr>
-      <td>${formatDate(cd.date as string)}</td>
-      <td>${cd.type || 'N/A'}</td>
-      <td>${cd.outcome || 'Pending'}</td>
-      <td>${cd.nextSteps || 'N/A'}</td>
-    </tr>`).join('')}
-  </table>` : ''}
-
-  <div class="footer">
-    <p>This report was generated by Reunify — CPS Reunification Progress Tracker</p>
-    <p>Every step brings you closer to your kids</p>
-  </div>
-</body>
-</html>`
-}
-
-// Generate a plain text email body with progress summary
-function generateEmailBody(data: ExportData): string {
-  const c = data.case
-  const s = data.summary as Record<string, number>
-
-  const formatDate = (d: string | null) => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'
-
-  let body = `REUNIFY PROGRESS REPORT\n`
-  body += `========================\n\n`
-  body += `Case Number: ${c.caseNumber || 'N/A'}\n`
-  body += `Court: ${c.court || 'N/A'}\n`
-  body += `Caseworker: ${c.caseworker || 'N/A'}\n`
-  body += `Judge: ${c.judge || 'N/A'}\n`
-  body += `Attorney: ${c.attorney || 'N/A'}\n`
-  body += `Case Status: ${c.status || 'Active'}\n`
-  body += `Removal Date: ${formatDate(c.removalDate as string)}\n`
-  body += `Target Reunification: ${formatDate(c.targetReunificationDate as string)}\n\n`
-
-  body += `COMPLIANCE SUMMARY\n`
-  body += `------------------\n`
-  body += `Requirements: ${s.completedRequirements || 0}/${s.totalRequirements || 0} completed\n`
-  body += `Drug Tests: ${s.negativeDrugTests || 0}/${s.totalDrugTests || 0} clean\n`
-  body += `NA Steps: ${s.completedNASteps || 0}/12 completed\n`
-  body += `Counseling Sessions: ${s.totalCounselingSessions || 0} attended\n`
-  body += `Supervised Visits: ${s.completedVisits || 0} completed\n`
-  body += `Milestones: ${s.completedMilestones || 0} achieved\n\n`
-
-  if (data.drugTests.length > 0) {
-    body += `DRUG TEST RESULTS\n`
-    body += `-----------------\n`
-    data.drugTests.forEach(t => {
-      body += `${formatDate(t.date as string)} — ${t.type || 'Test'} — Result: ${t.result || 'Pending'}\n`
-    })
-    body += `\n`
-  }
-
-  if (data.naMeetings.length > 0) {
-    body += `NA/AA MEETINGS\n`
-    body += `--------------\n`
-    data.naMeetings.forEach(m => {
-      body += `${formatDate(m.date as string)} — ${m.name || 'Meeting'} at ${m.location || 'N/A'} — Verified: ${m.verified ? 'Yes' : 'No'}\n`
-    })
-    body += `\n`
-  }
-
-  if (data.parentingClasses.length > 0) {
-    body += `PARENTING CLASSES\n`
-    body += `-----------------\n`
-    data.parentingClasses.forEach(p => {
-      body += `${formatDate(p.date as string)} — ${p.name || 'Class'} — ${p.completed ? 'Completed' : 'Upcoming'}${p.hasCertificate ? ' (Certificate)' : ''}\n`
-    })
-    body += `\n`
-  }
-
-  body += `Report generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}\n`
-  body += `Generated by Reunify — CPS Reunification Progress Tracker\n`
-
-  return body
 }
