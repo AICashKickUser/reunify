@@ -65,27 +65,44 @@ export function GoProView() {
     }
   }, [])
 
-  // Owner activation code handler
-  function handleActivation() {
-    // The activation code is "reunify-owner-2024" - this lets the developer use Pro features
-    if (activationCode === 'reunify-owner-2024') {
-      setSubscriptionData({
-        tier: 'pro',
-        stripeSessionId: 'owner-activation',
-        subscriptionStatus: 'active',
-        trialEnd: null,
-        currentPeriodEnd: Math.floor(Date.now() / 1000) + (365 * 24 * 60 * 60), // 1 year from now
-        cancelAtPeriodEnd: false,
+  const [activating, setActivating] = useState(false)
+
+  // Server-side activation code handler - code is validated on the server so it's never exposed in client JS
+  async function handleActivation() {
+    setActivating(true)
+    try {
+      const res = await fetch('/api/activate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: activationCode }),
       })
-      toast.success('Pro activated!', {
-        description: 'You now have full access to all Pro features.',
+      const data = await res.json()
+
+      if (data.valid) {
+        setSubscriptionData({
+          tier: data.tier,
+          stripeSessionId: data.stripeSessionId,
+          subscriptionStatus: data.subscriptionStatus,
+          trialEnd: null,
+          currentPeriodEnd: data.currentPeriodEnd,
+          cancelAtPeriodEnd: data.cancelAtPeriodEnd,
+        })
+        toast.success('Pro activated!', {
+          description: `You now have full access to all Pro features via ${data.label}.`,
+        })
+        setActivationCode('')
+        setShowActivation(false)
+      } else {
+        toast.error('Invalid activation code', {
+          description: data.error || 'Please check the code and try again.',
+        })
+      }
+    } catch {
+      toast.error('Connection error', {
+        description: 'Please check your internet connection and try again.',
       })
-      setActivationCode('')
-      setShowActivation(false)
-    } else {
-      toast.error('Invalid activation code', {
-        description: 'Please check the code and try again.',
-      })
+    } finally {
+      setActivating(false)
     }
   }
 
@@ -145,10 +162,12 @@ export function GoProView() {
       return
     }
 
-    // If owner-activated, just show info
-    if (stripeSessionId === 'owner-activation') {
-      toast.info('Owner access', {
-        description: 'Your Pro access was activated with an owner code. No subscription to manage.',
+    // If owner-activated or tester-activated, just show info
+    if (stripeSessionId === 'owner-activation' || stripeSessionId === 'tester-activation') {
+      toast.info('Activated access', {
+        description: stripeSessionId === 'owner-activation'
+          ? 'Your Pro access was activated with an owner code. No subscription to manage.'
+          : 'Your Pro access was activated with a tester code. No subscription to manage.',
       })
       return
     }
@@ -180,6 +199,7 @@ export function GoProView() {
     const trialActive = isTrial()
     const periodEnd = currentPeriodEnd ? new Date(currentPeriodEnd * 1000).toLocaleDateString() : null
     const isOwner = stripeSessionId === 'owner-activation'
+    const isTester = stripeSessionId === 'tester-activation'
 
     return (
       <div className="max-w-2xl mx-auto py-3 sm:py-6 space-y-4 sm:space-y-6 px-3 sm:px-4 overflow-y-auto max-h-[calc(100vh-8rem)]">
@@ -217,6 +237,14 @@ export function GoProView() {
                 </span>
               </div>
             )}
+            {isTester && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+                <Key className="size-3.5 text-blue-600" />
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-400">
+                  Tester Pro Access — 1 Year Free
+                </span>
+              </div>
+            )}
             {trialActive && (
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
                 <Sparkles className="size-3.5 text-amber-600" />
@@ -236,7 +264,7 @@ export function GoProView() {
           </div>
 
           {/* Manage subscription */}
-          {stripeSessionId && !isOwner && (
+          {stripeSessionId && !isOwner && !isTester && (
             <Button
               variant="outline"
               className="mt-3 sm:mt-4 gap-2"
@@ -455,8 +483,8 @@ export function GoProView() {
                   className="flex-1 h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   onKeyDown={(e) => { if (e.key === 'Enter') handleActivation() }}
                 />
-                <Button size="sm" onClick={handleActivation} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                  Activate
+                <Button size="sm" onClick={handleActivation} disabled={activating} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                  {activating ? 'Activating...' : 'Activate'}
                 </Button>
               </div>
             </CardContent>
