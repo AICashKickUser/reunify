@@ -22,3 +22,23 @@ Stage Summary:
 - Dashboard: all cards/events are clickable and navigate to correct views
 - Admin bypass: activation code "reunify-owner-2024" grants Pro access
 - Clean lint, no errors, all API endpoints returning 200
+---
+Task ID: 1
+Agent: Main Agent
+Task: Add Backup & Restore feature to Reunify
+
+Work Log:
+- Created BackupView component with 3 export options (JSON download, Email to caseworker, Print court report) and restore from backup
+- Created server-side API routes: /api/export/pdf (generates printable HTML report) and /api/export/email (generates email subject/body)
+- Moved heavy HTML template generation from client to server to reduce client bundle size and prevent dev server OOM crashes
+- Added 'backup' ViewType to store.ts, VIEW_LABELS, page.tsx VIEW_MAP, use-navigation-history VALID_VIEWS, and app-sidebar NAV_GROUPS
+- Updated page.tsx rendering logic to show BackupView without requiring an active case (like go-pro)
+- Lint verified clean
+- Verified sidebar shows "Backup & Restore" nav item via Agent Browser
+- Committed and pushed to GitHub/Vercel for auto-deployment
+
+Stage Summary:
+- 4 new/modified files pushed: backup-view.tsx, /api/export/pdf/route.ts, /api/export/email/route.ts, page.tsx
+- Backup feature includes: JSON file download, email to caseworker (mailto), court-ready printable PDF report, and restore from backup JSON file
+- Free-tier users see upgrade prompt; Pro users see full backup functionality
+- API routes handle all heavy formatting server-side, keeping client component lightweight
