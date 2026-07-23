@@ -13,6 +13,7 @@ export type ViewType =
   | 'parenting-classes'
   | 'daily-checkins'
   | 'progress'
+  | 'backup'
   | 'go-pro'
 
 interface AppState {
@@ -69,5 +70,6 @@ export const VIEW_LABELS: Record<ViewType, string> = {
   'parenting-classes': 'Parenting Classes',
   'daily-checkins': 'Daily Check-in',
   'progress': 'Progress Report',
+  'backup': 'Backup & Restore',
   'go-pro': 'Upgrade to Pro',
 }

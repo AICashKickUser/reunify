@@ -6,7 +6,7 @@ import { useAppStore, type ViewType } from '@/lib/store'
 const VALID_VIEWS: ViewType[] = [
   'dashboard', 'timeline', 'case-plan', 'counseling', 'drug-testing',
   'na-steps', 'na-meetings', 'supervised-visits', 'court-dates',
-  'parenting-classes', 'daily-checkins', 'progress', 'go-pro',
+  'parenting-classes', 'daily-checkins', 'progress', 'backup', 'go-pro',
 ]
 
 /**
