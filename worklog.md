@@ -64,3 +64,24 @@ Stage Summary:
 - 89 tool-result files cleaned up and removed from git (added to .gitignore)
 - Key fixes: no horizontal scroll, compact mobile layout, native app feel
 - Deployed to Vercel via GitHub push
+---
+Task ID: 2
+Agent: Main Agent
+Task: Fix ChunkLoadError for 3 redesigned views and timezone date bug
+
+Work Log:
+- Investigated ChunkLoadError on Vercel: ParentingClassesView, DrugTestingView, NAMeetingsView all failed with 404 chunks
+- Root cause: safeLazy named-export pattern caused Vercel webpack chunk generation to fail
+- Fix: Switched 3 views from safeLazy() to standard lazy() with default exports
+- Added default exports to parenting-classes-view.tsx, drug-testing-view.tsx, na-meetings-view.tsx
+- All chunks now return 200 on Vercel, all 3 views load correctly
+- Also fixed timezone date bug: new Date(body.date) interpreted date-only strings as UTC midnight, causing previous-day shift in Pacific time
+- Changed all 14 API routes: new Date(body.date) → new Date(body.date + 'T12:00:00.000Z')
+- Changed NA meetings frontend: replaced new Date().toISOString().split('T')[0] with getLocalDateString()
+- Added getLocalDateString() and parseLocalDate() utility functions to utils.ts
+- Verified on Vercel: all views load without errors, dashboard shows "Today" correctly
+
+Stage Summary:
+- ChunkLoadError fixed by using standard lazy() with default exports
+- Timezone bug fixed by storing dates as noon UTC (T12:00:00.000Z) in all API routes
+- All views verified working on Vercel production site
