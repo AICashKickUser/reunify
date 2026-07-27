@@ -306,7 +306,7 @@ export default function Home() {
         <div className="flex min-h-screen flex-col">
           <AppHeader />
           <main className="flex-1 overflow-hidden">
-            <div className="p-4 md:p-6 h-full overflow-y-auto">
+            <div className="p-3 md:p-6 h-full overflow-y-auto overflow-x-hidden">
               {activeView === 'go-pro' || activeView === 'backup' ? (
                 <ActiveView />
               ) : activeCaseId ? (
@@ -316,7 +316,7 @@ export default function Home() {
               )}
             </div>
           </main>
-          <footer className="border-t bg-background py-3 px-4 mt-auto">
+          <footer className="border-t bg-background py-2 sm:py-3 px-3 sm:px-4 mt-auto">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-1 max-w-5xl mx-auto">
               <p className="text-xs text-muted-foreground">
                 Reunify — Every step brings you closer to your kids

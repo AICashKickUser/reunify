@@ -285,57 +285,57 @@ export function ParentingClassesView() {
   }
 
   return (
-    <div className="space-y-6 max-h-[calc(100vh-8rem)] overflow-y-auto pr-1 scrollbar-thin">
+    <div className="space-y-3 sm:space-y-6 max-h-[calc(100vh-8rem)] overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin">
       {/* Stats Row */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-lg bg-rose-50 dark:bg-rose-950/20">
-                <Target className="size-5 text-rose-600" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex size-8 sm:size-10 items-center justify-center rounded-lg bg-rose-50 dark:bg-rose-950/20">
+                <Target className="size-4 sm:size-5 text-rose-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Completed</p>
-                <p className="text-2xl font-bold">{completedWeekly}/{TOTAL_WEEKLY_CLASSES}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Completed</p>
+                <p className="text-lg sm:text-2xl font-bold">{completedWeekly}/{TOTAL_WEEKLY_CLASSES}</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-lg bg-rose-50 dark:bg-rose-950/20">
-                <GraduationCap className="size-5 text-rose-600" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex size-8 sm:size-10 items-center justify-center rounded-lg bg-rose-50 dark:bg-rose-950/20">
+                <GraduationCap className="size-4 sm:size-5 text-rose-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Progress</p>
-                <p className="text-2xl font-bold text-rose-600">{completionRate}%</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Progress</p>
+                <p className="text-lg sm:text-2xl font-bold text-rose-600">{completionRate}%</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/20">
-                <CheckCircle2 className="size-5 text-emerald-600" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex size-8 sm:size-10 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/20">
+                <CheckCircle2 className="size-4 sm:size-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Orientation</p>
-                <p className="text-2xl font-bold text-emerald-600">{orientationClass?.isCompleted ? 'Done' : 'Pending'}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Orientation</p>
+                <p className="text-lg sm:text-2xl font-bold text-emerald-600">{orientationClass?.isCompleted ? 'Done' : 'Pending'}</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/20">
-                <Award className="size-5 text-amber-600" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex size-8 sm:size-10 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/20">
+                <Award className="size-4 sm:size-5 text-amber-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Certificates</p>
-                <p className="text-2xl font-bold text-amber-600">{weeklyClasses.filter((c) => c.hasCertificate).length}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Certificates</p>
+                <p className="text-lg sm:text-2xl font-bold text-amber-600">{weeklyClasses.filter((c) => c.hasCertificate).length}</p>
               </div>
             </div>
           </CardContent>
@@ -344,12 +344,12 @@ export function ParentingClassesView() {
 
       {/* Progress Bar */}
       <Card className="border-rose-200 dark:border-rose-800">
-        <CardContent className="p-4">
+        <CardContent className="p-3 sm:p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Class Completion Progress</span>
-            <span className="text-sm text-rose-600 font-semibold">{completedWeekly}/{TOTAL_WEEKLY_CLASSES} classes</span>
+            <span className="text-xs sm:text-sm font-medium">Class Completion Progress</span>
+            <span className="text-xs sm:text-sm text-rose-600 font-semibold">{completedWeekly}/{TOTAL_WEEKLY_CLASSES} classes</span>
           </div>
-          <Progress value={completionRate} className="h-3" />
+          <Progress value={completionRate} className="h-2 sm:h-3" />
           <p className="text-xs text-muted-foreground mt-2">
             {completionRate === 100 ? '🎉 All classes completed! Great work!' :
              completionRate >= 50 ? `Halfway there! ${TOTAL_WEEKLY_CLASSES - completedWeekly} classes remaining.` :
@@ -360,19 +360,19 @@ export function ParentingClassesView() {
 
       {/* Parenting Orientation */}
       <Card className={`border-l-4 ${orientationClass?.isCompleted ? 'border-l-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/10' : 'border-l-amber-400'}`}>
-        <CardContent className="p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className={`flex size-10 shrink-0 items-center justify-center rounded-full ${orientationClass?.isCompleted ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-amber-100 dark:bg-amber-900/30'}`}>
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className={`flex size-8 sm:size-10 shrink-0 items-center justify-center rounded-full ${orientationClass?.isCompleted ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-amber-100 dark:bg-amber-900/30'}`}>
                 {orientationClass?.isCompleted ? (
-                  <CheckCircle2 className="size-5 text-emerald-600" />
+                  <CheckCircle2 className="size-4 sm:size-5 text-emerald-600" />
                 ) : (
-                  <GraduationCap className="size-5 text-amber-600" />
+                  <GraduationCap className="size-4 sm:size-5 text-amber-600" />
                 )}
               </div>
               <div className="min-w-0">
-                <h3 className="font-semibold text-foreground">Parenting Orientation</h3>
-                <p className="text-sm text-muted-foreground">One-time orientation session — required before weekly classes</p>
+                <h3 className="text-sm sm:text-base font-semibold text-foreground">Parenting Orientation</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">One-time orientation session — required before weekly classes</p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -393,11 +393,11 @@ export function ParentingClassesView() {
 
       {/* Weekly Classes Checklist */}
       <div className="space-y-3">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <BookOpen className="size-5 text-rose-600" />
+        <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+          <BookOpen className="size-4 sm:size-5 text-rose-600" />
           Weekly Classes ({TOTAL_WEEKLY_CLASSES})
         </h2>
-        <p className="text-sm text-muted-foreground">One class every Tuesday for {TOTAL_WEEKLY_CLASSES} weeks. Tap to mark complete.</p>
+        <p className="text-xs sm:text-sm text-muted-foreground">One class every Tuesday for {TOTAL_WEEKLY_CLASSES} weeks. Tap to mark complete.</p>
 
         <div className="space-y-2">
           {tuesdayDates.map((date, index) => {
@@ -419,11 +419,11 @@ export function ParentingClassesView() {
                   }
                 }}
               >
-                <CardContent className="p-3 sm:p-4">
-                  <div className="flex items-center gap-3">
+                <CardContent className="p-2 sm:p-3">
+                  <div className="flex items-center gap-2 sm:gap-3">
                     <button
                       type="button"
-                      className={`flex size-10 shrink-0 items-center justify-center rounded-full transition-all ${
+                      className={`flex size-8 sm:size-10 shrink-0 items-center justify-center rounded-full transition-all ${
                         isCompleted
                           ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
                           : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 hover:bg-rose-200 dark:hover:bg-rose-900/50'
@@ -434,11 +434,11 @@ export function ParentingClassesView() {
                       }}
                       aria-label={isCompleted ? `Mark class ${classNumber} incomplete` : `Mark class ${classNumber} complete`}
                     >
-                      {isCompleted ? <Check className="size-5" /> : <span className="text-sm font-bold">{classNumber}</span>}
+                      {isCompleted ? <Check className="size-4 sm:size-5" /> : <span className="text-xs sm:text-sm font-bold">{classNumber}</span>}
                     </button>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-foreground">
+                        <span className="text-sm sm:text-base font-semibold text-foreground">
                           {existingClass?.className || `Class ${classNumber}`}
                         </span>
                         {isCompleted ? (
@@ -453,7 +453,7 @@ export function ParentingClassesView() {
                           </Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 mt-0.5 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2 mt-0.5 text-xs sm:text-sm text-muted-foreground">
                         <Calendar className="size-3.5 shrink-0" />
                         <span>{formatDateShort(date)}</span>
                         {existingClass?.provider && (
@@ -461,7 +461,7 @@ export function ParentingClassesView() {
                         )}
                       </div>
                       {existingClass?.topic && (
-                        <p className="text-sm text-muted-foreground mt-0.5 truncate">{existingClass.topic}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate">{existingClass.topic}</p>
                       )}
                     </div>
                     {existingClass && (

@@ -377,28 +377,28 @@ export function DrugTestingView() {
   const isMutating = createMutation.isPending || updateMutation.isPending
 
   return (
-    <div className="space-y-4 max-w-3xl mx-auto">
+    <div className="space-y-3 sm:space-y-4 max-w-3xl mx-auto overflow-x-hidden">
       {/* ── Header ────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3">
-        <div className="flex size-10 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30">
-          <TestTube2 className="size-5 text-amber-600 dark:text-amber-400" />
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex size-8 sm:size-10 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30">
+          <TestTube2 className="size-4 sm:size-5 text-amber-600 dark:text-amber-400" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Drug Testing Call Log</h2>
-          <p className="text-sm text-muted-foreground">Call the hotline each day. Log your call status here.</p>
+          <h2 className="text-base sm:text-lg font-semibold text-foreground">Drug Testing Call Log</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">Call the hotline each day. Log your call status here.</p>
         </div>
       </div>
 
       {/* ── Stats Cards ───────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
         {/* Clean Tests */}
         <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/10">
-          <CardContent className="p-3 sm:p-4 text-center">
+          <CardContent className="p-2 sm:p-3 text-center">
             <div className="flex items-center justify-center gap-1.5 mb-1">
-              <CheckCircle2 className="size-4 text-emerald-600" />
+              <CheckCircle2 className="size-3 sm:size-4 text-emerald-600" />
               <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Clean Tests</span>
             </div>
-            <p className="text-xl sm:text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+            <p className="text-lg sm:text-2xl font-bold text-emerald-700 dark:text-emerald-300">
               {stats.totalTests > 0 ? `${stats.cleanTests}/${stats.totalTests}` : '0'}
             </p>
             <p className="text-xs text-emerald-600/70 dark:text-emerald-400/70">
@@ -409,12 +409,12 @@ export function DrugTestingView() {
 
         {/* Days Called This Week */}
         <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/10">
-          <CardContent className="p-3 sm:p-4 text-center">
+          <CardContent className="p-2 sm:p-3 text-center">
             <div className="flex items-center justify-center gap-1.5 mb-1">
-              <PhoneCall className="size-4 text-amber-600" />
+              <PhoneCall className="size-3 sm:size-4 text-amber-600" />
               <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Days Called</span>
             </div>
-            <p className="text-xl sm:text-2xl font-bold text-amber-700 dark:text-amber-300">
+            <p className="text-lg sm:text-2xl font-bold text-amber-700 dark:text-amber-300">
               {stats.daysCalledThisWeek}/5
             </p>
             <p className="text-xs text-amber-600/70 dark:text-amber-400/70">this week</p>
@@ -423,12 +423,12 @@ export function DrugTestingView() {
 
         {/* Testing Streak */}
         <Card className="border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/10">
-          <CardContent className="p-3 sm:p-4 text-center">
+          <CardContent className="p-2 sm:p-3 text-center">
             <div className="flex items-center justify-center gap-1.5 mb-1">
-              <Flame className="size-4 text-orange-600" />
+              <Flame className="size-3 sm:size-4 text-orange-600" />
               <span className="text-xs font-medium text-orange-700 dark:text-orange-400">Streak</span>
             </div>
-            <p className="text-xl sm:text-2xl font-bold text-orange-700 dark:text-orange-300">
+            <p className="text-lg sm:text-2xl font-bold text-orange-700 dark:text-orange-300">
               {stats.streak}
             </p>
             <p className="text-xs text-orange-600/70 dark:text-orange-400/70">consecutive clean days</p>
@@ -437,12 +437,12 @@ export function DrugTestingView() {
 
         {/* Total Tests */}
         <Card className="border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/10">
-          <CardContent className="p-3 sm:p-4 text-center">
+          <CardContent className="p-2 sm:p-3 text-center">
             <div className="flex items-center justify-center gap-1.5 mb-1">
-              <ClipboardCheck className="size-4 text-slate-600" />
+              <ClipboardCheck className="size-3 sm:size-4 text-slate-600" />
               <span className="text-xs font-medium text-slate-700 dark:text-slate-400">Total Tests</span>
             </div>
-            <p className="text-xl sm:text-2xl font-bold text-slate-700 dark:text-slate-300">
+            <p className="text-lg sm:text-2xl font-bold text-slate-700 dark:text-slate-300">
               {stats.totalTests}
             </p>
             <p className="text-xs text-slate-600/70 dark:text-slate-400/70">completed</p>
@@ -452,11 +452,11 @@ export function DrugTestingView() {
 
       {/* ── Weekly Compliance Bar ──────────────────────────────────────── */}
       <Card className="border-amber-200 dark:border-amber-800">
-        <CardContent className="p-3 sm:p-4">
+        <CardContent className="p-2 sm:p-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Calendar className="size-4 text-amber-600" />
-              <span className="text-sm font-medium text-foreground">Weekly Call Compliance</span>
+              <Calendar className="size-3 sm:size-4 text-amber-600" />
+              <span className="text-xs sm:text-sm font-medium text-foreground">Weekly Call Compliance</span>
             </div>
             <Badge
               variant={stats.daysCalledThisWeek === 5 ? 'default' : 'outline'}
@@ -496,18 +496,18 @@ export function DrugTestingView() {
 
       {/* ── This Week's Call Grid ──────────────────────────────────────── */}
       <Card className={`${CATEGORY_COLORS['drug-testing'].border}`}>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-semibold text-amber-700 dark:text-amber-400">
+        <CardHeader className="pb-2 px-3 sm:px-6">
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-sm sm:text-base font-semibold text-amber-700 dark:text-amber-400">
               This Week: {formatWeekRange(currentMonday, currentFriday)}
             </CardTitle>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Phone className="size-3" />
-              <span>Tap to log your daily call</span>
+              <span className="hidden sm:inline">Tap to log your daily call</span>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-2 pb-4">
+        <CardContent className="space-y-2 pb-4 px-3 sm:px-6">
           {currentWeekDates.map((date, dayIndex) => {
             const key = formatDateKey(date)
             const test = testByDate.get(key)
@@ -520,7 +520,7 @@ export function DrugTestingView() {
               <div key={key} className="space-y-1">
                 {/* Day Row */}
                 <div
-                  className={`flex items-center gap-2 p-2.5 sm:p-3 rounded-lg transition-colors ${
+                  className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 sm:p-2.5 rounded-lg transition-colors ${
                     isToday
                       ? 'bg-amber-100 dark:bg-amber-900/20 ring-1 ring-amber-300 dark:ring-amber-700'
                       : status === 'not-called'
@@ -531,10 +531,10 @@ export function DrugTestingView() {
                   }`}
                 >
                   {/* Day Label */}
-                  <div className="flex-shrink-0 min-w-[70px] sm:min-w-[100px]">
+                  <div className="flex-shrink-0 sm:min-w-[100px]">
                     <div className="flex items-center gap-1.5">
                       <span className={`text-sm font-semibold ${isToday ? 'text-amber-700 dark:text-amber-400' : 'text-foreground'}`}>
-                        {DAY_NAMES[dayIndex]}
+                        {DAY_NAMES[dayIndex]} {date.getMonth() + 1}/{date.getDate()}
                       </span>
                       {isToday && (
                         <Badge className="bg-amber-600 text-white border-amber-600 text-[10px] px-1 py-0 h-4">
@@ -542,9 +542,6 @@ export function DrugTestingView() {
                         </Badge>
                       )}
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {date.getMonth() + 1}/{date.getDate()}
-                    </span>
                   </div>
 
                   {/* Quick-Action Buttons */}
@@ -558,26 +555,25 @@ export function DrugTestingView() {
                         {/* Not Called */}
                         <Button
                           variant="outline"
-                          size="sm"
                           disabled={isMutating}
                           onClick={() => handleStatusChange(date, 'not-called')}
-                          className={`flex-1 h-10 sm:h-11 text-xs sm:text-sm transition-all ${
+                          className={`flex-1 h-8 sm:h-10 text-xs sm:text-sm transition-all ${
                             status === 'not-called'
                               ? 'bg-gray-100 text-gray-600 border-gray-300 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 ring-2 ring-gray-400/50'
                               : 'bg-transparent text-gray-400 border-gray-200 dark:text-gray-500 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900/20'
                           }`}
                         >
-                          <PhoneOff className="size-3.5 sm:size-4 mr-1" />
-                          Not Called
+                          <PhoneOff className="size-3 sm:size-4 mr-1" />
+                          <span className="hidden sm:inline">Not Called</span>
+                          <span className="sm:hidden">Not Called</span>
                         </Button>
 
                         {/* Called — Not Required */}
                         <Button
                           variant="outline"
-                          size="sm"
                           disabled={isMutating}
                           onClick={() => handleStatusChange(date, 'not-required')}
-                          className={`flex-1 h-10 sm:h-11 text-xs sm:text-sm transition-all ${
+                          className={`flex-1 h-8 sm:h-10 text-xs sm:text-sm transition-all ${
                             status === 'not-required'
                               ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700 ring-2 ring-emerald-400/50'
                               : 'bg-transparent text-gray-400 border-gray-200 dark:text-gray-500 dark:border-gray-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/10 hover:text-emerald-600 hover:border-emerald-200 dark:hover:text-emerald-400'
@@ -591,10 +587,9 @@ export function DrugTestingView() {
                         {/* Called & Tested */}
                         <Button
                           variant="outline"
-                          size="sm"
                           disabled={isMutating}
                           onClick={() => handleStatusChange(date, 'called-tested')}
-                          className={`flex-1 h-10 sm:h-11 text-xs sm:text-sm transition-all ${
+                          className={`flex-1 h-8 sm:h-10 text-xs sm:text-sm transition-all ${
                             status === 'called-tested'
                               ? 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700 ring-2 ring-amber-400/50'
                               : 'bg-transparent text-gray-400 border-gray-200 dark:text-gray-500 dark:border-gray-700 hover:bg-amber-50 dark:hover:bg-amber-950/10 hover:text-amber-600 hover:border-amber-200 dark:hover:text-amber-400'
@@ -612,11 +607,11 @@ export function DrugTestingView() {
                   {status === 'called-tested' && test && (
                     <button
                       onClick={() => toggleExpanded(key)}
-                      className="flex-shrink-0 p-1 rounded hover:bg-amber-100 dark:hover:bg-amber-900/20 transition-colors"
+                      className="flex-shrink-0 p-1 rounded hover:bg-amber-100 dark:hover:bg-amber-900/20 transition-colors sm:self-center"
                       aria-label={isExpanded ? 'Collapse result options' : 'Expand result options'}
                     >
                       <ChevronDown
-                        className={`size-4 text-amber-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                        className={`size-3 sm:size-4 text-amber-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                       />
                     </button>
                   )}
@@ -624,11 +619,11 @@ export function DrugTestingView() {
 
                 {/* Expanded Result Options (only for "Called & Tested") */}
                 {status === 'called-tested' && test && isExpanded && (
-                  <div className="ml-[70px] sm:ml-[100px] p-2.5 rounded-lg bg-amber-50/50 dark:bg-amber-950/10 border border-amber-200 dark:border-amber-800">
+                  <div className="p-2.5 rounded-lg bg-amber-50/50 dark:bg-amber-950/10 border border-amber-200 dark:border-amber-800">
                     <p className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-2">
                       Test Result:
                     </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 max-w-full">
                       {RESULT_OPTIONS.map(opt => {
                         const isSelected = test.result === opt.value
                         return (
@@ -638,13 +633,13 @@ export function DrugTestingView() {
                             size="sm"
                             disabled={isMutating}
                             onClick={() => handleResultChange(date, opt.value)}
-                            className={`h-9 text-xs transition-all ${
+                            className={`h-7 sm:h-9 text-xs transition-all ${
                               isSelected
                                 ? `${opt.bg} ${opt.color} ring-2 ring-current/30 font-semibold`
                                 : 'text-gray-500 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900/10'
                             }`}
                           >
-                            <opt.icon className="size-3.5 mr-1" />
+                            <opt.icon className="size-3 sm:size-3.5 mr-1" />
                             {opt.value === 'negative' ? 'Clean' : opt.label.split(' ')[0]}
                           </Button>
                         )
@@ -661,7 +656,7 @@ export function DrugTestingView() {
 
                 {/* Compact result badge for tested days (when not expanded) */}
                 {status === 'called-tested' && test && test.result && !isExpanded && (
-                  <div className="ml-[70px] sm:ml-[100px]">
+                  <div className="sm:ml-[100px]">
                     <Badge
                       className={
                         test.result === 'negative'
@@ -704,7 +699,7 @@ export function DrugTestingView() {
           </CardHeader>
 
           {previousWeeksExpanded && (
-            <CardContent className="space-y-3 max-h-96 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-600 [&::-webkit-scrollbar-thumb]:rounded-full">
+            <CardContent className="space-y-3 max-h-96 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-600 [&::-webkit-scrollbar-thumb]:rounded-full">
               {previousWeeks.map((week) => {
                 const weekDateKeys = getWeekDates(week.monday).map(d => formatDateKey(d))
                 const weekTestsMap = weekDateKeys.map(key => testByDate.get(key))
@@ -754,7 +749,7 @@ export function DrugTestingView() {
                     </div>
 
                     {/* Mini Week Grid */}
-                    <div className="grid grid-cols-5 gap-1">
+                    <div className="grid grid-cols-5 gap-1 overflow-x-hidden">
                       {weekDateKeys.map((key, i) => {
                         const t = weekTestsMap[i]
                         const dayStatus = getCallStatus(t)
@@ -826,9 +821,9 @@ export function DrugTestingView() {
 
       {/* ── How It Works (collapsed info) ──────────────────────────────── */}
       <Card className="border-dashed border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-950/5">
-        <CardContent className="p-3 sm:p-4">
+        <CardContent className="p-2 sm:p-3">
           <div className="flex items-start gap-2">
-            <PhoneCall className="size-4 text-amber-500 mt-0.5 flex-shrink-0" />
+            <PhoneCall className="size-3 sm:size-4 text-amber-500 mt-0.5 flex-shrink-0" />
             <div className="text-xs text-amber-700/80 dark:text-amber-400/80 space-y-1">
               <p className="font-medium text-amber-800 dark:text-amber-300">How CPS Drug Testing Works:</p>
               <ol className="list-decimal ml-3 space-y-0.5">

@@ -55,3 +55,4 @@ server.log
 android-build/twa-project/
 .jdks/
 android-build/
+tool-results/

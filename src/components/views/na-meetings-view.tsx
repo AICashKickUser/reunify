@@ -377,11 +377,11 @@ export function NAMeetingsView() {
   // ─── Loading skeleton ─────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i}>
-              <CardContent className="p-4">
+              <CardContent className="p-3 sm:p-4">
                 <Skeleton className="h-4 w-20 mb-2" />
                 <Skeleton className="h-8 w-12" />
               </CardContent>
@@ -401,38 +401,39 @@ export function NAMeetingsView() {
 
   // ─── Render ───────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* ── Header ────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className={`flex size-9 items-center justify-center rounded-lg ${colors.bg}`}>
-            <Users className={`size-5 ${colors.text}`} />
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={`flex size-7 sm:size-9 items-center justify-center rounded-lg ${colors.bg}`}>
+            <Users className={`size-4 sm:size-5 ${colors.text}`} />
           </div>
-          <div>
-            <h2 className="text-lg font-semibold">NA Meetings</h2>
-            <p className="text-sm text-muted-foreground">
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-lg font-semibold">NA Meetings</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground">
               {WEEKLY_GOAL} meetings per week — track your progress
             </p>
           </div>
         </div>
-        <Button onClick={handleOpenAddDialog} className="bg-violet-600 hover:bg-violet-700 text-white">
-          <Plus className="size-4" />
-          Add Meeting
+        <Button onClick={handleOpenAddDialog} size="sm" className="bg-violet-600 hover:bg-violet-700 text-white shrink-0 h-8 sm:h-9">
+          <Plus className="size-3 sm:size-4" />
+          <span className="hidden sm:inline">Add Meeting</span>
+          <span className="sm:hidden">Add</span>
         </Button>
       </div>
 
       {/* ── Stats Cards ──────────────────────────────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* This Week */}
         <Card className={`${weeklyGoalMet ? 'border-emerald-200 dark:border-emerald-800' : ''}`}>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className={`flex size-10 items-center justify-center rounded-lg ${weeklyGoalMet ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-violet-50 dark:bg-violet-900/20'}`}>
-                <Calendar className={`size-5 ${weeklyGoalMet ? 'text-emerald-600' : 'text-violet-600'}`} />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className={`flex size-8 sm:size-10 items-center justify-center rounded-lg ${weeklyGoalMet ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-violet-50 dark:bg-violet-900/20'}`}>
+                <Calendar className={`size-4 sm:size-5 ${weeklyGoalMet ? 'text-emerald-600' : 'text-violet-600'}`} />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">This Week</p>
-                <p className={`text-2xl font-bold ${weeklyGoalMet ? 'text-emerald-600' : 'text-violet-600'}`}>
+                <p className="text-xs sm:text-sm text-muted-foreground">This Week</p>
+                <p className={`text-lg sm:text-2xl font-bold ${weeklyGoalMet ? 'text-emerald-600' : 'text-violet-600'}`}>
                   {thisWeekCount}/{WEEKLY_GOAL}
                 </p>
               </div>
@@ -442,14 +443,14 @@ export function NAMeetingsView() {
 
         {/* Weekly Goal Rate */}
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-900/20">
-                <Target className="size-5 text-violet-600" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex size-8 sm:size-10 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-900/20">
+                <Target className="size-4 sm:size-5 text-violet-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Goal Rate</p>
-                <p className="text-2xl font-bold text-violet-600">{stats.goalRate}%</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Goal Rate</p>
+                <p className="text-lg sm:text-2xl font-bold text-violet-600">{stats.goalRate}%</p>
               </div>
             </div>
           </CardContent>
@@ -457,14 +458,14 @@ export function NAMeetingsView() {
 
         {/* Total Meetings */}
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-900/20">
-                <Users className="size-5 text-violet-600" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex size-8 sm:size-10 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-900/20">
+                <Users className="size-4 sm:size-5 text-violet-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Meetings</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Total Meetings</p>
+                <p className="text-lg sm:text-2xl font-bold">{stats.total}</p>
               </div>
             </div>
           </CardContent>
@@ -472,14 +473,14 @@ export function NAMeetingsView() {
 
         {/* Verified */}
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
-                <BadgeCheck className="size-5 text-emerald-600" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex size-8 sm:size-10 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
+                <BadgeCheck className="size-4 sm:size-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Verified</p>
-                <p className="text-2xl font-bold text-emerald-600">{stats.verified}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Verified</p>
+                <p className="text-lg sm:text-2xl font-bold text-emerald-600">{stats.verified}</p>
               </div>
             </div>
           </CardContent>
@@ -488,53 +489,53 @@ export function NAMeetingsView() {
 
       {/* ── This Week's Meeting Tracker (PRIMARY) ─────────────── */}
       <Card className={`border-2 ${weeklyGoalMet ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/10' : 'border-violet-200 dark:border-violet-800 bg-violet-50/30 dark:bg-violet-950/10'}`}>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <CalendarDays className={`size-5 ${weeklyGoalMet ? 'text-emerald-600' : 'text-violet-600'}`} />
+        <CardHeader className="pb-3 px-3 sm:px-6">
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-sm sm:text-lg flex items-center gap-2">
+              <CalendarDays className={`size-4 sm:size-5 ${weeklyGoalMet ? 'text-emerald-600' : 'text-violet-600'}`} />
               This Week&apos;s Tracker
             </CardTitle>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-xs sm:text-sm text-muted-foreground">
               {formatWeekLabel(currentMonday)}
             </span>
           </div>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="space-y-4 sm:space-y-5 px-3 sm:px-6">
           {/* Progress indicator */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className={`text-xl font-bold ${weeklyGoalMet ? 'text-emerald-600' : 'text-violet-600'}`}>
+              <span className={`text-base sm:text-xl font-bold ${weeklyGoalMet ? 'text-emerald-600' : 'text-violet-600'}`}>
                 {thisWeekCount}/{WEEKLY_GOAL} meetings this week
               </span>
               {weeklyGoalMet ? (
-                <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 text-sm px-3 py-1">
-                  <Trophy className="size-4 mr-1" />
+                <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 text-xs sm:text-sm px-2 sm:px-3 py-0.5 sm:py-1">
+                  <Trophy className="size-3 sm:size-4 mr-1" />
                   Weekly Goal Met! ✅
                 </Badge>
               ) : thisWeekCount > 0 ? (
-                <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-sm px-3 py-1">
+                <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs sm:text-sm px-2 sm:px-3 py-0.5 sm:py-1">
                   {WEEKLY_GOAL - thisWeekCount} more needed
                 </Badge>
               ) : (
-                <Badge variant="outline" className="text-sm px-3 py-1">
+                <Badge variant="outline" className="text-xs sm:text-sm px-2 sm:px-3 py-0.5 sm:py-1">
                   Start logging meetings
                 </Badge>
               )}
             </div>
             <Progress
               value={weeklyProgressPercent}
-              className={`h-3 ${weeklyGoalMet ? '[&>[data-slot=progress-indicator]]:bg-emerald-500' : '[&>[data-slot=progress-indicator]]:bg-violet-500'}`}
+              className={`h-2 sm:h-3 ${weeklyGoalMet ? '[&>[data-slot=progress-indicator]]:bg-emerald-500' : '[&>[data-slot=progress-indicator]]:bg-violet-500'}`}
             />
           </div>
 
           {/* Celebration message when goal met */}
           {weeklyGoalMet && (
-            <div className="rounded-lg bg-emerald-100 dark:bg-emerald-900/30 p-4 text-center">
-              <Trophy className="size-8 text-emerald-600 mx-auto mb-2" />
-              <p className="text-emerald-800 dark:text-emerald-300 font-semibold text-lg">
+            <div className="rounded-lg bg-emerald-100 dark:bg-emerald-900/30 p-3 sm:p-4 text-center">
+              <Trophy className="size-6 sm:size-8 text-emerald-600 mx-auto mb-2" />
+              <p className="text-emerald-800 dark:text-emerald-300 font-semibold text-base sm:text-lg">
                 You hit your weekly goal! 🎉
               </p>
-              <p className="text-emerald-700 dark:text-emerald-400 text-sm mt-1">
+              <p className="text-emerald-700 dark:text-emerald-400 text-xs sm:text-sm mt-1">
                 The court sees your commitment. Keep going — every week counts.
               </p>
             </div>
@@ -550,7 +551,7 @@ export function NAMeetingsView() {
               return (
                 <div
                   key={slotIndex}
-                  className={`rounded-lg border-2 p-4 transition-all ${
+                  className={`rounded-lg border-2 p-3 sm:p-4 transition-all ${
                     isFilled
                       ? 'border-violet-200 dark:border-violet-700 bg-violet-50/50 dark:bg-violet-950/20'
                       : isNextSlot
@@ -560,7 +561,7 @@ export function NAMeetingsView() {
                 >
                   <div className="flex items-center gap-3">
                     {/* Slot number indicator */}
-                    <div className={`flex size-10 items-center justify-center rounded-full text-sm font-bold shrink-0 ${
+                    <div className={`flex size-8 sm:size-10 items-center justify-center rounded-full text-xs sm:text-sm font-bold shrink-0 ${
                       isFilled
                         ? 'bg-violet-200 dark:bg-violet-800 text-violet-800 dark:text-violet-200'
                         : isNextSlot
@@ -568,7 +569,7 @@ export function NAMeetingsView() {
                         : 'bg-muted text-muted-foreground'
                     }`}>
                       {isFilled ? (
-                        <CheckCircle2 className="size-5 text-violet-700 dark:text-violet-300" />
+                        <CheckCircle2 className="size-4 sm:size-5 text-violet-700 dark:text-violet-300" />
                       ) : (
                         slotIndex + 1
                       )}
@@ -577,8 +578,8 @@ export function NAMeetingsView() {
                     {/* Meeting details or placeholder */}
                     {isFilled && meeting ? (
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-medium">
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                          <span className="text-xs sm:text-sm font-medium">
                             {new Date(meeting.date).toLocaleDateString('en-US', {
                               weekday: 'short',
                               month: 'short',
@@ -597,7 +598,7 @@ export function NAMeetingsView() {
                             </Badge>
                           )}
                         </div>
-                        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-muted-foreground">
+                        <div className="mt-1 flex flex-wrap gap-x-3 sm:gap-x-4 gap-y-0.5 text-xs sm:text-sm text-muted-foreground">
                           {meeting.location && (
                             <span className="flex items-center gap-1">
                               <MapPin className="size-3 shrink-0" />
@@ -656,12 +657,12 @@ export function NAMeetingsView() {
               <Button
                 onClick={handleQuickAddToday}
                 disabled={createMutation.isPending}
-                className="w-full h-12 bg-violet-600 hover:bg-violet-700 text-white text-base"
+                className="w-full h-10 sm:h-12 bg-violet-600 hover:bg-violet-700 text-white text-sm sm:text-base"
               >
                 {createMutation.isPending ? (
-                  <Loader2 className="size-5 animate-spin mr-2" />
+                  <Loader2 className="size-4 sm:size-5 animate-spin mr-1 sm:mr-2" />
                 ) : (
-                  <CheckCircle2 className="size-5 mr-2" />
+                  <CheckCircle2 className="size-4 sm:size-5 mr-1 sm:mr-2" />
                 )}
                 I Attended a Meeting Today
               </Button>
@@ -670,15 +671,16 @@ export function NAMeetingsView() {
               {!quickAddExpanded ? (
                 <Button
                   variant="outline"
-                  className="w-full border-violet-200 dark:border-violet-700 text-violet-700 dark:text-violet-400"
+                  className="w-full border-violet-200 dark:border-violet-700 text-violet-700 dark:text-violet-400 text-sm"
                   onClick={() => setQuickAddExpanded(true)}
                 >
-                  <Plus className="size-4 mr-1" />
-                  Add with Details (name, location, topic)
+                  <Plus className="size-3 sm:size-4 mr-1" />
+                  <span className="hidden sm:inline">Add with Details (name, location, topic)</span>
+                  <span className="sm:hidden">Add with Details</span>
                 </Button>
               ) : (
                 <Card className="border-violet-200 dark:border-violet-700">
-                  <CardContent className="p-4 space-y-3">
+                  <CardContent className="p-3 sm:p-4 space-y-3">
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1.5">
                         <Label className="text-xs">Date</Label>
@@ -767,10 +769,10 @@ export function NAMeetingsView() {
 
       {/* ── Weekly Compliance History ────────────────────────────── */}
       <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Target className="size-5 text-violet-600" />
+        <CardHeader className="pb-3 px-3 sm:px-6">
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-sm sm:text-lg flex items-center gap-2">
+              <Target className="size-4 sm:size-5 text-violet-600" />
               Weekly Compliance History
             </CardTitle>
             {pastWeeks.length > 0 && (
@@ -779,7 +781,7 @@ export function NAMeetingsView() {
               </Badge>
             )}
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             This is what the court looks at — your weekly meeting compliance record.
           </p>
         </CardHeader>
@@ -792,7 +794,7 @@ export function NAMeetingsView() {
               </p>
             </div>
           ) : (
-            <div className="max-h-96 overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+            <div className="max-h-96 overflow-y-auto overflow-x-hidden space-y-2 pr-1 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
               {pastWeeks.map((week) => {
                 const weekMeetings = countMeetingsInWeek(safeMeetings, week.monday, week.sunday)
                 const status = getWeekStatus(weekMeetings)
@@ -802,7 +804,7 @@ export function NAMeetingsView() {
                 return (
                   <div
                     key={week.monday.toISOString()}
-                    className={`rounded-lg border p-3 transition-colors ${statusColors.border} ${statusColors.bg}`}
+                    className={`rounded-lg border p-2 sm:p-3 transition-colors ${statusColors.border} ${statusColors.bg}`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 min-w-0">
@@ -859,10 +861,10 @@ export function NAMeetingsView() {
       {/* ── Empty state (when no meetings at all) ───────────────── */}
       {safeMeetings.length === 0 && (
         <Card>
-          <CardContent className="py-12 text-center">
-            <Users className="mx-auto size-12 text-muted-foreground/30 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Start Your Recovery Journey</h3>
-            <p className="text-muted-foreground text-sm max-w-md mx-auto">
+          <CardContent className="py-10 sm:py-12 text-center">
+            <Users className="mx-auto size-10 sm:size-12 text-muted-foreground/30 mb-4" />
+            <h3 className="text-base sm:text-lg font-medium mb-2">Start Your Recovery Journey</h3>
+            <p className="text-muted-foreground text-xs sm:text-sm max-w-md mx-auto">
               Every meeting counts. Your case plan requires {WEEKLY_GOAL} NA meetings per week.
               Log your first meeting to start building your attendance record for the court.
             </p>
