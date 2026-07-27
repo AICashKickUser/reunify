@@ -1086,3 +1086,5 @@ export function NAMeetingsView() {
     </div>
   )
 }
+
+export default NAMeetingsView

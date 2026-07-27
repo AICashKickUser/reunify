@@ -840,3 +840,5 @@ export function DrugTestingView() {
     </div>
   )
 }
+
+export default DrugTestingView
