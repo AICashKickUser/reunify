@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const session = await db.counselingSession.create({
       data: {
         caseId: body.caseId,
-        date: new Date(body.date),
+        date: new Date(body.date + 'T12:00:00.000Z'),
         counselorName: body.counselorName,
         sessionType: body.sessionType,
         duration: body.duration,

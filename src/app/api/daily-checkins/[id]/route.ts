@@ -11,7 +11,7 @@ export async function PUT(
     const checkin = await db.dailyCheckIn.update({
       where: { id },
       data: {
-        date: body.date ? new Date(body.date) : undefined,
+        date: body.date ? new Date(body.date + 'T12:00:00.000Z') : undefined,
         mood: body.mood,
         drugTestRequired: body.drugTestRequired,
         drugTestCompleted: body.drugTestCompleted,

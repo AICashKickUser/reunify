@@ -50,6 +50,7 @@ import {
   Trophy,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { getLocalDateString } from '@/lib/utils'
 
 // ─── Constants ───────────────────────────────────────────────────────
 const WEEKLY_GOAL = 3
@@ -65,7 +66,7 @@ interface MeetingFormData {
 }
 
 const emptyForm: MeetingFormData = {
-  date: new Date().toISOString().split('T')[0],
+  date: getLocalDateString(),
   meetingName: '',
   location: '',
   speaker: '',
@@ -229,7 +230,7 @@ export function NAMeetingsView() {
   // Respond to global add dialog trigger
   if (addDialogTrigger !== prevTriggerRef.current && addDialogTrigger > 0) {
     prevTriggerRef.current = addDialogTrigger
-    setForm({ ...emptyForm, date: new Date().toISOString().split('T')[0] })
+    setForm({ ...emptyForm, date: getLocalDateString() })
     setAddOpen(true)
   }
 
@@ -277,7 +278,7 @@ export function NAMeetingsView() {
     createMutation.mutate(
       {
         caseId: activeCaseId,
-        date: new Date().toISOString().split('T')[0],
+        date: getLocalDateString(),
         meetingName: null,
         location: null,
         speaker: null,
@@ -296,7 +297,7 @@ export function NAMeetingsView() {
   }, [activeCaseId, createMutation])
 
   const handleOpenAddDialog = useCallback(() => {
-    setForm({ ...emptyForm, date: new Date().toISOString().split('T')[0] })
+    setForm({ ...emptyForm, date: getLocalDateString() })
     setAddOpen(true)
   }, [])
 
@@ -739,7 +740,7 @@ export function NAMeetingsView() {
                         size="sm"
                         onClick={() => {
                           setQuickAddExpanded(false)
-                          setForm({ ...emptyForm, date: new Date().toISOString().split('T')[0] })
+                          setForm({ ...emptyForm, date: getLocalDateString() })
                         }}
                       >
                         Cancel

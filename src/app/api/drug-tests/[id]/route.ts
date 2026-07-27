@@ -11,7 +11,7 @@ export async function PUT(
     const drugTest = await db.drugTest.update({
       where: { id },
       data: {
-        date: body.date ? new Date(body.date) : undefined,
+        date: body.date ? new Date(body.date + 'T12:00:00.000Z') : undefined,
         testType: body.testType,
         isRandom: body.isRandom,
         result: body.result,

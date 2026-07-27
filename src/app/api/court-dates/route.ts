@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const courtDate = await db.courtDate.create({
       data: {
         caseId: body.caseId,
-        date: new Date(body.date),
+        date: new Date(body.date + 'T12:00:00.000Z'),
         hearingType: body.hearingType,
         outcome: body.outcome,
         judgeNotes: body.judgeNotes,

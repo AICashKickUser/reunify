@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const checkin = await db.dailyCheckIn.create({
       data: {
         caseId: body.caseId,
-        date: new Date(body.date),
+        date: new Date(body.date + 'T12:00:00.000Z'),
         mood: body.mood,
         drugTestRequired: body.drugTestRequired ?? false,
         drugTestCompleted: body.drugTestCompleted ?? false,

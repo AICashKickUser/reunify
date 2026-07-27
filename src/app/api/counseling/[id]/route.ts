@@ -11,7 +11,7 @@ export async function PUT(
     const session = await db.counselingSession.update({
       where: { id },
       data: {
-        date: body.date ? new Date(body.date) : undefined,
+        date: body.date ? new Date(body.date + 'T12:00:00.000Z') : undefined,
         counselorName: body.counselorName,
         sessionType: body.sessionType,
         duration: body.duration,
