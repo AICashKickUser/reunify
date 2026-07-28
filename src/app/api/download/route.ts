@@ -15,6 +15,11 @@ export async function GET(request: NextRequest) {
       'reunify-1.1.0.aab',
       'reunify-1.1.0.apk',
       'reunify-1.1.0.zip',
+      'reunify-1.3.0.aab',
+      'reunify-1.4.0.aab',
+      'reunify-1.5.0.aab',
+      'reunify-1.6.0.aab',
+      'reunify-1.6.0.zip',
       'reunify-key.jks',
     ];
     
@@ -22,7 +27,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'File not allowed' }, { status: 403 });
     }
     
-    const filePath = join(process.cwd(), 'public', 'play-store', file);
+    // Try public/play-store first, then public directory
+    let filePath: string;
+    const playStorePath = join(process.cwd(), 'public', 'play-store', file);
+    const publicPath = join(process.cwd(), 'public', file);
+    try {
+      statSync(playStorePath);
+      filePath = playStorePath;
+    } catch {
+      filePath = publicPath;
+    }
     
     let fileBuffer: Buffer;
     let fileSize: number;

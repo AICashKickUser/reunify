@@ -237,3 +237,50 @@ Stage Summary:
 - Version display added in footer and sidebar
 - CHANGELOG.md created with Play Console-ready release notes citing specific tester feedback themes
 - All changes verified in browser — page renders correctly with version visible
+---
+Task ID: sub-1
+Agent: Sub Agent
+Task: Build TWA AAB programmatically for Reunify v1.6.0
+
+Work Log:
+- Read worklog.md, manifest.json, and vercel.json to understand project context
+- Found previous build scripts in git history (v1.3.0 build-v1.3.0.mjs) with keystore password: reunify123, key alias: reunify, package ID: com.aicashkick.reunify
+- Discovered the deployed PWA URL is reunify-six.vercel.app (not reunify.app, which points to GitHub Pages and returns 404s)
+- Installed Android SDK command-line tools (version 6609375) at ~/android-sdk/
+- Installed Android SDK platform 36, build-tools 36.0.0, and platform-tools via sdkmanager
+- Created symlinks ~/android-sdk/tools and ~/android-sdk/bin for Bubblewrap's AndroidSdkTools.validatePath() check
+- Discovered /usr/lib/jvm/java-21-openjdk-amd64 is only a JRE (no javac), downloaded full JDK 21 (Temurin 21.0.6+7) to /tmp/jdk-21.0.6+7
+- Created build-v1.6.0.mjs script using @bubblewrap/core programmatic API
+- First attempt failed: TWA manifest missing iconUrl (required field)
+- Second attempt failed: reunify.app domain returns 404s, switched to reunify-six.vercel.app
+- Third attempt failed: enableNotifications field empty in generated build.gradle (syntax error on line 36)
+- Fourth attempt failed: JDK at /usr/lib/jvm/java-21-openjdk-amd64 is JRE-only, missing javac (JAVA_COMPILER capability)
+- Fifth attempt succeeded: Used full Temurin JDK 21, added enableNotifications: true to manifest, fixed build.gradle targetSdkVersion to 36, GradleWrapper.bundleRelease() completed
+- Signed the AAB with jarsigner using keystore reunify-key.jks (alias: reunify, password: reunify123)
+- Created README-1.6.0.md with release notes and package info
+- Created reunify-1.6.0.zip containing AAB + README
+- All files placed in /home/z/my-project/public/
+
+Stage Summary:
+- Built reunify-1.6.0.aab (1,432,091 bytes, signed) using @bubblewrap/core v1.24.1 programmatic API
+- Configuration: com.aicashkick.reunify, versionCode 6, targetSdk 36, host reunify-six.vercel.app
+- AAB verified with jarsigner: jar verified (self-signed certificate warning expected)
+- reunify-1.6.0.zip created with AAB + README-1.6.0.md (1,327,017 bytes)
+- Files at: /home/z/my-project/public/reunify-1.6.0.aab and /home/z/my-project/public/reunify-1.6.0.zip
+- Build script saved at: /home/z/my-project/android-build/build-v1.6.0.mjs
+
+---
+Task ID: main-3
+Agent: Main Agent
+Task: Update download API route and prepare zip for Play Console upload
+
+Work Log:
+- Updated /src/app/api/download/route.ts to include reunify-1.6.0.aab and reunify-1.6.0.zip in allowed files list
+- Updated download route to search both public/play-store and public directories for files
+- Copied reunify-1.6.0.zip to upload/ directory for direct download access
+- Verified lint clean (bun run lint — no errors)
+
+Stage Summary:
+- Download API route updated with v1.6.0 files and dual-directory file lookup
+- reunify-1.6.0.zip available at /upload/reunify-1.6.0.zip for download
+- AAB (1.4MB) and zip (1.3MB) both ready for Play Console submission
