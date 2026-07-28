@@ -1,4 +1,4 @@
-const CACHE_NAME = 'reunify-v2';
+const CACHE_NAME = 'reunify-v1.7.0';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
