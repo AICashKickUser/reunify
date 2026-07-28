@@ -2,6 +2,8 @@
   "name": "Reunify - CPS Reunification Progress Tracker",
   "short_name": "Reunify",
   "description": "Track your CPS reunification case plan progress. Stay organized, stay focused, bring your kids home.",
+  "version": "1.6.0",
+  "version_name": "1.6.0 - Feedback-Driven Improvements",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

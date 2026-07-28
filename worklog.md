@@ -211,3 +211,29 @@ Stage Summary:
 - Date timezone bug fully fixed across 32 files (22 API routes + 10 frontend views)
 - All date handling now timezone-safe: `getLocalDateString()`, `parseLocalDate()`, `.slice(0, 10) + 'T12:00:00.000Z'`
 - Lint and TypeScript both pass, Next.js compilation successful (HTTP 200)
+
+---
+Task ID: main-2
+Agent: Main Agent
+Task: Bump version to 1.6.0 and prepare Play Console release notes framing changes as feedback-driven improvements
+
+Work Log:
+- Checked current version: package.json was "0.2.0", manifest.json had no version field
+- Bumped package.json version from "0.2.0" to "1.6.0"
+- Added version "1.6.0" and version_name "1.6.0 - Feedback-Driven Improvements" to manifest.json
+- Added version display "v1.6.0" in both footer and sidebar
+- Created CHANGELOG.md with detailed release notes organized by tester feedback themes:
+  - Mobile UI Overhaul (tester feedback: "UI not good for mobile, overly large, scroll left and right, cluttered")
+  - Date Display Fix (tester feedback: "Items saved with today's date show as yesterday")
+  - Backup & Restore (tester feedback: "Need to be able to save/export my progress")
+  - Parenting Classes 16-Week Redesign (tester feedback: "Parenting class checklist hard to track on mobile")
+  - NA Meetings 3x/Week Tracker Redesign (tester feedback: "NA meeting tracker too cluttered")
+- Verified lint clean (bun run lint — no errors)
+- Verified page loads in browser: sidebar shows "v1.6.0 · Every step brings you closer to your kids", footer shows "Reunify v1.6.0 — Every step brings you closer to your kids"
+- No console errors, no page errors
+
+Stage Summary:
+- Version bumped to 1.6.0 in package.json and manifest.json
+- Version display added in footer and sidebar
+- CHANGELOG.md created with Play Console-ready release notes citing specific tester feedback themes
+- All changes verified in browser — page renders correctly with version visible

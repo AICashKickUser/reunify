@@ -319,7 +319,7 @@ export default function Home() {
           <footer className="border-t bg-background py-2 sm:py-3 px-3 sm:px-4 mt-auto">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-1 max-w-5xl mx-auto">
               <p className="text-xs text-muted-foreground">
-                Reunify — Every step brings you closer to your kids
+                Reunify v1.6.0 — Every step brings you closer to your kids
               </p>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a>
