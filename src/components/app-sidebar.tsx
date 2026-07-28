@@ -31,6 +31,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
+  useSidebar,
 } from '@/components/ui/sidebar'
 import {
   Select,
@@ -116,6 +117,12 @@ export function AppSidebar() {
   const deleteMutation = useDeleteCase()
   const { tier, setUpgradeDialogOpen } = useSubscriptionStore()
   const isPro = tier === 'pro'
+  const { isMobile, setOpenMobile } = useSidebar()
+
+  const handleNavClick = (view: ViewType) => {
+    setActiveView(view)
+    if (isMobile) setOpenMobile(false)
+  }
 
   return (
     <Sidebar collapsible="icon" className="border-r-sidebar-border">
@@ -178,7 +185,7 @@ export function AppSidebar() {
                   <SidebarMenuItem key={item.view}>
                     <SidebarMenuButton
                       isActive={activeView === item.view}
-                      onClick={() => setActiveView(item.view)}
+                      onClick={() => handleNavClick(item.view)}
                       tooltip={item.label}
                       className={
                         activeView === item.view
@@ -204,7 +211,10 @@ export function AppSidebar() {
             <Button
               className="w-full gap-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white border-0 h-9"
               size="sm"
-              onClick={() => setUpgradeDialogOpen(true)}
+              onClick={() => {
+                setUpgradeDialogOpen(true)
+                if (isMobile) setOpenMobile(false)
+              }}
             >
               <Sparkles className="size-4" />
               Upgrade to Pro
