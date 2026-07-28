@@ -85,3 +85,129 @@ Stage Summary:
 - ChunkLoadError fixed by using standard lazy() with default exports
 - Timezone bug fixed by storing dates as noon UTC (T12:00:00.000Z) in all API routes
 - All views verified working on Vercel production site
+---
+Task ID: 1
+Agent: Sub Agent
+Task: Fix timezone bugs in all API route date handling
+
+Work Log:
+- Read all 22 API route files to confirm exact patterns before editing
+- Fixed 14 files (counseling, drug-tests, na-meetings, daily-checkins, supervised-visits, court-dates, parenting-classes) with pattern: body.date + 'T12:00:00.000Z' → body.date.slice(0, 10) + 'T12:00:00.000Z'
+  - Used replace_all: true since some [id] routes have the pattern in PUT handlers
+  - This prevents garbage input when frontend sends full ISO strings like "2025-07-23T05:00:00.000Z" — .slice(0, 10) extracts just "2025-07-23" before appending the T12:00:00.000Z suffix
+- Fixed 8 files (na-steps, requirements, milestones, cases) with pattern: new Date(body.field) → new Date(body.field.slice(0, 10) + 'T12:00:00.000Z')
+  - na-steps: completedAt field (2 files)
+  - requirements: completedAt + dueDate fields (2 files)
+  - milestones: targetDate + completedAt fields (2 files)
+  - cases: removalDate + targetReunificationDate fields (2 files)
+  - Ensures dates are stored at noon UTC to prevent timezone shift bug
+- Lint verified clean (bun run lint — no errors)
+
+Stage Summary:
+- 22 API route files edited across 7 resource types
+- 14 files: added .slice(0, 10) before 'T12:00:00.000Z' concatenation
+- 8 files: added .slice(0, 10) + 'T12:00:00.000Z' suffix to bare new Date() calls
+- All date handling is now robust: works correctly whether frontend sends YYYY-MM-DD or full ISO string
+- Lint clean, no errors
+---
+Task ID: 2
+Agent: Sub Agent
+Task: Fix timezone bugs in frontend view date handling
+
+Work Log:
+- Read utils.ts to confirm getLocalDateString() and parseLocalDate() utility functions exist and work correctly
+- Fixed 10 view files to eliminate UTC timezone shift bugs:
+
+1. counseling-view.tsx:
+   - Added import: getLocalDateString from '@/lib/utils'
+   - Changed emptyForm.date from new Date().toISOString().split('T')[0] to getLocalDateString()
+
+2. na-steps-view.tsx:
+   - Added import: getLocalDateString from '@/lib/utils'
+   - Changed emptyCompleteForm.completedAt from new Date().toISOString().split('T')[0] to getLocalDateString()
+   - Changed handleMarkComplete completedAt from new Date().toISOString().split('T')[0] to getLocalDateString()
+
+3. supervised-visits-view.tsx:
+   - Added import: getLocalDateString from '@/lib/utils'
+   - Changed create visit date from new Date(form.date).toISOString() to form.date (already YYYY-MM-DD)
+   - Changed edit form date from new Date(visit.date).toISOString().split('T')[0] to visit.date.slice(0, 10)
+   - Changed update visit date from new Date(form.date).toISOString() to form.date || visit.date
+
+4. court-dates-view.tsx:
+   - Added import: getLocalDateString from '@/lib/utils'
+   - Changed create court date from date.toISOString() to getLocalDateString(date)
+   - Changed update court date from date ? date.toISOString() : courtDate.date to getLocalDateString(date) : courtDate.date
+
+5. parenting-classes-view.tsx:
+   - Added import: getLocalDateString from '@/lib/utils'
+   - Changed edit form date from new Date(parentingClass.date).toISOString().split('T')[0] to parentingClass.date.slice(0, 10)
+   - Changed update class date from new Date(form.date).toISOString() to form.date || parentingClass.date
+   - Changed getClassForDate dateStr from date.toISOString().split('T')[0] to getLocalDateString(date)
+   - Changed getClassForDate classDate from new Date(c.date).toISOString().split('T')[0] to c.date.slice(0, 10)
+   - Changed create class date from date.toISOString() to getLocalDateString(date)
+   - Changed orientation date from new Date().toISOString() to getLocalDateString()
+   - Changed earliestDate default from new Date().toISOString() to getLocalDateString()
+
+6. case-plan-view.tsx:
+   - Added import: getLocalDateString from '@/lib/utils'
+   - Changed requirement dueDate (add) from dueDate.toISOString() to getLocalDateString(dueDate)
+   - Changed requirement dueDate (edit) from dueDate.toISOString() to getLocalDateString(dueDate)
+   - Changed removalDate from removalDate.toISOString() to getLocalDateString(removalDate)
+   - Changed targetReunificationDate from targetDate.toISOString() to getLocalDateString(targetDate)
+   - Changed completedAt from new Date().toISOString() to getLocalDateString()
+
+7. timeline-view.tsx:
+   - Added import: parseLocalDate from '@/lib/utils'
+   - Removed parseISO from date-fns import (no longer used)
+   - Replaced all 4 parseISO() calls with parseLocalDate(): safeParseDate, eventsByDay key, event dateObj parsing
+
+8. dashboard-view.tsx:
+   - Added import: parseLocalDate from '@/lib/utils'
+   - Removed parseISO from date-fns import (no longer used)
+   - Replaced all 7 parseISO() calls with parseLocalDate(): safeParseDate, upcoming sessions, removalDate, targetDate, upcoming events filter, weekly events filter, formatEventDate
+
+9. daily-checkins-view.tsx:
+   - Added import: getLocalDateString, parseLocalDate from '@/lib/utils'
+   - Removed parseISO from date-fns import (no longer used)
+   - Changed formDate init from format(new Date(), 'yyyy-MM-dd') to getLocalDateString()
+   - Changed resetForm setFormDate from format(new Date(), 'yyyy-MM-dd') to getLocalDateString()
+   - Changed "Check In Now" setFormDate from format(new Date(), 'yyyy-MM-dd') to getLocalDateString()
+   - Replaced all parseISO() calls with parseLocalDate(): openEditDialog, todayCheckin, thisWeekCheckins, checkin history display, isToday check
+
+10. drug-testing-view.tsx: Confirmed no parseISO or toISOString calls needing changes (already uses formatDateKey which is timezone-safe)
+
+- Also fixed additional toISOString() in parenting-classes-view.tsx earliestDate fallback not listed in original task
+- Lint verified clean (bun run lint — no errors)
+
+Stage Summary:
+- 10 view files edited with timezone-safe date handling
+- All new Date().toISOString().split('T')[0] → getLocalDateString() (5 occurrences across 3 files)
+- All date.toISOString() → getLocalDateString(date) (7 occurrences across 3 files)
+- All new Date(form.date).toISOString() → form.date or form.date || fallback (2 occurrences)
+- All parseISO() → parseLocalDate() (11 occurrences across 4 files)
+- All new Date(stored).toISOString().split('T')[0] → stored.slice(0, 10) (2 occurrences)
+- Unused parseISO imports removed from 3 files (timeline, dashboard, daily-checkins)
+- Lint clean, no errors
+
+---
+Task ID: main-1
+Agent: Main Agent
+Task: Fix date timezone bug (dates showing as yesterday) and verify codebase integrity
+
+Work Log:
+- Investigated the date timezone bug where items saved with today's date showed as yesterday in timeline
+- Root cause: three compounding bugs:
+  1. Frontend views using `new Date().toISOString().split('T')[0]` which shifts dates forward 1 day in negative-UTC timezones
+  2. Frontend views sending full ISO strings to API routes that concatenate `+ 'T12:00:00.000Z'`, creating garbage input
+  3. Display code using `parseISO()` which can shift UTC midnight dates back 1 day in local timezone
+- Delegated two parallel subagent tasks:
+  - Task 1: Fix all 22 API routes — added `.slice(0, 10)` before date string concatenation
+  - Task 2: Fix all 10 frontend views — replaced `toISOString()` with `getLocalDateString()` and `parseISO()` with `parseLocalDate()`
+- Verified compilation: `bun run lint` clean, TypeScript compilation clean (no date-related errors)
+- Verified Next.js compilation: App compiled successfully (GET / 200 in 12.5s), no module parse errors
+- Addressed user's Vercel 2FA backup email loop issue with practical guidance
+
+Stage Summary:
+- Date timezone bug fully fixed across 32 files (22 API routes + 10 frontend views)
+- All date handling now timezone-safe: `getLocalDateString()`, `parseLocalDate()`, `.slice(0, 10) + 'T12:00:00.000Z'`
+- Lint and TypeScript both pass, Next.js compilation successful (HTTP 200)

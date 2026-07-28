@@ -43,6 +43,7 @@ import {
   ShieldCheck,
   Trophy,
 } from 'lucide-react'
+import { getLocalDateString } from '@/lib/utils'
 
 interface StepFormData {
   stepNumber: string
@@ -74,7 +75,7 @@ const emptyStepForm: StepFormData = {
 }
 
 const emptyCompleteForm: MarkCompleteFormData = {
-  completedAt: new Date().toISOString().split('T')[0],
+  completedAt: getLocalDateString(),
   sponsorName: '',
   sponsorVerified: false,
   notes: '',
@@ -167,7 +168,7 @@ export function NAStepsView() {
   function handleMarkComplete(step: NAStep) {
     setCompletingStep(step)
     setCompleteForm({
-      completedAt: new Date().toISOString().split('T')[0],
+      completedAt: getLocalDateString(),
       sponsorName: step.sponsorName || '',
       sponsorVerified: step.sponsorVerified,
       notes: step.notes || '',

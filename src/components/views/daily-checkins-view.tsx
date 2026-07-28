@@ -39,7 +39,8 @@ import {
   Users,
   StickyNote,
 } from 'lucide-react'
-import { format, isToday, parseISO } from 'date-fns'
+import { format, isToday } from 'date-fns'
+import { getLocalDateString, parseLocalDate } from '@/lib/utils'
 
 const MOOD_OPTIONS = [
   { value: 'great', label: 'Great', icon: Smile, color: 'text-emerald-600' },
@@ -111,7 +112,7 @@ export function DailyCheckinsView() {
   const [selectedCheckin, setSelectedCheckin] = useState<typeof checkins extends (infer T)[] | null ? T : never | null>(null)
 
   // Form state
-  const [formDate, setFormDate] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [formDate, setFormDate] = useState(getLocalDateString())
   const [formMood, setFormMood] = useState('good')
   const [formDrugTestRequired, setFormDrugTestRequired] = useState(false)
   const [formDrugTestCompleted, setFormDrugTestCompleted] = useState(false)
@@ -121,7 +122,7 @@ export function DailyCheckinsView() {
   const isLoading = caseLoading || checkinsLoading
 
   function resetForm() {
-    setFormDate(format(new Date(), 'yyyy-MM-dd'))
+    setFormDate(getLocalDateString())
     setFormMood('good')
     setFormDrugTestRequired(false)
     setFormDrugTestCompleted(false)
@@ -139,7 +140,7 @@ export function DailyCheckinsView() {
 
   function openEditDialog(checkin: NonNullable<typeof checkins>[0]) {
     setSelectedCheckin(checkin)
-    setFormDate(format(parseISO(checkin.date), 'yyyy-MM-dd'))
+    setFormDate(format(parseLocalDate(checkin.date), 'yyyy-MM-dd'))
     setFormMood(checkin.mood || 'okay')
     setFormDrugTestRequired(checkin.drugTestRequired)
     setFormDrugTestCompleted(checkin.drugTestCompleted)
@@ -227,10 +228,10 @@ export function DailyCheckinsView() {
   }
 
   // Compute stats
-  const todayCheckin = checkins.find(c => isToday(parseISO(c.date)))
+  const todayCheckin = checkins.find(c => isToday(parseLocalDate(c.date)))
   const totalCheckins = checkins.length
   const thisWeekCheckins = checkins.filter(c => {
-    const d = parseISO(c.date)
+    const d = parseLocalDate(c.date)
     const now = new Date()
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     return d >= weekAgo && d <= now
@@ -367,7 +368,7 @@ export function DailyCheckinsView() {
               className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
               onClick={() => {
                 resetForm()
-                setFormDate(format(new Date(), 'yyyy-MM-dd'))
+                setFormDate(getLocalDateString())
                 setAddDialogOpen(true)
               }}
             >
@@ -401,8 +402,8 @@ export function DailyCheckinsView() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium">{format(parseISO(checkin.date), 'MMM d, yyyy')}</p>
-                        {isToday(parseISO(checkin.date)) && (
+                        <p className="text-sm font-medium">{format(parseLocalDate(checkin.date), 'MMM d, yyyy')}</p>
+                        {isToday(parseLocalDate(checkin.date)) && (
                           <Badge className="bg-emerald-100 text-emerald-700 text-xs">Today</Badge>
                         )}
                       </div>

@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
         title: body.title,
         description: body.description,
         isCompleted: body.isCompleted ?? false,
-        completedAt: body.completedAt ? new Date(body.completedAt) : null,
+        completedAt: body.completedAt ? new Date(body.completedAt.slice(0, 10) + 'T12:00:00.000Z') : null,
         sponsorVerified: body.sponsorVerified ?? false,
         sponsorName: body.sponsorName,
         notes: body.notes,

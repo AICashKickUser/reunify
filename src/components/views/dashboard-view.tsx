@@ -39,13 +39,11 @@ import {
   isToday,
   isTomorrow,
   isFuture,
-  parseISO,
   isWithinInterval,
   addDays,
   startOfDay,
 } from 'date-fns'
-
-// --- Timeline Event Type ---
+import { parseLocalDate } from '@/lib/utils'
 interface TimelineEvent {
   id: string
   date: string
@@ -193,7 +191,7 @@ export function DashboardView() {
     function safeParseDate(dateStr: string | null | undefined): Date | null {
       if (!dateStr) return null
       try {
-        const d = parseISO(dateStr)
+        const d = parseLocalDate(dateStr)
         if (isNaN(d.getTime())) return null
         return d
       } catch {
@@ -367,7 +365,7 @@ export function DashboardView() {
       (s) => {
         if (s.isCompleted) return false
         try {
-          const d = parseISO(s.date)
+          const d = parseLocalDate(s.date)
           return isFuture(d)
         } catch {
           return false
@@ -383,8 +381,8 @@ export function DashboardView() {
     let daysInCase = 0
     let daysUntilTarget: number | null = null
     try {
-      const removalDate = caseData.removalDate ? parseISO(caseData.removalDate) : null
-      const targetDate = caseData.targetReunificationDate ? parseISO(caseData.targetReunificationDate) : null
+      const removalDate = caseData.removalDate ? parseLocalDate(caseData.removalDate) : null
+      const targetDate = caseData.targetReunificationDate ? parseLocalDate(caseData.targetReunificationDate) : null
       daysInCase = removalDate ? Math.max(0, differenceInDays(new Date(), removalDate)) : 0
       daysUntilTarget = targetDate ? Math.max(0, differenceInDays(targetDate, new Date())) : null
     } catch {
@@ -421,7 +419,7 @@ export function DashboardView() {
       return allEvents
         .filter((e) => {
           try {
-            const d = parseISO(e.date)
+            const d = parseLocalDate(e.date)
             return isFuture(d) || isToday(d)
           } catch {
             return false
@@ -429,7 +427,7 @@ export function DashboardView() {
         })
         .filter((e) => {
           try {
-            return isWithinInterval(parseISO(e.date), { start: now, end: weekLater })
+            return isWithinInterval(parseLocalDate(e.date), { start: now, end: weekLater })
           } catch {
             return false
           }
@@ -449,7 +447,7 @@ export function DashboardView() {
         .filter((e) => e.status === 'completed')
         .filter((e) => {
           try {
-            const d = parseISO(e.date)
+            const d = parseLocalDate(e.date)
             return isWithinInterval(d, { start: weekAgo, end: now }) || isToday(d)
           } catch {
             return false
@@ -495,7 +493,7 @@ export function DashboardView() {
 
   const formatEventDate = (dateStr: string) => {
     try {
-      const d = parseISO(dateStr)
+      const d = parseLocalDate(dateStr)
       if (isNaN(d.getTime())) return dateStr
       if (isToday(d)) return 'Today'
       if (isTomorrow(d)) return 'Tomorrow'

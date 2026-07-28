@@ -39,6 +39,7 @@ import {
 } from '@/lib/data-hooks'
 import type { ParentingClass } from '@/lib/types'
 import { toast } from 'sonner'
+import { getLocalDateString } from '@/lib/utils'
 
 // How many weekly classes are required in the case plan
 const TOTAL_WEEKLY_CLASSES = 16
@@ -77,7 +78,7 @@ function EditClassDialog({
   const updateMutation = useUpdateItem('parenting-classes')
   const deleteMutation = useDeleteItem('parenting-classes')
   const [form, setForm] = useState({
-    date: parentingClass.date ? new Date(parentingClass.date).toISOString().split('T')[0] : '',
+    date: parentingClass.date ? parentingClass.date.slice(0, 10) : '',
     className: parentingClass.className || '',
     provider: parentingClass.provider || '',
     topic: parentingClass.topic || '',
@@ -90,7 +91,7 @@ function EditClassDialog({
     updateMutation.mutate(
       {
         id: parentingClass.id,
-        date: form.date ? new Date(form.date).toISOString() : parentingClass.date,
+        date: form.date || parentingClass.date,
         className: form.className || null,
         provider: form.provider || null,
         topic: form.topic || null,
@@ -215,15 +216,15 @@ export function ParentingClassesView() {
   // Determine start date for class schedule (use earliest class date, or default to case removal date)
   const earliestDate = weeklyClasses.length > 0
     ? weeklyClasses.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0].date
-    : new Date().toISOString()
+    : getLocalDateString()
   
   const tuesdayDates = generateTuesdayDates(new Date(earliestDate))
 
   // Check if a class entry exists for a given date
   function getClassForDate(date: Date): ParentingClass | undefined {
-    const dateStr = date.toISOString().split('T')[0]
+    const dateStr = getLocalDateString(date)
     return weeklyClasses.find((c) => {
-      const classDate = new Date(c.date).toISOString().split('T')[0]
+      const classDate = c.date.slice(0, 10)
       return classDate === dateStr
     })
   }
@@ -246,7 +247,7 @@ export function ParentingClassesView() {
       createMutation.mutate(
         {
           caseId: activeCaseId,
-          date: date.toISOString(),
+          date: getLocalDateString(date),
           className: `Parenting Class ${classNumber}`,
           isCompleted: true,
         },
@@ -272,7 +273,7 @@ export function ParentingClassesView() {
       createMutation.mutate(
         {
           caseId: activeCaseId,
-          date: new Date().toISOString(),
+          date: getLocalDateString(),
           className: 'Parenting Orientation',
           isCompleted: true,
         },

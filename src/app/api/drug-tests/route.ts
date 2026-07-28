@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const drugTest = await db.drugTest.create({
       data: {
         caseId: body.caseId,
-        date: new Date(body.date + 'T12:00:00.000Z'),
+        date: new Date(body.date.slice(0, 10) + 'T12:00:00.000Z'),
         testType: body.testType ?? 'urine',
         isRandom: body.isRandom ?? false,
         result: body.result ?? null,

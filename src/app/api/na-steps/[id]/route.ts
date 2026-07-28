@@ -15,7 +15,7 @@ export async function PUT(
         title: body.title,
         description: body.description,
         isCompleted: body.isCompleted,
-        completedAt: body.completedAt ? new Date(body.completedAt) : null,
+        completedAt: body.completedAt ? new Date(body.completedAt.slice(0, 10) + 'T12:00:00.000Z') : null,
         sponsorVerified: body.sponsorVerified,
         sponsorName: body.sponsorName,
         notes: body.notes,

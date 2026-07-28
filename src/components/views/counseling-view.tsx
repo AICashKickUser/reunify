@@ -42,6 +42,7 @@ import {
   Pencil,
   Loader2,
 } from 'lucide-react'
+import { getLocalDateString } from '@/lib/utils'
 
 const SESSION_TYPES = ['individual', 'group', 'family', 'couples'] as const
 
@@ -69,7 +70,7 @@ interface SessionFormData {
 }
 
 const emptyForm: SessionFormData = {
-  date: new Date().toISOString().split('T')[0],
+  date: getLocalDateString(),
   counselorName: '',
   sessionType: 'individual',
   duration: '60',

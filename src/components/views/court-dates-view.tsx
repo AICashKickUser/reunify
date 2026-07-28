@@ -8,6 +8,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
+import { getLocalDateString } from '@/lib/utils'
 import { useCourtDates, useCase, useCreateItem, useUpdateItem } from '@/lib/data-hooks'
 import type { CourtDate } from '@/lib/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -93,7 +94,7 @@ function AddCourtDateDialog({ open, onOpenChange, caseId }: {
     if (!date) return
     createMutation.mutate({
       caseId,
-      date: date.toISOString(),
+      date: getLocalDateString(date),
       hearingType: hearingType || null,
       notes: notes || null,
       isCompleted: false,
@@ -191,7 +192,7 @@ function EditCourtDateDialog({ open, onOpenChange, courtDate }: {
     if (!courtDate) return
     updateMutation.mutate({
       id: courtDate.id,
-      date: date ? date.toISOString() : courtDate.date,
+      date: date ? getLocalDateString(date) : courtDate.date,
       hearingType: hearingType || null,
       notes: notes || null,
       outcome: outcome || null,

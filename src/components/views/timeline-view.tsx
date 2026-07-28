@@ -37,12 +37,12 @@ import {
   eachDayOfInterval,
   isToday,
   isSameDay,
-  parseISO,
   isFuture,
   startOfDay,
   isWithinInterval,
   addDays,
 } from 'date-fns'
+import { parseLocalDate } from '@/lib/utils'
 
 // --- Timeline Event Type ---
 interface TimelineEvent {
@@ -325,7 +325,7 @@ export function TimelineView() {
     function safeParseDate(dateStr: string | null | undefined): Date | null {
       if (!dateStr) return null
       try {
-        const d = parseISO(dateStr)
+        const d = parseLocalDate(dateStr)
         if (isNaN(d.getTime())) return null
         return d
       } catch {
@@ -499,7 +499,7 @@ export function TimelineView() {
     const map = new Map<string, TimelineEvent[]>()
     filteredEvents.forEach((event) => {
       try {
-        const key = format(parseISO(event.date), 'yyyy-MM-dd')
+        const key = format(parseLocalDate(event.date), 'yyyy-MM-dd')
         if (!map.has(key)) map.set(key, [])
         map.get(key)!.push(event)
       } catch {
@@ -787,7 +787,7 @@ export function TimelineView() {
                     let dateObj: Date
                     let today = false
                     try {
-                      dateObj = parseISO(event.date)
+                      dateObj = parseLocalDate(event.date)
                       dateGroup = format(dateObj, 'EEEE, MMMM d, yyyy')
                       today = isToday(dateObj)
                     } catch {

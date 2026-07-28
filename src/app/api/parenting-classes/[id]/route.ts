@@ -11,7 +11,7 @@ export async function PUT(
     const parentingClass = await db.parentingClass.update({
       where: { id },
       data: {
-        date: body.date ? new Date(body.date + 'T12:00:00.000Z') : undefined,
+        date: body.date ? new Date(body.date.slice(0, 10) + 'T12:00:00.000Z') : undefined,
         className: body.className,
         provider: body.provider,
         topic: body.topic,

@@ -46,6 +46,7 @@ import {
 } from '@/lib/data-hooks'
 import type { SupervisedVisit } from '@/lib/types'
 import { toast } from 'sonner'
+import { getLocalDateString } from '@/lib/utils'
 
 const VISIT_TYPE_COLORS: Record<string, string> = {
   supervised: 'bg-sky-100 text-sky-700 border-sky-200',
@@ -167,7 +168,7 @@ function AddVisitDialog({
     createMutation.mutate(
       {
         caseId: activeCaseId,
-        date: new Date(form.date).toISOString(),
+        date: form.date,
         location: form.location || null,
         supervisorName: form.supervisorName || null,
         duration: form.duration ? parseInt(form.duration) : null,
@@ -347,7 +348,7 @@ function EditVisitDialog({
 }) {
   const updateMutation = useUpdateItem('supervised-visits')
   const [form, setForm] = useState({
-    date: visit.date ? new Date(visit.date).toISOString().split('T')[0] : '',
+    date: visit.date ? visit.date.slice(0, 10) : '',
     location: visit.location || '',
     supervisorName: visit.supervisorName || '',
     duration: visit.duration?.toString() || '',
@@ -362,7 +363,7 @@ function EditVisitDialog({
     updateMutation.mutate(
       {
         id: visit.id,
-        date: form.date ? new Date(form.date).toISOString() : visit.date,
+        date: form.date || visit.date,
         location: form.location || null,
         supervisorName: form.supervisorName || null,
         duration: form.duration ? parseInt(form.duration) : null,

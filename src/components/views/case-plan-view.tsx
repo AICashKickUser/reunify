@@ -8,6 +8,7 @@ import {
   ChevronRight, Loader2, Building2, RefreshCw
 } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
+import { getLocalDateString } from '@/lib/utils'
 import { useCase, useRequirements, useCreateItem, useUpdateItem, useDeleteItem, useResetCase } from '@/lib/data-hooks'
 import { CATEGORY_COLORS, type CaseRequirement } from '@/lib/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -128,7 +129,7 @@ function AddRequirementDialog({ open, onOpenChange, caseId }: {
       title,
       description: description || null,
       frequency: frequency || null,
-      dueDate: dueDate ? dueDate.toISOString() : null,
+      dueDate: dueDate ? getLocalDateString(dueDate) : null,
       isCompleted: false,
       sortOrder: 0,
     }, {
@@ -243,7 +244,7 @@ function EditRequirementDialog({ open, onOpenChange, requirement }: {
       title,
       description: description || null,
       frequency: frequency || null,
-      dueDate: dueDate ? dueDate.toISOString() : null,
+      dueDate: dueDate ? getLocalDateString(dueDate) : null,
     }, {
       onSuccess: () => {
         onOpenChange(false)
@@ -342,8 +343,8 @@ function EditCaseDialog({ open, onOpenChange, caseData }: {
       attorneyName: attorneyName || null,
       attorneyPhone: attorneyPhone || null,
       judgeName: judgeName || null,
-      removalDate: removalDate ? removalDate.toISOString() : null,
-      targetReunificationDate: targetDate ? targetDate.toISOString() : null,
+      removalDate: removalDate ? getLocalDateString(removalDate) : null,
+      targetReunificationDate: targetDate ? getLocalDateString(targetDate) : null,
     }, {
       onSuccess: () => {
         onOpenChange(false)
@@ -702,7 +703,7 @@ function RequirementsList({ requirements }: { requirements: CaseRequirement[] })
     updateMutation.mutate({
       id: req.id,
       isCompleted: !req.isCompleted,
-      completedAt: !req.isCompleted ? new Date().toISOString() : null,
+      completedAt: !req.isCompleted ? getLocalDateString() : null,
     })
   }
 
