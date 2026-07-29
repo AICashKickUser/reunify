@@ -20,6 +20,8 @@ export async function GET(request: NextRequest) {
       'reunify-1.5.0.aab',
       'reunify-1.6.0.aab',
       'reunify-1.6.0.zip',
+      'reunify-1.7.0.aab',
+      'reunify-1.7.0.zip',
       'reunify-key.jks',
     ];
     
