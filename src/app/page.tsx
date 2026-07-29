@@ -1,21 +1,19 @@
 'use client'
 
-import { useEffect, lazy, Suspense, useState } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
 import { AppHeader } from '@/components/app-header'
-import { useAppStore, VIEW_LABELS, type ViewType } from '@/lib/store'
-import { useCases, useSeedDatabase } from '@/lib/data-hooks'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { FolderHeart, Eye, Loader2, FileText, ArrowRight, Sparkles, AlertTriangle } from 'lucide-react'
-import { CreateCaseDialog } from '@/components/create-case-dialog'
+import { useAppStore, type ViewType } from '@/lib/store'
+import { Loader2, AlertTriangle } from 'lucide-react'
 import { UpgradeDialog } from '@/components/upgrade-dialog'
 import { OnboardingDialog } from '@/components/onboarding-dialog'
+import { OnboardingWizard } from '@/components/onboarding-wizard'
 import { useSubscriptionStore } from '@/lib/subscription'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { toast } from 'sonner'
 import { useNavigationHistory } from '@/hooks/use-navigation-history'
+import { AppLockScreen, useAppLock } from '@/components/app-lock'
 
 // Safe lazy load helper - catches import errors
 function safeLazy<T extends React.ComponentType>(
@@ -86,139 +84,7 @@ function ViewLoader() {
   )
 }
 
-function WelcomeScreen() {
-  const { setActiveCaseId } = useAppStore()
-  const { data: cases, isLoading } = useCases()
-  const seedMutation = useSeedDatabase()
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
 
-  useEffect(() => {
-    if (cases && cases.length > 0) {
-      setActiveCaseId(cases[0].id)
-    }
-  }, [cases, setActiveCaseId])
-
-  if (isLoading) {
-    return <ViewLoader />
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center py-16 px-4">
-      <div className="max-w-md text-center space-y-6">
-        <div className="flex justify-center">
-          <div className="flex size-20 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-900/30">
-            <FolderHeart className="size-10 text-emerald-600 dark:text-emerald-400" />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-2xl font-bold text-foreground">
-            Welcome to Reunify
-          </h2>
-          <p className="text-muted-foreground">
-            Track your CPS reunification case plan progress. Stay organized, stay focused, and bring your kids home.
-          </p>
-        </div>
-
-        {/* Primary Action: Create Your Case */}
-        <Card className="text-left border-emerald-200 dark:border-emerald-800">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg text-emerald-700 dark:text-emerald-400">Set Up Your Case</CardTitle>
-            <CardDescription>Enter your case details to start tracking your progress</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Your case plan details will help you stay on top of every requirement — from counseling sessions and drug tests to supervised visits and court dates.
-            </p>
-            <Button
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-12 text-base"
-              onClick={() => setCreateDialogOpen(true)}
-            >
-              <FileText className="size-5 mr-1" />
-              Create My Case
-              <ArrowRight className="size-4 ml-1" />
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Divider: Just exploring? */}
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-3 text-muted-foreground/70">Just exploring?</span>
-          </div>
-        </div>
-
-        {/* Secondary Action: Load Demo */}
-        <Card className="text-left border-dashed">
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Eye className="size-4 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                Load a sample case with realistic data to explore how Reunify works — this is not real data.
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                seedMutation.mutate()
-              }}
-              disabled={seedMutation.isPending}
-            >
-              {seedMutation.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Eye className="size-4" />
-              )}
-              {seedMutation.isPending ? 'Loading Demo Case...' : 'Explore with Demo Data'}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <CreateCaseDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
-
-        {/* Go Pro Card */}
-        <Card className="text-left border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 dark:border-amber-800 dark:from-amber-950/20 dark:to-yellow-950/20">
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Sparkles className="size-5 text-amber-600" />
-              <div>
-                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Upgrade to Pro</p>
-                <p className="text-xs text-amber-700/80 dark:text-amber-400/80">
-                  Unlock advanced reporting, data export, and more with a 7-day free trial
-                </p>
-              </div>
-            </div>
-            <Button
-              className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white border-0"
-              onClick={() => useAppStore.getState().setActiveView('go-pro')}
-            >
-              <Sparkles className="size-4" />
-              See Pro Features
-            </Button>
-          </CardContent>
-        </Card>
-
-        <div className="grid grid-cols-3 gap-3 text-center">
-          <div className="space-y-1">
-            <p className="text-2xl font-bold text-emerald-600">100%</p>
-            <p className="text-xs text-muted-foreground">Case Plan Tracking</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-2xl font-bold text-amber-600">24/7</p>
-            <p className="text-xs text-muted-foreground">Stay Organized</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-2xl font-bold text-rose-600">1</p>
-            <p className="text-xs text-muted-foreground">Goal: Reunification</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function ActiveView() {
   const { activeView } = useAppStore()
@@ -246,6 +112,7 @@ function ActiveView() {
 export default function Home() {
   const { activeCaseId, activeView } = useAppStore()
   const { setTier, setSubscriptionData } = useSubscriptionStore()
+  const { isUnlocked, handleUnlock, mounted } = useAppLock()
 
   // Enable browser history management for Android back button support
   useNavigationHistory()
@@ -299,6 +166,11 @@ export default function Home() {
     }
   }, [setTier, setSubscriptionData])
 
+  // Show lock screen if app lock is enabled and not yet unlocked
+  if (mounted && !isUnlocked) {
+    return <AppLockScreen onUnlock={handleUnlock} />
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -312,7 +184,7 @@ export default function Home() {
               ) : activeCaseId ? (
                 <ActiveView />
               ) : (
-                <WelcomeScreen />
+                <OnboardingWizard />
               )}
             </div>
           </main>

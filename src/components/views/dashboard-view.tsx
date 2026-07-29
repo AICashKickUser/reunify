@@ -44,6 +44,7 @@ import {
   startOfDay,
 } from 'date-fns'
 import { parseLocalDate } from '@/lib/utils'
+import { AchievementsSection } from '@/components/achievements-section'
 interface TimelineEvent {
   id: string
   date: string
@@ -576,6 +577,11 @@ export function DashboardView() {
           onClick={() => setActiveView('timeline')}
         />
       </div>
+
+      {/* Streaks & Achievements Section */}
+      {caseData && (
+        <AchievementsSection caseData={caseData} />
+      )}
 
       {/* Middle Section: Two Columns */}
       <div className="grid gap-3 sm:gap-4 md:grid-cols-2">

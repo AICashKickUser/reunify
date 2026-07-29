@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useCallback, useSyncExternalStore } from 'react'
 import {
   LayoutDashboard,
   Clock,
@@ -17,6 +18,8 @@ import {
   Trash2,
   Sparkles,
   HardDriveDownload,
+  Lock,
+  Unlock,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -56,7 +59,9 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
+import { isAppLockEnabled, isPinSet, enableAppLock, disableAppLock, clearAppLock, setAppLockPin, verifyPin } from '@/lib/app-lock'
 
 interface NavItem {
   view: ViewType
@@ -118,6 +123,79 @@ export function AppSidebar() {
   const { tier } = useSubscriptionStore()
   const isPro = tier === 'pro'
   const { isMobile, setOpenMobile } = useSidebar()
+  // Use useSyncExternalStore for SSR-safe lock state reading
+  const isClient = useSyncExternalStore(() => () => {}, () => true, () => false)
+  const [lockVersion, setLockVersion] = useState(0)
+  // lockVersion forces re-read of localStorage on changes
+  const lockEnabled = isClient ? isAppLockEnabled() : false
+  void lockVersion // used to force re-render when lock state changes
+  const [lockBusy, setLockBusy] = useState(false)
+  const [showDisableDialog, setShowDisableDialog] = useState(false)
+  const [disablePin, setDisablePin] = useState('')
+  const [showSetupDialog, setShowSetupDialog] = useState(false)
+  const [setupPin, setSetupPin] = useState('')
+  const [setupConfirm, setSetupConfirm] = useState('')
+  const [setupStep, setSetupStep] = useState<'enter' | 'confirm'>('enter')
+  const [setupError, setSetupError] = useState('')
+
+  const handleLockToggle = useCallback(async (enabled: boolean) => {
+    if (enabled) {
+      // Turning on — show setup dialog
+      setSetupPin('')
+      setSetupConfirm('')
+      setSetupStep('enter')
+      setSetupError('')
+      setShowSetupDialog(true)
+    } else {
+      // Turning off — require PIN verification
+      if (isPinSet()) {
+        setDisablePin('')
+        setShowDisableDialog(true)
+      } else {
+        disableAppLock()
+        setLockVersion(v => v + 1)
+        toast.success('App lock disabled')
+      }
+    }
+  }, [])
+
+  const handleSetupSubmit = useCallback(async () => {
+    if (setupStep === 'enter') {
+      if (setupPin.length !== 4) {
+        setSetupError('PIN must be 4 digits')
+        return
+      }
+      setSetupStep('confirm')
+      setSetupError('')
+    } else {
+      if (setupPin !== setupConfirm) {
+        setSetupError('PINs do not match')
+        return
+      }
+      setLockBusy(true)
+      await setAppLockPin(setupPin)
+      setLockVersion(v => v + 1)
+      setShowSetupDialog(false)
+      setLockBusy(false)
+      toast.success('App lock enabled! Your data is protected.')
+    }
+  }, [setupPin, setupConfirm, setupStep])
+
+  const handleDisableSubmit = useCallback(async () => {
+    if (disablePin.length !== 4) return
+    setLockBusy(true)
+    const valid = await verifyPin(disablePin)
+    if (valid) {
+      disableAppLock()
+      clearAppLock()
+      setLockVersion(v => v + 1)
+      setShowDisableDialog(false)
+      toast.success('App lock disabled')
+    } else {
+      toast.error('Incorrect PIN')
+    }
+    setLockBusy(false)
+  }, [disablePin])
 
   const handleNavClick = (view: ViewType) => {
     setActiveView(view)
@@ -208,6 +286,151 @@ export function AppSidebar() {
 
       <SidebarFooter className="p-3">
         <SidebarSeparator />
+
+        {/* App Lock Toggle */}
+        <div className="group-data-[collapsible=icon]:hidden mt-2 flex items-center justify-between px-1">
+          <div className="flex items-center gap-2 text-sm">
+            {lockEnabled ? (
+              <Lock className="size-4 text-emerald-600" />
+            ) : (
+              <Unlock className="size-4 text-muted-foreground" />
+            )}
+            <span className="text-muted-foreground">App Lock</span>
+          </div>
+          <Switch
+            checked={lockEnabled}
+            onCheckedChange={handleLockToggle}
+            aria-label="Toggle app lock"
+          />
+        </div>
+
+        {/* App Lock Disable Dialog */}
+        <AlertDialog open={showDisableDialog} onOpenChange={setShowDisableDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Enter PIN to Disable Lock</AlertDialogTitle>
+              <AlertDialogDescription>
+                Enter your current PIN to disable app lock protection.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="flex justify-center gap-3 py-4">
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className={`size-4 rounded-full transition-all ${
+                    i < disablePin.length
+                      ? 'bg-emerald-500 scale-110'
+                      : 'bg-muted border-2 border-muted-foreground/30'
+                  }`}
+                ></div>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-2 max-w-[240px] mx-auto">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'].map((key) => {
+                if (key === '') return <div key="empty" />
+                if (key === 'del') return (
+                  <button
+                    key="del"
+                    onClick={() => setDisablePin(disablePin.slice(0, -1))}
+                    className="flex items-center justify-center h-12 rounded-lg bg-muted hover:bg-muted/80 text-sm"
+                  >
+                    ←
+                  </button>
+                )
+                return (
+                  <button
+                    key={key}
+                    onClick={() => disablePin.length < 4 && setDisablePin(disablePin + key)}
+                    className="flex items-center justify-center h-12 rounded-lg bg-muted hover:bg-muted/80 text-lg font-medium"
+                  >
+                    {key}
+                  </button>
+                )
+              })}
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDisableSubmit}
+                disabled={disablePin.length !== 4 || lockBusy}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                Disable Lock
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* App Lock Setup Dialog */}
+        <AlertDialog open={showSetupDialog} onOpenChange={(open) => {
+          if (!open) setShowSetupDialog(false)
+        }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {setupStep === 'enter' ? 'Create a 4-Digit PIN' : 'Confirm Your PIN'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {setupStep === 'enter'
+                  ? 'This PIN will protect your sensitive CPS case data every time you open the app.'
+                  : 'Re-enter your PIN to confirm it.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            {setupError && (
+              <p className="text-sm text-destructive text-center">{setupError}</p>
+            )}
+            <div className="flex justify-center gap-3 py-4">
+              {[0, 1, 2, 3].map((i) => {
+                const currentPin = setupStep === 'enter' ? setupPin : setupConfirm
+                return (
+                  <div
+                    key={i}
+                    className={`size-4 rounded-full transition-all ${
+                      i < currentPin.length
+                        ? 'bg-emerald-500 scale-110'
+                        : 'bg-muted border-2 border-muted-foreground/30'
+                    }`}
+                  ></div>
+                )
+              })}
+            </div>
+            <div className="grid grid-cols-3 gap-2 max-w-[240px] mx-auto">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'].map((key) => {
+                const currentPin = setupStep === 'enter' ? setupPin : setupConfirm
+                const setCurrentPin = setupStep === 'enter' ? setSetupPin : setSetupConfirm
+                if (key === '') return <div key="empty" />
+                if (key === 'del') return (
+                  <button
+                    key="del"
+                    onClick={() => setCurrentPin(currentPin.slice(0, -1))}
+                    className="flex items-center justify-center h-12 rounded-lg bg-muted hover:bg-muted/80 text-sm"
+                  >
+                    ←
+                  </button>
+                )
+                return (
+                  <button
+                    key={key}
+                    onClick={() => currentPin.length < 4 && setCurrentPin(currentPin + key)}
+                    className="flex items-center justify-center h-12 rounded-lg bg-muted hover:bg-muted/80 text-lg font-medium"
+                  >
+                    {key}
+                  </button>
+                )
+              })}
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleSetupSubmit}
+                disabled={(setupStep === 'enter' ? setupPin.length !== 4 : setupConfirm.length !== 4) || lockBusy}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {setupStep === 'enter' ? 'Next' : 'Enable Lock'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         {!isPro && (
           <div className="group-data-[collapsible=icon]:hidden mt-2">
             <Button
