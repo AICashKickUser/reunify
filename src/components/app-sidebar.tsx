@@ -115,7 +115,7 @@ export function AppSidebar() {
   const { activeView, setActiveView, activeCaseId, setActiveCaseId } = useAppStore()
   const { data: cases } = useCases()
   const deleteMutation = useDeleteCase()
-  const { tier, setUpgradeDialogOpen } = useSubscriptionStore()
+  const { tier } = useSubscriptionStore()
   const isPro = tier === 'pro'
   const { isMobile, setOpenMobile } = useSidebar()
 
@@ -212,8 +212,7 @@ export function AppSidebar() {
               className="w-full gap-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white border-0 h-9"
               size="sm"
               onClick={() => {
-                setUpgradeDialogOpen(true)
-                if (isMobile) setOpenMobile(false)
+                handleNavClick('go-pro')
               }}
             >
               <Sparkles className="size-4" />

@@ -10,14 +10,19 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Crown, Check, Sparkles } from 'lucide-react'
+import { Crown, Check, Sparkles, Key } from 'lucide-react'
 import { useSubscriptionStore, PRO_FEATURES, PRO_PRICE_MONTHLY, PRO_PRICE_YEARLY, BillingPeriod } from '@/lib/subscription'
+import { useAppStore } from '@/lib/store'
 import { toast } from 'sonner'
 
 export function UpgradeDialog() {
-  const { upgradeDialogOpen, setUpgradeDialogOpen, setTier, tier } = useSubscriptionStore()
+  const { upgradeDialogOpen, setUpgradeDialogOpen, setTier, setSubscriptionData, tier } = useSubscriptionStore()
+  const { setActiveView } = useAppStore()
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('yearly')
   const [upgrading, setUpgrading] = useState(false)
+  const [activationCode, setActivationCode] = useState('')
+  const [showActivation, setShowActivation] = useState(false)
+  const [activating, setActivating] = useState(false)
 
   const price = billingPeriod === 'monthly' ? PRO_PRICE_MONTHLY : PRO_PRICE_YEARLY
   const periodLabel = billingPeriod === 'monthly' ? '/month' : '/year'
@@ -58,9 +63,53 @@ export function UpgradeDialog() {
     }
   }
 
+  async function handleActivation() {
+    setActivating(true)
+    try {
+      const res = await fetch('/api/activate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: activationCode }),
+      })
+      const data = await res.json()
+
+      if (data.valid) {
+        setSubscriptionData({
+          tier: data.tier,
+          stripeSessionId: data.stripeSessionId,
+          subscriptionStatus: data.subscriptionStatus,
+          trialEnd: null,
+          currentPeriodEnd: data.currentPeriodEnd,
+          cancelAtPeriodEnd: data.cancelAtPeriodEnd,
+        })
+        toast.success('Pro activated!', {
+          description: `You now have full access to all Pro features via ${data.label}.`,
+        })
+        setActivationCode('')
+        setShowActivation(false)
+        setUpgradeDialogOpen(false)
+      } else {
+        toast.error('Invalid activation code', {
+          description: data.error || 'Please check the code and try again.',
+        })
+      }
+    } catch {
+      toast.error('Connection error', {
+        description: 'Please check your internet connection and try again.',
+      })
+    } finally {
+      setActivating(false)
+    }
+  }
+
+  function handleGoToProPage() {
+    setUpgradeDialogOpen(false)
+    setActiveView('go-pro')
+  }
+
   return (
     <Dialog open={upgradeDialogOpen} onOpenChange={setUpgradeDialogOpen}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader className="text-center items-center">
           <div className="flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 shadow-lg mb-2">
             <Crown className="size-8 text-white" />
@@ -113,7 +162,7 @@ export function UpgradeDialog() {
 
         {/* Feature List */}
         <div className="space-y-2.5 mt-3">
-          {PRO_FEATURES.map((feature) => (
+          {PRO_FEATURES.slice(0, 4).map((feature) => (
             <div key={feature.key} className="flex items-start gap-2.5">
               <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 mt-0.5">
                 <Check className="size-3 text-emerald-600 dark:text-emerald-400" />
@@ -158,12 +207,56 @@ export function UpgradeDialog() {
           )}
 
           {tier !== 'pro' && (
-            <button
-              onClick={() => setUpgradeDialogOpen(false)}
-              className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors py-1"
-            >
-              Maybe Later
-            </button>
+            <>
+              {/* Activation Code Section */}
+              <div className="pt-2">
+                {!showActivation ? (
+                  <button
+                    onClick={() => setShowActivation(true)}
+                    className="mx-auto flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-foreground transition-colors py-2"
+                  >
+                    <Key className="size-3" />
+                    Have an activation code?
+                  </button>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-emerald-300 dark:border-emerald-700 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Key className="size-4 text-emerald-600" />
+                      <p className="text-sm font-medium">Enter Activation Code</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={activationCode}
+                        onChange={(e) => setActivationCode(e.target.value)}
+                        placeholder="Enter your code"
+                        className="flex-1 h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleActivation() }}
+                      />
+                      <Button size="sm" onClick={handleActivation} disabled={activating} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                        {activating ? '...' : 'Activate'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Maybe Later - more prominent */}
+              <div className="flex flex-col items-center gap-2 pt-2">
+                <button
+                  onClick={() => setUpgradeDialogOpen(false)}
+                  className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+                >
+                  Maybe Later
+                </button>
+                <button
+                  onClick={handleGoToProPage}
+                  className="text-xs text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
+                >
+                  View full Pro page →
+                </button>
+              </div>
+            </>
           )}
         </div>
       </DialogContent>

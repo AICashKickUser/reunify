@@ -121,27 +121,72 @@ export function BackupView() {
     }
   }
 
-  // Email backup (server generates subject/body, opens mailto)
+  // Email backup - generates PDF report and shares via native share sheet (with file attachment)
   const handleEmailBackup = async () => {
     if (!isPro) { proFeature.showUpgrade(); return }
     if (!activeCaseId) { toast.error('No active case to backup'); return }
 
     setExporting('email')
     try {
-      const res = await fetch(`/api/export/email?caseId=${activeCaseId}`)
-      if (!res.ok) throw new Error('Email failed')
-      const { subject, body } = await res.json()
+      // Fetch the beautifully formatted PDF report HTML
+      const res = await fetch(`/api/export/pdf?caseId=${activeCaseId}`)
+      if (!res.ok) throw new Error('Report failed')
+      const html = await res.text()
 
-      const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-      window.open(mailtoUrl, '_self')
+      // Get case info for the filename
+      const caseRes = await fetch(`/api/export?caseId=${activeCaseId}`)
+      let caseNumber = 'case'
+      if (caseRes.ok) {
+        const caseData = await caseRes.json()
+        caseNumber = caseData.case?.caseNumber || 'case'
+      }
+
+      // Create a file from the HTML report
+      const blob = new Blob([html], { type: 'text/html' })
+      const file = new File([blob], `Reunify-Progress-Report-${caseNumber}.html`, { type: 'text/html' })
+
+      // Try Web Share API first (works great on Android - opens share sheet with email option)
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            title: `Reunify Progress Report — ${caseNumber}`,
+            text: 'Attached is my Reunify progress report. Open the HTML file in a browser to view or print it.',
+            files: [file],
+          })
+          toast.success('Report shared!', {
+            description: 'Your progress report has been shared via email.',
+          })
+        } catch (err) {
+          // User cancelled the share sheet - not an error
+          if (err instanceof Error && err.name !== 'AbortError') {
+            throw err
+          }
+        }
+      } else {
+        // Fallback: download the report file and open a mailto link
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `Reunify-Progress-Report-${caseNumber}.html`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+
+        // Open email with a brief message
+        const subject = `Reunify Case Progress Report — ${caseNumber}`
+        const body = `Hi,\n\nI've attached my Reunify progress report. Please open the attached HTML file in a browser to view or print it as a PDF.\n\nThank you.`
+        const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+        window.open(mailtoUrl, '_self')
+
+        toast.success('Report downloaded!', {
+          description: 'Attach the downloaded report file to your email.',
+        })
+      }
 
       const now = new Date().toISOString()
       localStorage.setItem('reunify-last-backup', now)
       setLastBackupDate(now)
-
-      toast.success('Email draft opened!', {
-        description: 'Add your caseworker\'s or attorney\'s email address and send.',
-      })
     } catch {
       toast.error('Email generation failed', { description: 'Could not prepare your email. Please try again.' })
     } finally {
@@ -361,7 +406,7 @@ export function BackupView() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-foreground">Email to Caseworker</p>
               <p className="text-xs text-muted-foreground">
-                Open an email with your progress summary. Add your caseworker's or attorney's email and send it directly.
+                Share your professional progress report as an email attachment. Your caseworker will get the beautifully formatted PDF-style report.
               </p>
             </div>
             <Button size="sm" variant="outline" className="gap-1.5 text-sky-700 border-sky-200 hover:bg-sky-50 dark:text-sky-400 dark:border-sky-800 dark:hover:bg-sky-950/30" disabled={exporting === 'email'}>

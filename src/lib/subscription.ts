@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { useAppStore } from '@/lib/store'
 
 export type SubscriptionTier = 'free' | 'pro'
 export type BillingPeriod = 'monthly' | 'yearly'
@@ -81,9 +82,10 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
 // Hook to check feature access
 export function useProFeature(featureKey: string): { allowed: boolean; showUpgrade: () => void } {
-  const { tier, setUpgradeDialogOpen } = useSubscriptionStore()
+  const { tier } = useSubscriptionStore()
+  const { setActiveView } = useAppStore()
   return {
     allowed: tier === 'pro',
-    showUpgrade: () => setUpgradeDialogOpen(true),
+    showUpgrade: () => setActiveView('go-pro'),
   }
 }
