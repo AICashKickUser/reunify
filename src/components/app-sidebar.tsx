@@ -121,7 +121,9 @@ export function AppSidebar() {
 
   const handleNavClick = (view: ViewType) => {
     setActiveView(view)
-    if (isMobile) setOpenMobile(false)
+    // Always close mobile sidebar — on TWA/Android, isMobile detection
+    // can be unreliable, so we always close the sheet overlay
+    setOpenMobile(false)
   }
 
   return (

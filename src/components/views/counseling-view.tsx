@@ -575,3 +575,5 @@ export function CounselingView() {
     </div>
   )
 }
+
+export default CounselingView

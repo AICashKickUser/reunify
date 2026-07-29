@@ -49,7 +49,7 @@ function safeLazy<T extends React.ComponentType>(
 const DashboardView = safeLazy(() => import('@/components/views/dashboard-view'), 'DashboardView')
 const TimelineView = safeLazy(() => import('@/components/views/timeline-view'), 'TimelineView')
 const CasePlanView = safeLazy(() => import('@/components/views/case-plan-view'), 'CasePlanView')
-const CounselingView = safeLazy(() => import('@/components/views/counseling-view'), 'CounselingView')
+const CounselingView = lazy(() => import('@/components/views/counseling-view'))
 const DrugTestingView = lazy(() => import('@/components/views/drug-testing-view'))
 const NAStepsView = safeLazy(() => import('@/components/views/na-steps-view'), 'NAStepsView')
 const NAMeetingsView = lazy(() => import('@/components/views/na-meetings-view'))
