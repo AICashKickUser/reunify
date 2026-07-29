@@ -284,3 +284,30 @@ Stage Summary:
 - Download API route updated with v1.6.0 files and dual-directory file lookup
 - reunify-1.6.0.zip available at /upload/reunify-1.6.0.zip for download
 - AAB (1.4MB) and zip (1.3MB) both ready for Play Console submission
+
+---
+Task ID: main-4
+Agent: Main Agent
+Task: Fix upgrade pro popup flow, __gcruniqueid error, and email PDF upgrade
+
+Work Log:
+- Fixed upgrade pro popup flow: Made activation code entry always visible in both UpgradeDialog and GoProView (was hidden behind "Have an activation code?" link that testers couldn't find)
+- Removed `showActivation` state from both components since it's no longer needed
+- Changed placeholder text from "Enter your code" to "Enter verification code" for clarity
+- Added `autoComplete="off"` and `suppressHydrationWarning` to activation code input fields
+- Fixed __gcruniqueid="1" error: Added `suppressHydrationWarning` to base Input component, Textarea component, and all raw <input> elements across the app
+- This prevents Chrome's autofill attributes from causing React hydration mismatches
+- Upgraded email social worker feature: Installed html2pdf.js and modified handleEmailBackup to generate real PDF files instead of HTML
+- New flow: Fetch HTML → render in temp container → html2pdf.js converts to PDF blob → share via Web Share API as application/pdf
+- Updated description text to mention PDF format instead of HTML
+- Created TypeScript type declaration for html2pdf.js at src/types/html2pdf.d.ts
+- Investigated Stripe "not verified" on Vercel: This is a Vercel dashboard integration badge, not an app code issue. The app works fine on the user's phone because Stripe API keys are properly configured.
+- Verified with Agent Browser: Go Pro page shows activation code entry always visible, Upgrade Dialog shows verification code entry always visible, no page errors, no console errors
+- Lint clean (bun run lint — no errors)
+
+Stage Summary:
+- 7 files modified: upgrade-dialog.tsx, go-pro-view.tsx, input.tsx, textarea.tsx, backup-view.tsx, court-dates-view.tsx, html2pdf.d.ts (new)
+- All upgrade paths now show verification code entry directly (no hidden link)
+- __gcruniqueid hydration mismatch fix applied across all form inputs
+- Email to caseworker now generates real PDF instead of HTML file
+- Stripe "not verified" is a Vercel dashboard badge, not an app issue

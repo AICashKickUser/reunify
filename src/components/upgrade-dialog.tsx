@@ -21,7 +21,6 @@ export function UpgradeDialog() {
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('yearly')
   const [upgrading, setUpgrading] = useState(false)
   const [activationCode, setActivationCode] = useState('')
-  const [showActivation, setShowActivation] = useState(false)
   const [activating, setActivating] = useState(false)
 
   const price = billingPeriod === 'monthly' ? PRO_PRICE_MONTHLY : PRO_PRICE_YEARLY
@@ -86,7 +85,6 @@ export function UpgradeDialog() {
           description: `You now have full access to all Pro features via ${data.label}.`,
         })
         setActivationCode('')
-        setShowActivation(false)
         setUpgradeDialogOpen(false)
       } else {
         toast.error('Invalid activation code', {
@@ -208,40 +206,32 @@ export function UpgradeDialog() {
 
           {tier !== 'pro' && (
             <>
-              {/* Activation Code Section */}
+              {/* Activation Code Section - Always visible */}
               <div className="pt-2">
-                {!showActivation ? (
-                  <button
-                    onClick={() => setShowActivation(true)}
-                    className="mx-auto flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-foreground transition-colors py-2"
-                  >
-                    <Key className="size-3" />
-                    Have an activation code?
-                  </button>
-                ) : (
-                  <div className="rounded-lg border border-dashed border-emerald-300 dark:border-emerald-700 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Key className="size-4 text-emerald-600" />
-                      <p className="text-sm font-medium">Enter Activation Code</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={activationCode}
-                        onChange={(e) => setActivationCode(e.target.value)}
-                        placeholder="Enter your code"
-                        className="flex-1 h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleActivation() }}
-                      />
-                      <Button size="sm" onClick={handleActivation} disabled={activating} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                        {activating ? '...' : 'Activate'}
-                      </Button>
-                    </div>
+                <div className="rounded-lg border border-dashed border-emerald-300 dark:border-emerald-700 p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Key className="size-4 text-emerald-600" />
+                    <p className="text-sm font-medium">Have an activation code?</p>
                   </div>
-                )}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={activationCode}
+                      onChange={(e) => setActivationCode(e.target.value)}
+                      placeholder="Enter verification code"
+                      autoComplete="off"
+                      suppressHydrationWarning
+                      className="flex-1 h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleActivation() }}
+                    />
+                    <Button size="sm" onClick={handleActivation} disabled={activating} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                      {activating ? '...' : 'Activate'}
+                    </Button>
+                  </div>
+                </div>
               </div>
 
-              {/* Maybe Later - more prominent */}
+              {/* Maybe Later */}
               <div className="flex flex-col items-center gap-2 pt-2">
                 <button
                   onClick={() => setUpgradeDialogOpen(false)}

@@ -121,7 +121,7 @@ export function BackupView() {
     }
   }
 
-  // Email backup - generates PDF report and shares via native share sheet (with file attachment)
+  // Email backup - generates PDF report and shares via native share sheet (with PDF file attachment)
   const handleEmailBackup = async () => {
     if (!isPro) { proFeature.showUpgrade(); return }
     if (!activeCaseId) { toast.error('No active case to backup'); return }
@@ -141,20 +141,48 @@ export function BackupView() {
         caseNumber = caseData.case?.caseNumber || 'case'
       }
 
-      // Create a file from the HTML report
-      const blob = new Blob([html], { type: 'text/html' })
-      const file = new File([blob], `Reunify-Progress-Report-${caseNumber}.html`, { type: 'text/html' })
+      // Create a temporary container to render the HTML
+      const container = document.createElement('div')
+      container.innerHTML = html
+      container.style.position = 'absolute'
+      container.style.left = '-9999px'
+      container.style.top = '0'
+      container.style.width = '210mm' // A4 width for consistent rendering
+      container.style.background = 'white'
+      document.body.appendChild(container)
+
+      // Wait a moment for images/styles to load
+      await new Promise(resolve => setTimeout(resolve, 300))
+
+      // Generate PDF using html2pdf.js (dynamic import for client-side only)
+      const html2pdf = (await import('html2pdf.js')).default
+      const pdfBlob: Blob = await html2pdf()
+        .set({
+          margin: [10, 10, 10, 10],
+          filename: `Reunify-Progress-Report-${caseNumber}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, logging: false },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        })
+        .from(container)
+        .outputPdf('blob')
+
+      // Clean up the temporary container
+      document.body.removeChild(container)
+
+      // Create a PDF file for sharing
+      const file = new File([pdfBlob], `Reunify-Progress-Report-${caseNumber}.pdf`, { type: 'application/pdf' })
 
       // Try Web Share API first (works great on Android - opens share sheet with email option)
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({
             title: `Reunify Progress Report — ${caseNumber}`,
-            text: 'Attached is my Reunify progress report. Open the HTML file in a browser to view or print it.',
+            text: 'Attached is my Reunify progress report as a PDF. You can view or print it directly.',
             files: [file],
           })
           toast.success('Report shared!', {
-            description: 'Your progress report has been shared via email.',
+            description: 'Your PDF progress report has been shared via email.',
           })
         } catch (err) {
           // User cancelled the share sheet - not an error
@@ -163,24 +191,18 @@ export function BackupView() {
           }
         }
       } else {
-        // Fallback: download the report file and open a mailto link
-        const url = URL.createObjectURL(blob)
+        // Fallback: download the PDF file directly
+        const url = URL.createObjectURL(pdfBlob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `Reunify-Progress-Report-${caseNumber}.html`
+        a.download = `Reunify-Progress-Report-${caseNumber}.pdf`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
 
-        // Open email with a brief message
-        const subject = `Reunify Case Progress Report — ${caseNumber}`
-        const body = `Hi,\n\nI've attached my Reunify progress report. Please open the attached HTML file in a browser to view or print it as a PDF.\n\nThank you.`
-        const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-        window.open(mailtoUrl, '_self')
-
-        toast.success('Report downloaded!', {
-          description: 'Attach the downloaded report file to your email.',
+        toast.success('PDF report downloaded!', {
+          description: 'Attach the downloaded PDF to your email to your caseworker.',
         })
       }
 
@@ -188,7 +210,7 @@ export function BackupView() {
       localStorage.setItem('reunify-last-backup', now)
       setLastBackupDate(now)
     } catch {
-      toast.error('Email generation failed', { description: 'Could not prepare your email. Please try again.' })
+      toast.error('PDF generation failed', { description: 'Could not generate your PDF report. Please try again.' })
     } finally {
       setExporting(null)
     }
@@ -406,7 +428,7 @@ export function BackupView() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-foreground">Email to Caseworker</p>
               <p className="text-xs text-muted-foreground">
-                Share your professional progress report as an email attachment. Your caseworker will get the beautifully formatted PDF-style report.
+                Share your professional progress report as a PDF email attachment. Your caseworker will get a beautifully formatted PDF they can view or print.
               </p>
             </div>
             <Button size="sm" variant="outline" className="gap-1.5 text-sky-700 border-sky-200 hover:bg-sky-50 dark:text-sky-400 dark:border-sky-800 dark:hover:bg-sky-950/30" disabled={exporting === 'email'}>
@@ -459,6 +481,7 @@ export function BackupView() {
               ref={fileInputRef}
               onChange={handleFileSelect}
               accept=".json"
+              suppressHydrationWarning
               className="hidden"
             />
             <Button

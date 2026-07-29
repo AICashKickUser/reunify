@@ -241,6 +241,7 @@ function EditCourtDateDialog({ open, onOpenChange, courtDate }: {
               id="hearing-completed"
               checked={isCompleted}
               onChange={e => setIsCompleted(e.target.checked)}
+              suppressHydrationWarning
               className="rounded border-gray-300"
             />
             <Label htmlFor="hearing-completed" className="cursor-pointer">Hearing completed</Label>
