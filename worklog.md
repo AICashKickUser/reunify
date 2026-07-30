@@ -500,3 +500,27 @@ Stage Summary:
 - Free users can now export JSON backup and restore from JSON backup (was Pro-only)
 - PDF report, email export, and cloud backup remain Pro-only
 - Lint passes clean, build succeeds
+
+---
+Task ID: main-1
+Agent: Main Agent
+Task: Fix ChunkLoadError, implement streak tracking, cloud backup, free tier improvements, and push v1.7.0
+
+Work Log:
+- Fixed ChunkLoadError on Vercel: Added default exports to all 10 view files that were missing them, switched all views from safeLazy() to standard lazy() in page.tsx
+- Fixed useSyncExternalStore infinite loop: Created stable function references (emptySubscribe, returnTrue, returnFalse) outside component scope in app-lock.tsx and app-sidebar.tsx
+- Fixed streak-display.tsx: Replaced useSyncExternalStore with useState+useEffect pattern to avoid infinite re-renders
+- Fixed dashboard-view.tsx WeeklySummaryCard: Added useEffect import and converted to lazy initialization pattern
+- Implemented Streak Tracking & Celebrations: Created streaks.ts, streak-display.tsx, celebration-overlay.tsx with CSS confetti animations
+- Implemented Automatic Cloud Backup: Created cloud-backup.ts, backup API routes, last-synced.tsx, use-auto-backup.ts hook
+- Implemented Free Tier Improvements: Created free-tier.ts with 3-item-per-category limits, upgrade-prompt-dialog.tsx, modified backup-view.tsx to allow free JSON export/restore
+- Bumped version to 1.7.0 in package.json, manifest.json, footer, sidebar
+- Pushed to GitHub for Vercel auto-deployment
+
+Stage Summary:
+- 42 files changed, 2866 insertions, 382 deletions
+- All views now use lazy() with default exports (no more ChunkLoadError on Vercel)
+- Streak tracking: daily streak counter, milestone celebrations (3/7/14/30/60/90 days), motivational quotes
+- Cloud backup: auto-backup for Pro users, last synced indicator, force sync button
+- Free tier: 3 items per category, JSON export/restore, upgrade prompts
+- v1.7.0 pushed to GitHub/Vercel
