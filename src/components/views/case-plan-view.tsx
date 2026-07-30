@@ -899,3 +899,5 @@ export function CasePlanView() {
     </div>
   )
 }
+
+export default CasePlanView

@@ -1597,3 +1597,5 @@ export function ProgressView() {
     </div>
   )
 }
+
+export default ProgressView

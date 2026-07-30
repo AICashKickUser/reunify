@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -45,6 +45,8 @@ import {
 } from 'date-fns'
 import { parseLocalDate } from '@/lib/utils'
 import { AchievementsSection } from '@/components/achievements-section'
+import { StreakCard } from '@/components/streak-display'
+import { getWeeklySummary, getStreakData, type WeeklySummary, type StreakData } from '@/lib/streaks'
 interface TimelineEvent {
   id: string
   date: string
@@ -169,6 +171,134 @@ function StatCard({
             )}
           </div>
         )}
+      </CardContent>
+    </Card>
+  )
+}
+
+// --- Weekly Summary Card ---
+function WeeklySummaryCard() {
+  const [summary, setSummary] = useState<WeeklySummary | null>(() => {
+    if (typeof window === 'undefined') return null
+    try { return getWeeklySummary() } catch { return null }
+  })
+  const [streakData, setStreakData] = useState<StreakData | null>(() => {
+    if (typeof window === 'undefined') return null
+    try { return getStreakData() } catch { return null }
+  })
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      try {
+        setSummary(getWeeklySummary())
+        setStreakData(getStreakData())
+      } catch { /* ignore */ }
+    }
+    window.addEventListener('streak-updated', handleUpdate)
+    window.addEventListener('focus', handleUpdate)
+    const interval = setInterval(handleUpdate, 60000)
+    return () => {
+      window.removeEventListener('streak-updated', handleUpdate)
+      window.removeEventListener('focus', handleUpdate)
+      clearInterval(interval)
+    }
+  }, [])
+
+  if (!summary || !streakData) return null
+
+  const categoryLabels: Record<string, string> = {
+    'check-in': 'Check-ins',
+    'counseling': 'Counseling',
+    'drug-test': 'Drug Tests',
+    'na-meeting': 'NA Meetings',
+    'na-step': 'NA Steps',
+    'supervised-visit': 'Visits',
+    'court-date': 'Court Dates',
+    'parenting-class': 'Parenting',
+    'milestone': 'Milestones',
+    'requirement': 'Requirements',
+  }
+
+  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+  return (
+    <Card className="relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-1 h-full bg-violet-500" />
+      <CardHeader className="pb-2 pl-4 sm:pl-5">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+            <Activity className="size-3 sm:size-4 text-violet-600" />
+            This Week&apos;s Activity
+          </CardTitle>
+          <Badge
+            variant="outline"
+            className={`text-[10px] ${
+              summary.streakMaintained
+                ? 'border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-400'
+                : 'border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400'
+            }`}
+          >
+            {summary.streakMaintained ? '🔥 Streak active' : '💡 Log today'}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="pl-4 sm:pl-5 space-y-3">
+        {/* Week day dots */}
+        <div className="flex items-center justify-between gap-1">
+          {weekDays.map((day, i) => {
+            const isToday = new Date().getDay() === (i + 1) % 7 // Mon=0→1, Sun=6→0
+            const active = i < streakData.thisWeekActive
+            return (
+              <div key={day} className="flex flex-col items-center gap-1">
+                <div
+                  className={`size-5 sm:size-6 rounded-full flex items-center justify-center text-[8px] sm:text-[9px] font-medium transition-all ${
+                    active
+                      ? 'bg-emerald-500 text-white'
+                      : isToday
+                        ? 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 ring-2 ring-emerald-300 dark:ring-emerald-700'
+                        : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {active ? '✓' : day.charAt(0)}
+                </div>
+                <span className={`text-[8px] sm:text-[9px] ${isToday ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-muted-foreground'}`}>
+                  {day}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Activity breakdown */}
+        {summary.totalActivities > 0 && (
+          <div className="space-y-1.5">
+            {Object.entries(summary.categories)
+              .sort(([, a], [, b]) => b - a)
+              .slice(0, 4)
+              .map(([type, count]) => (
+                <div key={type} className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    {categoryLabels[type] || type}
+                  </span>
+                  <span className="text-xs font-medium text-foreground">{count}</span>
+                </div>
+              ))}
+          </div>
+        )}
+
+        {/* Summary stats */}
+        <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1 border-t">
+          <span>{summary.daysActive}/7 days active</span>
+          <span>•</span>
+          <span>{summary.totalActivities} activities</span>
+        </div>
+
+        {/* Motivational quote */}
+        <div className="bg-emerald-50/50 dark:bg-emerald-950/20 rounded-lg p-2.5 border border-emerald-100 dark:border-emerald-900/30">
+          <p className="text-xs text-emerald-800 dark:text-emerald-300 italic leading-relaxed">
+            &ldquo;{summary.motivationalQuote}&rdquo;
+          </p>
+        </div>
       </CardContent>
     </Card>
   )
@@ -583,6 +713,12 @@ export function DashboardView() {
         <AchievementsSection caseData={caseData} />
       )}
 
+      {/* Daily Streak & Weekly Summary */}
+      <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
+        <StreakCard />
+        <WeeklySummaryCard />
+      </div>
+
       {/* Middle Section: Two Columns */}
       <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
         {/* Upcoming Deadlines & Events */}
@@ -850,3 +986,5 @@ export function DashboardView() {
     </div>
   )
 }
+
+export default DashboardView

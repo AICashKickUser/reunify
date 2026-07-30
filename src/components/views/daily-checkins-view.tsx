@@ -639,3 +639,5 @@ function CheckinFormDialog({
     </Dialog>
   )
 }
+
+export default DailyCheckinsView

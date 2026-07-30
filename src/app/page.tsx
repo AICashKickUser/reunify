@@ -5,7 +5,7 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
 import { AppHeader } from '@/components/app-header'
 import { useAppStore, type ViewType } from '@/lib/store'
-import { Loader2, AlertTriangle } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { UpgradeDialog } from '@/components/upgrade-dialog'
 import { OnboardingDialog } from '@/components/onboarding-dialog'
 import { OnboardingWizard } from '@/components/onboarding-wizard'
@@ -14,50 +14,25 @@ import { ErrorBoundary } from '@/components/error-boundary'
 import { toast } from 'sonner'
 import { useNavigationHistory } from '@/hooks/use-navigation-history'
 import { AppLockScreen, useAppLock } from '@/components/app-lock'
+import { CelebrationOverlay } from '@/components/celebration-overlay'
+import { useAutoBackup } from '@/hooks/use-auto-backup'
 
-// Safe lazy load helper - catches import errors
-function safeLazy<T extends React.ComponentType>(
-  importFn: () => Promise<{ [key: string]: T }>,
-  exportName: string
-) {
-  return lazy(async () => {
-    try {
-      const mod = await importFn()
-      return { default: mod[exportName] }
-    } catch (error) {
-      console.error(`Failed to load view ${exportName}:`, error)
-      // Return a fallback component instead of crashing
-      return {
-        default: () => (
-          <div className="flex flex-col items-center justify-center py-16 px-4">
-            <div className="flex size-16 items-center justify-center rounded-2xl bg-orange-100 dark:bg-orange-900/30 mb-4">
-              <AlertTriangle className="size-8 text-orange-600 dark:text-orange-400" />
-            </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">Failed to load view</h3>
-            <p className="text-muted-foreground text-sm text-center max-w-sm">
-              There was an error loading this section. Please try refreshing the page.
-            </p>
-          </div>
-        ) as unknown as T
-      }
-    }
-  })
-}
-
-const DashboardView = safeLazy(() => import('@/components/views/dashboard-view'), 'DashboardView')
-const TimelineView = safeLazy(() => import('@/components/views/timeline-view'), 'TimelineView')
-const CasePlanView = safeLazy(() => import('@/components/views/case-plan-view'), 'CasePlanView')
+// All views use standard lazy() with default exports
+// This avoids ChunkLoadError on Vercel's CDN that safeLazy+named exports caused
+const DashboardView = lazy(() => import('@/components/views/dashboard-view'))
+const TimelineView = lazy(() => import('@/components/views/timeline-view'))
+const CasePlanView = lazy(() => import('@/components/views/case-plan-view'))
 const CounselingView = lazy(() => import('@/components/views/counseling-view'))
 const DrugTestingView = lazy(() => import('@/components/views/drug-testing-view'))
-const NAStepsView = safeLazy(() => import('@/components/views/na-steps-view'), 'NAStepsView')
+const NAStepsView = lazy(() => import('@/components/views/na-steps-view'))
 const NAMeetingsView = lazy(() => import('@/components/views/na-meetings-view'))
-const SupervisedVisitsView = safeLazy(() => import('@/components/views/supervised-visits-view'), 'SupervisedVisitsView')
-const CourtDatesView = safeLazy(() => import('@/components/views/court-dates-view'), 'CourtDatesView')
+const SupervisedVisitsView = lazy(() => import('@/components/views/supervised-visits-view'))
+const CourtDatesView = lazy(() => import('@/components/views/court-dates-view'))
 const ParentingClassesView = lazy(() => import('@/components/views/parenting-classes-view'))
-const ProgressView = safeLazy(() => import('@/components/views/progress-view'), 'ProgressView')
-const DailyCheckinsView = safeLazy(() => import('@/components/views/daily-checkins-view'), 'DailyCheckinsView')
-const GoProView = safeLazy(() => import('@/components/views/go-pro-view'), 'GoProView')
-const BackupView = safeLazy(() => import('@/components/views/backup-view'), 'BackupView')
+const ProgressView = lazy(() => import('@/components/views/progress-view'))
+const DailyCheckinsView = lazy(() => import('@/components/views/daily-checkins-view'))
+const GoProView = lazy(() => import('@/components/views/go-pro-view'))
+const BackupView = lazy(() => import('@/components/views/backup-view'))
 
 const VIEW_MAP: Record<ViewType, React.ComponentType> = {
   'dashboard': DashboardView,
@@ -93,8 +68,6 @@ function ActiveView() {
   if (!ViewComponent) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4">
-        <AlertTriangle className="size-12 text-orange-500 mb-4" />
-        <h3 className="text-lg font-semibold mb-2">View not found</h3>
         <p className="text-muted-foreground text-sm">Please select a different view from the sidebar.</p>
       </div>
     )
@@ -116,6 +89,9 @@ export default function Home() {
 
   // Enable browser history management for Android back button support
   useNavigationHistory()
+
+  // Enable auto-backup for Pro users
+  useAutoBackup()
 
   // Handle Stripe checkout return
   useEffect(() => {
@@ -191,7 +167,7 @@ export default function Home() {
           <footer className="border-t bg-background py-2 sm:py-3 px-3 sm:px-4 mt-auto">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-1 max-w-5xl mx-auto">
               <p className="text-xs text-muted-foreground">
-                Reunify v1.6.0 — Every step brings you closer to your kids
+                Reunify v1.7.0 — Every step brings you closer to your kids
               </p>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a>
@@ -204,6 +180,7 @@ export default function Home() {
       </SidebarInset>
       <UpgradeDialog />
       <OnboardingDialog />
+      <CelebrationOverlay />
     </SidebarProvider>
   )
 }

@@ -1,6 +1,12 @@
 'use client'
 
 import { useState, useCallback, useSyncExternalStore } from 'react'
+
+// Stable references for useSyncExternalStore (must be outside component to avoid infinite loops)
+const emptySubscribe = () => () => {}
+const returnTrue = () => true
+const returnFalse = () => false
+
 import {
   LayoutDashboard,
   Clock,
@@ -47,6 +53,7 @@ import { useAppStore, type ViewType } from '@/lib/store'
 import { useCases, useDeleteCase } from '@/lib/data-hooks'
 import { useSubscriptionStore } from '@/lib/subscription'
 import { ProBadge } from '@/components/pro-badge'
+import { StreakBadge } from '@/components/streak-display'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,6 +69,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { isAppLockEnabled, isPinSet, enableAppLock, disableAppLock, clearAppLock, setAppLockPin, verifyPin } from '@/lib/app-lock'
+import { LastSynced } from '@/components/last-synced'
 
 interface NavItem {
   view: ViewType
@@ -124,7 +132,7 @@ export function AppSidebar() {
   const isPro = tier === 'pro'
   const { isMobile, setOpenMobile } = useSidebar()
   // Use useSyncExternalStore for SSR-safe lock state reading
-  const isClient = useSyncExternalStore(() => () => {}, () => true, () => false)
+  const isClient = useSyncExternalStore(emptySubscribe, returnTrue, returnFalse)
   const [lockVersion, setLockVersion] = useState(0)
   // lockVersion forces re-read of localStorage on changes
   const lockEnabled = isClient ? isAppLockEnabled() : false
@@ -246,6 +254,11 @@ export function AppSidebar() {
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Streak Badge */}
+        <div className="group-data-[collapsible=icon]:hidden mt-1">
+          <StreakBadge />
         </div>
       </SidebarHeader>
 
@@ -490,9 +503,13 @@ export function AppSidebar() {
             </AlertDialog>
           </div>
         )}
+        {/* Last Synced Indicator */}
+        <div className="group-data-[collapsible=icon]:hidden mt-2">
+          <LastSynced caseId={activeCaseId} compact />
+        </div>
         <div className="group-data-[collapsible=icon]:hidden mt-2">
           <p className="text-[10px] text-muted-foreground text-center leading-tight">
-            v1.6.0 · Every step brings you closer
+            v1.7.0 · Every step brings you closer
             <br />
             to your kids
           </p>

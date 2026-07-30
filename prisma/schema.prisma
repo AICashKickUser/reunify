@@ -33,6 +33,19 @@ model Case {
   parentingClasses      ParentingClass[]
   milestones            Milestone[]
   dailyCheckIns         DailyCheckIn[]
+  cloudBackups          CloudBackup[]
+}
+
+model CloudBackup {
+  id          String   @id @default(cuid())
+  caseId      String
+  data        String   // Encrypted JSON backup data
+  version     String   @default("1.0.0")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
 }
 
 model CaseRequirement {

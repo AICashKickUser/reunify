@@ -484,3 +484,5 @@ export function GoProView() {
     </div>
   )
 }
+
+export default GoProView

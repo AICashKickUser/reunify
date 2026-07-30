@@ -23,9 +23,11 @@ const COOLDOWN_SECONDS = 30
 
 // --- Client-side detection via useSyncExternalStore ---
 const emptySubscribe = () => () => {}
+const returnTrue = () => true
+const returnFalse = () => false
 
 function useIsClient() {
-  return useSyncExternalStore(emptySubscribe, () => true, () => false)
+  return useSyncExternalStore(emptySubscribe, returnTrue, returnFalse)
 }
 
 export function AppLockScreen({ onUnlock }: AppLockScreenProps) {

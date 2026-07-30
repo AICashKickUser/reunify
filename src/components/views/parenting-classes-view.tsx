@@ -29,6 +29,7 @@ import {
   Calendar,
   CheckCircle2,
   Target,
+  Crown,
 } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import {
@@ -36,7 +37,9 @@ import {
   useCreateItem,
   useUpdateItem,
   useDeleteItem,
+  useFreeTierCheck,
 } from '@/lib/data-hooks'
+import { UpgradePromptDialog } from '@/components/upgrade-prompt-dialog'
 import type { ParentingClass } from '@/lib/types'
 import { toast } from 'sonner'
 import { getLocalDateString } from '@/lib/utils'
@@ -181,12 +184,16 @@ export function ParentingClassesView() {
   const { data: classes, isLoading } = useParentingClasses(activeCaseId)
   const createMutation = useCreateItem('parenting-classes')
   const updateMutation = useUpdateItem('parenting-classes')
+  const freeTier = useFreeTierCheck('parenting-classes', classes?.length ?? 0)
   const [editClass, setEditClass] = useState<ParentingClass | null>(null)
+  const [upgradePromptOpen, setUpgradePromptOpen] = useState(false)
   const prevTriggerRef = useRef(addDialogTrigger)
 
   if (addDialogTrigger !== prevTriggerRef.current && addDialogTrigger > 0) {
     prevTriggerRef.current = addDialogTrigger
-    // For parenting classes, trigger doesn't open add dialog - we use checklist instead
+    if (freeTier.atLimit) {
+      setUpgradePromptOpen(true)
+    }
   }
 
   if (isLoading) {
@@ -231,6 +238,10 @@ export function ParentingClassesView() {
 
   // Toggle completion for a class by date
   function toggleClassCompletion(classNumber: number, date: Date) {
+    if (freeTier.atLimit) {
+      setUpgradePromptOpen(true)
+      return
+    }
     const existing = getClassForDate(date)
     
     if (existing) {
@@ -261,6 +272,10 @@ export function ParentingClassesView() {
 
   // Handle orientation toggle
   function toggleOrientation() {
+    if (freeTier.atLimit) {
+      setUpgradePromptOpen(true)
+      return
+    }
     if (orientationClass) {
       updateMutation.mutate(
         { id: orientationClass.id, isCompleted: !orientationClass.isCompleted },
@@ -494,6 +509,13 @@ export function ParentingClassesView() {
           onOpenChange={(open) => { if (!open) setEditClass(null) }}
         />
       )}
+
+      {/* Free Tier Upgrade Prompt */}
+      <UpgradePromptDialog
+        open={upgradePromptOpen}
+        onOpenChange={setUpgradePromptOpen}
+        category="parenting-classes"
+      />
     </div>
   )
 }

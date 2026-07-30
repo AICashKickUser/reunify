@@ -6,7 +6,9 @@ import {
   useCounselingSessions,
   useCreateItem,
   useUpdateItem,
+  useFreeTierCheck,
 } from '@/lib/data-hooks'
+import { UpgradePromptDialog } from '@/components/upgrade-prompt-dialog'
 import { CATEGORY_COLORS } from '@/lib/types'
 import type { CounselingSession } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -41,6 +43,7 @@ import {
   Plus,
   Pencil,
   Loader2,
+  Crown,
 } from 'lucide-react'
 import { getLocalDateString } from '@/lib/utils'
 
@@ -83,6 +86,7 @@ export function CounselingView() {
   const { data: sessions, isLoading } = useCounselingSessions(activeCaseId)
   const createMutation = useCreateItem('counseling')
   const updateMutation = useUpdateItem('counseling')
+  const freeTier = useFreeTierCheck('counseling', sessions?.length ?? 0)
 
   const [addOpen, setAddOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -90,6 +94,7 @@ export function CounselingView() {
   const [form, setForm] = useState<SessionFormData>(emptyForm)
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [upgradePromptOpen, setUpgradePromptOpen] = useState(false)
   const prevTriggerRef = useRef(addDialogTrigger)
 
   if (addDialogTrigger !== prevTriggerRef.current && addDialogTrigger > 0) {
@@ -133,6 +138,10 @@ export function CounselingView() {
   }, [sessions, typeFilter, statusFilter])
 
   function handleAdd() {
+    if (freeTier.atLimit) {
+      setUpgradePromptOpen(true)
+      return
+    }
     setForm(emptyForm)
     setAddOpen(true)
   }
@@ -232,8 +241,8 @@ export function CounselingView() {
           </div>
         </div>
         <Button onClick={handleAdd} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-          <Plus className="size-4" />
-          Add Session
+          {freeTier.atLimit ? <Crown className="size-4" /> : <Plus className="size-4" />}
+          {freeTier.atLimit ? 'Upgrade for More' : 'Add Session'}
         </Button>
       </div>
 
@@ -330,8 +339,8 @@ export function CounselingView() {
               Every session is a step toward healing. Add your first counseling session to start tracking your progress.
             </p>
             <Button onClick={handleAdd} className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white">
-              <Plus className="size-4" />
-              Add First Session
+              {freeTier.atLimit ? <Crown className="size-4" /> : <Plus className="size-4" />}
+              {freeTier.atLimit ? 'Upgrade for More' : 'Add First Session'}
             </Button>
           </CardContent>
         </Card>
@@ -398,6 +407,13 @@ export function CounselingView() {
           ))}
         </div>
       )}
+
+      {/* Free Tier Upgrade Prompt */}
+      <UpgradePromptDialog
+        open={upgradePromptOpen}
+        onOpenChange={setUpgradePromptOpen}
+        category="counseling"
+      />
 
       {/* Add Dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>

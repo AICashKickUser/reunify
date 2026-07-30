@@ -6,6 +6,37 @@ import type {
   NAStep, NAMeeting, SupervisedVisit, CourtDate, 
   ParentingClass, Milestone, DailyCheckIn 
 } from '@/lib/types'
+import { recordActivity, type CelebrationType } from '@/lib/streaks'
+import { canAddItem, FREE_TIER_LIMITS } from '@/lib/free-tier'
+import { useSubscriptionStore } from '@/lib/subscription'
+
+// Map endpoint names to activity types for streak tracking
+function endpointToActivityType(endpoint: string): string {
+  const mapping: Record<string, string> = {
+    'counseling': 'counseling',
+    'drug-tests': 'drug-test',
+    'na-meetings': 'na-meeting',
+    'na-steps': 'na-step',
+    'supervised-visits': 'supervised-visit',
+    'court-dates': 'court-date',
+    'parenting-classes': 'parenting-class',
+    'milestones': 'milestone',
+    'daily-checkins': 'check-in',
+    'requirements': 'requirement',
+  }
+  return mapping[endpoint] || endpoint
+}
+
+// Record activity and trigger celebration if milestone hit
+function handleActivityRecorded(type: string): void {
+  const celebrationType = recordActivity(type)
+  if (celebrationType) {
+    // Dispatch custom event for celebration overlay to pick up
+    window.dispatchEvent(new CustomEvent('celebration-trigger', { detail: celebrationType }))
+  }
+  // Dispatch event to update streak displays
+  window.dispatchEvent(new CustomEvent('streak-updated'))
+}
 
 // Fetch all cases
 export function useCases() {
@@ -184,6 +215,26 @@ export function useDailyCheckIns(caseId: string | null) {
   })
 }
 
+/**
+ * Hook to check free tier limits for a given category.
+ * Returns whether the user can add more items and the current limit.
+ */
+export function useFreeTierCheck(category: string, currentCount: number) {
+  const { isPro } = useSubscriptionStore()
+  const pro = isPro()
+  const limit = FREE_TIER_LIMITS[category] ?? Infinity
+  const atLimit = !canAddItem(category, currentCount, pro)
+  const nearLimit = !pro && limit !== Infinity && currentCount >= limit - 1 && currentCount < limit
+
+  return {
+    atLimit,
+    nearLimit,
+    limit: pro ? Infinity : limit,
+    canAdd: !atLimit,
+    isPro: pro,
+  }
+}
+
 // Generic create mutation
 export function useCreateItem(endpoint: string) {
   const queryClient = useQueryClient()
@@ -200,6 +251,15 @@ export function useCreateItem(endpoint: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [endpoint] })
       queryClient.invalidateQueries({ queryKey: ['case'] })
+      // Record activity for streak tracking
+      handleActivityRecorded(endpointToActivityType(endpoint))
+      // Dispatch free tier limit event if this category has a limit
+      const limit = FREE_TIER_LIMITS[endpoint]
+      if (limit !== undefined) {
+        // We dispatch after creation so the UI can show the upgrade prompt
+        // The count will be refreshed via query invalidation above
+        window.dispatchEvent(new CustomEvent('free-tier-item-created', { detail: { category: endpoint } }))
+      }
     },
   })
 }
@@ -220,6 +280,8 @@ export function useUpdateItem(endpoint: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [endpoint] })
       queryClient.invalidateQueries({ queryKey: ['case'] })
+      // Record activity for streak tracking (updates count as activity too)
+      handleActivityRecorded(endpointToActivityType(endpoint))
     },
   })
 }

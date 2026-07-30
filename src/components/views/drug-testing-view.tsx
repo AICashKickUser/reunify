@@ -6,7 +6,9 @@ import {
   useDrugTests,
   useCreateItem,
   useUpdateItem,
+  useFreeTierCheck,
 } from '@/lib/data-hooks'
+import { UpgradePromptDialog } from '@/components/upgrade-prompt-dialog'
 import { CATEGORY_COLORS } from '@/lib/types'
 import type { DrugTest } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,6 +30,7 @@ import {
   ChevronUp,
   PhoneOff,
   Loader2,
+  Crown,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -112,9 +115,11 @@ export function DrugTestingView() {
   const { data: drugTests, isLoading } = useDrugTests(activeCaseId)
   const createMutation = useCreateItem('drug-tests')
   const updateMutation = useUpdateItem('drug-tests')
+  const freeTier = useFreeTierCheck('drug-tests', drugTests?.length ?? 0)
 
   const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set())
   const [previousWeeksExpanded, setPreviousWeeksExpanded] = useState(true)
+  const [upgradePromptOpen, setUpgradePromptOpen] = useState(false)
 
   // ─── Current Week ────────────────────────────────────────────────────────
 
@@ -290,7 +295,11 @@ export function DrugTestingView() {
           }
         )
       } else {
-        // Create new entry
+        // Create new entry — check free tier limit first
+        if (freeTier.atLimit) {
+          setUpgradePromptOpen(true)
+          return
+        }
         createMutation.mutate(
           {
             caseId: activeCaseId,
@@ -307,7 +316,7 @@ export function DrugTestingView() {
         )
       }
     },
-    [activeCaseId, testByDate, createMutation, updateMutation, currentWeekDates]
+    [activeCaseId, testByDate, createMutation, updateMutation, currentWeekDates, freeTier.atLimit]
   )
 
   // ─── Handler: Update test result ─────────────────────────────────────────
@@ -837,6 +846,13 @@ export function DrugTestingView() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Free Tier Upgrade Prompt */}
+      <UpgradePromptDialog
+        open={upgradePromptOpen}
+        onOpenChange={setUpgradePromptOpen}
+        category="drug-tests"
+      />
     </div>
   )
 }

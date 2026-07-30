@@ -698,3 +698,5 @@ export function NAStepsView() {
     </div>
   )
 }
+
+export default NAStepsView

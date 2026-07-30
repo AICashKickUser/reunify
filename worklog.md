@@ -311,3 +311,192 @@ Stage Summary:
 - __gcruniqueid hydration mismatch fix applied across all form inputs
 - Email to caseworker now generates real PDF instead of HTML file
 - Stripe "not verified" is a Vercel dashboard badge, not an app issue
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Implement Automatic Cloud Backup with "Last Synced" indicator
+
+Work Log:
+- Added CloudBackup model to Prisma schema with caseId, data (encrypted), version, timestamps, and index on caseId
+- Ran db:push to push schema changes and prisma generate to regenerate client
+- Created cloud-backup.ts library with:
+  - XOR encryption/decryption using key derived from case ID (not crypto-grade, prevents casual snooping)
+  - performBackup() - gathers all case data via /api/export, encrypts, uploads to /api/backup/upload
+  - restoreFromCloud() - downloads encrypted backup, decrypts, returns parsed data
+  - getBackupStatus() - returns last backup time, relative time ago, staleness, from localStorage
+  - getServerBackupStatus() - checks server for latest backup, updates local timestamp if server is newer
+  - autoBackup() - called after data changes, only backs up if >5 min since last backup and user is online
+  - forceBackup() - forces backup regardless of interval
+  - localStorage key: reunify-last-backup-{caseId}
+- Created 3 API routes:
+  - /api/backup/upload (POST) - uploads encrypted backup data, upserts existing backup for case
+  - /api/backup/download (GET) - downloads latest encrypted backup for case
+  - /api/backup/status (GET) - returns last backup timestamp, count, data size, version
+- Created LastSynced component (last-synced.tsx):
+  - Small badge showing "Last synced: 2 min ago" or "Not synced"
+  - Green dot when synced recently (<1 hour), yellow when stale (>1 hour), red when never synced
+  - Click to force sync now
+  - Compact mode for sidebar, full mode for backup view
+  - Auto-refreshes every 30 seconds
+- Created use-auto-backup hook (hooks/use-auto-backup.ts):
+  - Monitors data changes via TanStack Query cache subscribe
+  - Triggers auto-backup after changes (debounced 2s, 5 min minimum interval)
+  - Only backs up when online (navigator.onLine) and for Pro users
+  - Shows toast on successful backup
+  - Listens for online event to trigger pending backup
+- Modified backup-view.tsx:
+  - Added cloud backup section with "Sync to Cloud" and "Restore from Cloud" cards
+  - Cloud sync status indicator (green/yellow dot with last sync time)
+  - Warning when never synced ("Your data is only stored on this device")
+  - Cloud restore confirmation dialog with data preview
+  - Full restore logic that POSTs all data types to their respective API endpoints
+- Modified app-sidebar.tsx:
+  - Added LastSynced indicator in sidebar footer above version text
+  - Compact mode shows dot + icon + relative time
+- Modified page.tsx:
+  - Added useAutoBackup hook to enable auto-backup for Pro users
+- All API routes verified working: upload returns 200, download returns 200, status returns 200
+- Page loads correctly (HTTP 200)
+- Lint errors are pre-existing (celebration-overlay.tsx, dashboard-view.tsx) and not from this task
+
+Stage Summary:
+- 7 new/modified files: cloud-backup.ts, 3 API routes, last-synced.tsx, use-auto-backup.ts, backup-view.tsx
+- 2 modified files: app-sidebar.tsx, page.tsx
+- 1 schema change: CloudBackup model added to Prisma
+- Cloud backup feature: encrypted backup storage, auto-backup every 5 min, force sync, restore from cloud
+- Last Synced indicator: green/yellow/red dot, relative time, click to force sync
+- Pro-only feature: auto-backup only for Pro users, free users can still manually backup
+- API endpoints verified working: /api/backup/upload, /api/backup/download, /api/backup/status
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Implement Streak Tracking & Celebrations
+
+Work Log:
+- Rewrote /home/z/my-project/src/lib/streaks.ts to add localStorage-based daily activity streak tracking alongside existing data-driven streak calculations
+  - New types: StreakData, WeeklySummary, CelebrationType
+  - New functions: getStreakData(), recordActivity(), getStreakDays(), getLongestStreak(), shouldShowCelebration(), getMotivationalQuote(), getWeeklySummary(), getLastActiveText(), markCelebrationShown(), getCelebrationLabel(), getCelebrationEmoji(), getNextMilestone()
+  - Stores streak data in localStorage keys: reunify-streak-data, reunify-streak-history
+  - Tracks activities by type (check-in, counseling, drug-test, na-meeting, na-step, supervised-visit, court-date, parenting-class, milestone, requirement)
+  - Calculates streaks from consecutive days with at least one activity
+  - Milestone celebrations at 3, 7, 14, 30, 60, 90 days
+  - 10 curated motivational quotes for CPS reunification context
+  - Kept existing functions (calculateCleanStreak, calculateMeetingStreak, calculateCounselingRate, calculateOverallProgress, getMilestones, MOTIVATIONAL_QUOTES) for backward compatibility with achievements-section.tsx
+- Created /home/z/my-project/src/components/streak-display.tsx (rewritten)
+  - StreakBadge: compact badge for sidebar header showing fire emoji + streak count + "Last active: X"
+  - StreakCard: full streak display card for dashboard with current streak, longest streak, progress to next milestone, weekly activity
+  - Color-coded: green for 7+ days, amber for 3-6 days, neutral for 0-2 days
+  - Uses useSyncExternalStore for reactive localStorage reads
+  - Listens for custom 'streak-updated' events and 'focus' events for cross-tab updates
+- Created /home/z/my-project/src/components/celebration-overlay.tsx (new)
+  - Full-screen confetti animation when milestones are hit (3, 7, 14, 30, 60, 90 days)
+  - CSS-only confetti (no npm package) using existing keyframe animations from globals.css
+  - Confetti pieces in 4 shapes: circle, square, triangle, star
+  - Beautiful gradient header with milestone number
+  - Shows milestone message with motivational quote
+  - Auto-dismisses after 5 seconds or on tap/click
+  - Uses lazy initialization for initial celebration check (avoids lint error)
+  - Listens for custom 'celebration-trigger' events from recordActivity
+- Modified /home/z/my-project/src/lib/data-hooks.ts
+  - Added import for recordActivity and CelebrationType from streaks.ts
+  - Added endpointToActivityType() mapping function
+  - Added handleActivityRecorded() helper that calls recordActivity and dispatches custom events
+  - Added recordActivity() calls to useCreateItem onSuccess callback
+  - Added recordActivity() calls to useUpdateItem onSuccess callback
+- Modified /home/z/my-project/src/components/app-sidebar.tsx
+  - Added import for StreakBadge from streak-display
+  - Added StreakBadge component in SidebarHeader below the case selector
+  - Only visible when sidebar is expanded (group-data-[collapsible=icon]:hidden)
+- Modified /home/z/my-project/src/components/views/dashboard-view.tsx
+  - Added imports for StreakCard, getWeeklySummary, getStreakData, types
+  - Added WeeklySummaryCard component showing: week day dots, activity breakdown, summary stats, motivational quote
+  - Added StreakCard + WeeklySummaryCard grid between achievements section and middle section
+  - Used lazy initialization for state (avoids lint error with setState-in-effect)
+- Modified /home/z/my-project/src/app/page.tsx
+  - Added import for CelebrationOverlay from celebration-overlay
+  - Added CelebrationOverlay component to the layout (inside SidebarProvider, alongside UpgradeDialog and OnboardingDialog)
+- Lint passes clean (bun run lint — no errors)
+- Page loads successfully (HTTP 200)
+
+Stage Summary:
+- 3 new/rewritten files: streaks.ts (rewritten), streak-display.tsx (rewritten), celebration-overlay.tsx (new)
+- 4 modified files: data-hooks.ts, app-sidebar.tsx, dashboard-view.tsx, page.tsx
+- Daily activity streak tracking: tracks consecutive days with activity, stores in localStorage
+- Sidebar streak badge: fire emoji + streak count + last active text
+- Dashboard streak card: current streak, longest streak, progress to next milestone, weekly activity
+- Dashboard weekly summary card: week day dots, activity breakdown, motivational quote
+- Celebration overlay: full-screen confetti + milestone message at 3/7/14/30/60/90 day milestones
+- recordActivity() called automatically when creating/updating items via data-hooks
+- Custom events for cross-component communication (celebration-trigger, streak-updated)
+- Backward compatible with existing achievements-section.tsx
+
+---
+Task ID: 8a
+Agent: Main Agent
+Task: Implement Free Tier Improvements - Let free users track 3 items per category
+
+Work Log:
+- Created `/src/lib/free-tier.ts` with free tier limits configuration (3 items per category)
+  - `FREE_TIER_LIMITS` constant defining limits for all 8 categories
+  - `canAddItem()` function to check if user can add more items
+  - `getFreeTierMessage()` function returning friendly, encouraging messages
+  - `getCategoryDisplayName()` function for human-readable category names
+- Created `/src/components/upgrade-prompt-dialog.tsx` - Friendly upgrade prompt dialog
+  - Uses AlertDialog component with Crown icon
+  - Encouraging message: "You've logged 3 [category]! That's great progress!"
+  - "Upgrade to Pro" button navigates to go-pro view
+  - "Continue with 3 items" dismiss button
+  - Not aggressive or annoying in tone
+- Modified `/src/lib/data-hooks.ts` - Added free tier limit check
+  - Added `useFreeTierCheck()` hook that returns `atLimit`, `nearLimit`, `limit`, `canAdd`, `isPro`
+  - Dispatches `free-tier-item-created` custom event when items are created in limited categories
+  - Added imports for `canAddItem`, `FREE_TIER_LIMITS`, `useSubscriptionStore`
+- Modified `/src/components/views/backup-view.tsx` - Allow free JSON export/restore
+  - Removed Pro gate from JSON download (handleExportJSON) - now available to all users
+  - Removed Pro gate from file restore (handleFileSelect) - now available to all users
+  - Free user view now shows: JSON download, restore from backup, Pro-locked features (email, PDF) with Lock icons
+  - Added Badge import and Lock icon for Pro-locked feature indicators
+  - Pro features (email, PDF, cloud backup) remain locked with upgrade prompt
+- Modified `/src/components/views/counseling-view.tsx` - Add free tier limit UI
+  - Added `useFreeTierCheck` hook with counseling category
+  - `handleAdd()` checks `freeTier.atLimit` and shows upgrade prompt instead of add dialog
+  - Add Session button shows Crown icon + "Upgrade for More" when at limit
+  - Empty state button also shows upgrade prompt when at limit
+  - Added `UpgradePromptDialog` component
+- Modified `/src/components/views/drug-testing-view.tsx` - Add free tier limit UI
+  - Added `useFreeTierCheck` hook with drug-tests category
+  - `handleStatusChange()` checks `freeTier.atLimit` before creating new entries
+  - Shows upgrade prompt when trying to add beyond limit
+  - Added `UpgradePromptDialog` component
+- Modified `/src/components/views/na-meetings-view.tsx` - Add free tier limit UI
+  - Added `useFreeTierCheck` hook with na-meetings category
+  - `handleOpenAddDialog()` checks `freeTier.atLimit` and shows upgrade prompt
+  - Add Meeting button shows Crown icon + "Upgrade for More" when at limit
+  - Added `UpgradePromptDialog` component
+- Modified `/src/components/views/supervised-visits-view.tsx` - Add free tier limit UI
+  - Added `useFreeTierCheck` hook with supervised-visits category
+  - Schedule Visit button checks `freeTier.atLimit` and shows upgrade prompt
+  - Add dialog trigger also respects limit
+  - Added `UpgradePromptDialog` component
+- Modified `/src/components/views/court-dates-view.tsx` - Add free tier limit UI
+  - Added `useFreeTierCheck` hook with court-dates category in CourtDateTimeline
+  - Add Court Date button shows Crown icon + "Upgrade for More" when at limit
+  - Empty state button also respects limit
+  - Added `UpgradePromptDialog` component
+- Modified `/src/components/views/parenting-classes-view.tsx` - Add free tier limit UI
+  - Added `useFreeTierCheck` hook with parenting-classes category
+  - `toggleClassCompletion()` checks `freeTier.atLimit` before creating new entries
+  - `toggleOrientation()` checks `freeTier.atLimit` before creating new entries
+  - Added `UpgradePromptDialog` component
+
+Stage Summary:
+- 2 new files: free-tier.ts (limits config), upgrade-prompt-dialog.tsx (upgrade prompt)
+- 8 modified files: data-hooks.ts, backup-view.tsx, counseling-view.tsx, drug-testing-view.tsx, na-meetings-view.tsx, supervised-visits-view.tsx, court-dates-view.tsx, parenting-classes-view.tsx
+- Free users can now track 3 items per category (counseling, drug tests, NA meetings, supervised visits, court dates, parenting classes)
+- Friendly upgrade prompt appears when limit is reached, with encouraging messaging
+- Add buttons change to "Upgrade for More" with Crown icon when at limit
+- Free users can now export JSON backup and restore from JSON backup (was Pro-only)
+- PDF report, email export, and cloud backup remain Pro-only
+- Lint passes clean, build succeeds

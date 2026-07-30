@@ -5,11 +5,12 @@ import { format, parseISO, isPast, isFuture, differenceInDays } from 'date-fns'
 import {
   Scale, Plus, Edit, CalendarDays, Clock, CheckCircle2,
   AlertCircle, Gavel, FileText, ArrowRight, Loader2, MapPin,
-  ChevronRight
+  ChevronRight, Crown,
 } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import { getLocalDateString } from '@/lib/utils'
-import { useCourtDates, useCase, useCreateItem, useUpdateItem } from '@/lib/data-hooks'
+import { useCourtDates, useCase, useCreateItem, useUpdateItem, useFreeTierCheck } from '@/lib/data-hooks'
+import { UpgradePromptDialog } from '@/components/upgrade-prompt-dialog'
 import type { CourtDate } from '@/lib/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -472,11 +473,17 @@ function CourtDateTimeline({ courtDates }: { courtDates: CourtDate[] }) {
   const [addOpen, setAddOpen] = useState(false)
   const [editDate, setEditDate] = useState<CourtDate | null>(null)
   const { activeCaseId, addDialogTrigger } = useAppStore()
+  const freeTier = useFreeTierCheck('court-dates', courtDates?.length ?? 0)
+  const [upgradePromptOpen, setUpgradePromptOpen] = useState(false)
   const prevTriggerRef = useRef(addDialogTrigger)
 
   if (addDialogTrigger !== prevTriggerRef.current && addDialogTrigger > 0) {
     prevTriggerRef.current = addDialogTrigger
-    setAddOpen(true)
+    if (freeTier.atLimit) {
+      setUpgradePromptOpen(true)
+    } else {
+      setAddOpen(true)
+    }
   }
 
   const sortedDates = [...courtDates].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -492,10 +499,16 @@ function CourtDateTimeline({ courtDates }: { courtDates: CourtDate[] }) {
           <Button
             className="bg-emerald-600 hover:bg-emerald-700 text-white"
             size="sm"
-            onClick={() => setAddOpen(true)}
+            onClick={() => {
+              if (freeTier.atLimit) {
+                setUpgradePromptOpen(true)
+              } else {
+                setAddOpen(true)
+              }
+            }}
           >
-            <Plus className="size-3.5 mr-1" />
-            Add Court Date
+            {freeTier.atLimit ? <Crown className="size-3.5 mr-1" /> : <Plus className="size-3.5 mr-1" />}
+            {freeTier.atLimit ? 'Upgrade for More' : 'Add Court Date'}
           </Button>
         </div>
       </CardHeader>
@@ -508,10 +521,16 @@ function CourtDateTimeline({ courtDates }: { courtDates: CourtDate[] }) {
             <Button
               className="mt-3 bg-emerald-600 hover:bg-emerald-700 text-white"
               size="sm"
-              onClick={() => setAddOpen(true)}
+              onClick={() => {
+                if (freeTier.atLimit) {
+                  setUpgradePromptOpen(true)
+                } else {
+                  setAddOpen(true)
+                }
+              }}
             >
-              <Plus className="size-3.5 mr-1" />
-              Add Court Date
+              {freeTier.atLimit ? <Crown className="size-3.5 mr-1" /> : <Plus className="size-3.5 mr-1" />}
+              {freeTier.atLimit ? 'Upgrade for More' : 'Add Court Date'}
             </Button>
           </div>
         ) : (
@@ -539,6 +558,13 @@ function CourtDateTimeline({ courtDates }: { courtDates: CourtDate[] }) {
         open={!!editDate}
         onOpenChange={(open) => { if (!open) setEditDate(null) }}
         courtDate={editDate}
+      />
+
+      {/* Free Tier Upgrade Prompt */}
+      <UpgradePromptDialog
+        open={upgradePromptOpen}
+        onOpenChange={setUpgradePromptOpen}
+        category="court-dates"
       />
     </Card>
   )
@@ -594,3 +620,5 @@ export function CourtDatesView() {
     </div>
   )
 }
+
+export default CourtDatesView
