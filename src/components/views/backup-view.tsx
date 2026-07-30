@@ -30,17 +30,17 @@ import {
 interface ExportData {
   exportDate: string
   exportType: string
-  case: Record<string, unknown>
-  requirements: Record<string, unknown>[]
-  counselingSessions: Record<string, unknown>[]
-  drugTests: Record<string, unknown>[]
-  naSteps: Record<string, unknown>[]
-  naMeetings: Record<string, unknown>[]
-  supervisedVisits: Record<string, unknown>[]
-  courtDates: Record<string, unknown>[]
-  parentingClasses: Record<string, unknown>[]
-  milestones: Record<string, unknown>[]
-  dailyCheckIns: Record<string, unknown>[]
+  case: { caseNumber?: string; [key: string]: unknown }
+  requirements: unknown[]
+  counselingSessions: unknown[]
+  drugTests: unknown[]
+  naSteps: unknown[]
+  naMeetings: unknown[]
+  supervisedVisits: unknown[]
+  courtDates: unknown[]
+  parentingClasses: unknown[]
+  milestones: unknown[]
+  dailyCheckIns: unknown[]
   summary: Record<string, unknown>
 }
 
@@ -58,7 +58,7 @@ export function BackupView() {
   const [cloudStatus, setCloudStatus] = useState<BackupStatus | null>(null)
   const [cloudRestoring, setCloudRestoring] = useState(false)
   const [confirmCloudRestore, setConfirmCloudRestore] = useState(false)
-  const [cloudRestoreData, setCloudRestoreData] = useState<Record<string, unknown> | null>(null)
+  const [cloudRestoreData, setCloudRestoreData] = useState<ExportData | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Load last backup date from localStorage
@@ -112,7 +112,7 @@ export function BackupView() {
     try {
       const result = await restoreFromCloud(activeCaseId)
       if (result.success && result.data) {
-        setCloudRestoreData(result.data)
+        setCloudRestoreData(result.data as unknown as ExportData)
         setConfirmCloudRestore(true)
       } else {
         toast.error('Cloud restore failed', { description: result.error || 'No backup found.' })
@@ -341,7 +341,7 @@ export function BackupView() {
             await fetch(`/api/${endpoint}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ...item, caseId: activeCaseId }),
+              body: JSON.stringify({ ...(item as Record<string, unknown>), caseId: activeCaseId }),
             })
           }
         }
@@ -352,7 +352,7 @@ export function BackupView() {
           await fetch(`/api/na-steps`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...step, caseId: activeCaseId }),
+            body: JSON.stringify({ ...(step as Record<string, unknown>), caseId: activeCaseId }),
           })
         }
       }
@@ -823,7 +823,7 @@ export function BackupView() {
                 {cloudRestoreData.case && (
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="size-4 text-emerald-600" />
-                    <span className="text-muted-foreground">Case: <strong>{(cloudRestoreData.case as Record<string, unknown>).caseNumber || 'Unknown'}</strong></span>
+                    <span className="text-muted-foreground">Case: <strong>{cloudRestoreData.case.caseNumber || 'Unknown'}</strong></span>
                   </div>
                 )}
                 {cloudRestoreData.exportDate && (

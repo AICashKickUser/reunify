@@ -26,6 +26,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { useCase, useDailyCheckIns, useCreateItem, useUpdateItem } from '@/lib/data-hooks'
 import { useAppStore } from '@/lib/store'
+import type { DailyCheckIn } from '@/lib/types'
 import {
   CalendarCheck,
   Plus,
@@ -109,7 +110,7 @@ export function DailyCheckinsView() {
 
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [selectedCheckin, setSelectedCheckin] = useState<typeof checkins extends (infer T)[] | null ? T : never | null>(null)
+  const [selectedCheckin, setSelectedCheckin] = useState<DailyCheckIn | null>(null)
 
   // Form state
   const [formDate, setFormDate] = useState(getLocalDateString())
@@ -138,7 +139,7 @@ export function DailyCheckinsView() {
     setAddDialogOpen(true)
   }
 
-  function openEditDialog(checkin: NonNullable<typeof checkins>[0]) {
+  function openEditDialog(checkin: DailyCheckIn) {
     setSelectedCheckin(checkin)
     setFormDate(format(parseLocalDate(checkin.date), 'yyyy-MM-dd'))
     setFormMood(checkin.mood || 'okay')

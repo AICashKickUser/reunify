@@ -16,6 +16,7 @@ export async function PUT(
         outcome: body.outcome,
         judgeNotes: body.judgeNotes,
         nextSteps: body.nextSteps,
+        notes: body.notes,
         isCompleted: body.isCompleted,
       },
     })

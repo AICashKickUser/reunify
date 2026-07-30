@@ -110,7 +110,7 @@ export function LastSynced({ caseId, compact = false }: LastSyncedProps) {
       <span className={`size-2.5 rounded-full ${dotColor} ${dotPulse} shrink-0`} />
       <SyncIcon className={`size-3.5 shrink-0 ${syncing ? 'animate-spin' : ''}`} />
       <span className="truncate text-muted-foreground">
-        {syncing ? 'Syncing...' : justSynced ? 'Synced!' : status?.hasNeverSynced ? 'Not yet synced' : `Last synced: ${status.lastBackupAgo}`}
+        {syncing ? 'Syncing...' : justSynced ? 'Synced!' : status?.hasNeverSynced ? 'Not yet synced' : `Last synced: ${status?.lastBackupAgo ?? 'unknown'}`}
       </span>
     </button>
   )

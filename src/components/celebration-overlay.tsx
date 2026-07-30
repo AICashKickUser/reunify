@@ -73,13 +73,12 @@ function ConfettiOverlay({ pieces }: { pieces: ConfettiPiece[] }) {
             style={{
               width: piece.size,
               height: piece.size,
-              backgroundColor: piece.shape !== 'triangle' && piece.shape !== 'star' ? piece.color : 'transparent',
+              backgroundColor: piece.shape === 'star' ? piece.color : piece.shape !== 'triangle' ? piece.color : 'transparent',
               borderRadius: piece.shape === 'circle' ? '50%' : piece.shape === 'square' ? '2px' : '0',
               borderLeft: piece.shape === 'triangle' ? `${piece.size / 2}px solid transparent` : undefined,
               borderRight: piece.shape === 'triangle' ? `${piece.size / 2}px solid transparent` : undefined,
               borderBottom: piece.shape === 'triangle' ? `${piece.size}px solid ${piece.color}` : undefined,
               clipPath: piece.shape === 'star' ? 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' : undefined,
-              backgroundColor: piece.shape === 'star' ? piece.color : undefined,
               transform: `rotate(${piece.rotation}deg)`,
             }}
           />

@@ -115,6 +115,7 @@ export interface CourtDate {
   outcome: string | null
   judgeNotes: string | null
   nextSteps: string | null
+  notes: string | null
   isCompleted: boolean
   createdAt: string
   updatedAt: string

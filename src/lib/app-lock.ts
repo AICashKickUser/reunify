@@ -35,7 +35,7 @@ export function isPinSet(): boolean {
 /**
  * Store the PIN hash (not the actual PIN).
  */
-export async function setAppLockPin(pin: string): void {
+export async function setAppLockPin(pin: string): Promise<void> {
   const hash = await hashPin(pin)
   localStorage.setItem(APP_LOCK_PIN_HASH_KEY, hash)
   localStorage.setItem(APP_LOCK_ENABLED_KEY, 'true')

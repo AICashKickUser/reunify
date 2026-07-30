@@ -323,7 +323,7 @@ function PrivacyNotice() {
 function SummaryDialog({ open, onOpenChange, caseData, categories }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  caseData: Record<string, unknown>
+  caseData: any
   categories: CategoryProgress[]
 }) {
   const { tier, setUpgradeDialogOpen } = useSubscriptionStore()
@@ -549,7 +549,7 @@ Classes: ${completedClasses.length} completed`
   )
 }
 
-function generatePDFReport(caseData: Record<string, unknown>, categories: CategoryProgress[]) {
+function generatePDFReport(caseData: any, categories: CategoryProgress[]) {
   const requirements = (caseData.requirements || []) as Array<Record<string, unknown>>
   const completedReqs = requirements.filter((r) => r.isCompleted)
   const incompleteReqs = requirements.filter((r) => !r.isCompleted)

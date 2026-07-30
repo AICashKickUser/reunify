@@ -159,6 +159,7 @@ model CourtDate {
   outcome         String?
   judgeNotes      String?
   nextSteps       String?
+  notes           String?
   isCompleted     Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     
     // Force download with Content-Disposition header
     // This is crucial for iPad Safari which may not handle .aab files
-    return new NextResponse(fileBuffer, {
+    return new NextResponse(new Uint8Array(fileBuffer), {
       status: 200,
       headers: {
         'Content-Type': contentType,
