@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { forceBackup, getServerBackupStatus, restoreFromCloud, type BackupStatus } from '@/lib/cloud-backup'
+import { exportAllData, importAllData, createCase as dbCreateCase, updateCase as dbUpdateCase, createItemByEndpoint, resetCaseData } from '@/lib/client-db'
 import {
   HardDriveDownload,
   Download,
@@ -151,9 +152,37 @@ export function BackupView() {
 
     setExporting('json')
     try {
-      const res = await fetch(`/api/export?caseId=${activeCaseId}`)
-      if (!res.ok) throw new Error('Export failed')
-      const data: ExportData = await res.json()
+      const dbData = await exportAllData()
+      // Find the active case in the exported data
+      const activeCase = dbData.cases.find(c => c.id === activeCaseId)
+      const data: ExportData = {
+        exportDate: dbData.exportedAt,
+        exportType: 'reunify-full',
+        case: activeCase ? {
+          caseNumber: activeCase.caseNumber,
+          courtName: activeCase.courtName,
+          caseworkerName: activeCase.caseworkerName,
+          caseworkerPhone: activeCase.caseworkerPhone,
+          judgeName: activeCase.judgeName,
+          attorneyName: activeCase.attorneyName,
+          attorneyPhone: activeCase.attorneyPhone,
+          removalDate: activeCase.removalDate,
+          targetReunificationDate: activeCase.targetReunificationDate,
+          caseStatus: activeCase.caseStatus,
+          notes: activeCase.notes,
+        } : {},
+        requirements: dbData.requirements.filter(r => r.caseId === activeCaseId),
+        counselingSessions: dbData.counselingSessions.filter(s => s.caseId === activeCaseId),
+        drugTests: dbData.drugTests.filter(t => t.caseId === activeCaseId),
+        naSteps: dbData.naSteps.filter(s => s.caseId === activeCaseId),
+        naMeetings: dbData.naMeetings.filter(m => m.caseId === activeCaseId),
+        supervisedVisits: dbData.supervisedVisits.filter(v => v.caseId === activeCaseId),
+        courtDates: dbData.courtDates.filter(d => d.caseId === activeCaseId),
+        parentingClasses: dbData.parentingClasses.filter(c => c.caseId === activeCaseId),
+        milestones: dbData.milestones.filter(m => m.caseId === activeCaseId),
+        dailyCheckIns: dbData.dailyCheckIns.filter(c => c.caseId === activeCaseId),
+        summary: {},
+      }
 
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
@@ -218,13 +247,10 @@ export function BackupView() {
       if (!res.ok) throw new Error('Report failed')
       const html = await res.text()
 
-      // Get case info for the filename
-      const caseRes = await fetch(`/api/export?caseId=${activeCaseId}`)
-      let caseNumber = 'case'
-      if (caseRes.ok) {
-        const caseData = await caseRes.json()
-        caseNumber = caseData.case?.caseNumber || 'case'
-      }
+      // Get case info for the filename from IndexedDB
+      const dbData = await exportAllData()
+      const activeCase = dbData.cases.find(c => c.id === activeCaseId)
+      const caseNumber = activeCase?.caseNumber || 'case'
 
       // Create a temporary container to render the HTML
       const container = document.createElement('div')
@@ -341,45 +367,31 @@ export function BackupView() {
 
       // If no active case, create one from the backup data
       if (!targetCaseId) {
-        const caseRes = await fetch('/api/cases', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            caseNumber: restorePreview.case.caseNumber || 'CPS-RESTORED',
-            courtName: restorePreview.case.courtName || restorePreview.case.court || null,
-            caseworkerName: restorePreview.case.caseworkerName || restorePreview.case.caseworker || null,
-            caseworkerPhone: restorePreview.case.caseworkerPhone || null,
-            judgeName: restorePreview.case.judgeName || restorePreview.case.judge || null,
-            attorneyName: restorePreview.case.attorneyName || restorePreview.case.attorney || null,
-            attorneyPhone: restorePreview.case.attorneyPhone || null,
-            removalDate: restorePreview.case.removalDate || null,
-            targetReunificationDate: restorePreview.case.targetReunificationDate || null,
-            caseStatus: restorePreview.case.caseStatus || restorePreview.case.status || 'active',
-            notes: restorePreview.case.notes || null,
-          }),
+        const newCase = await dbCreateCase({
+          caseNumber: restorePreview.case.caseNumber || 'CPS-RESTORED',
+          courtName: restorePreview.case.courtName || restorePreview.case.court || null,
+          caseworkerName: restorePreview.case.caseworkerName || restorePreview.case.caseworker || null,
+          caseworkerPhone: restorePreview.case.caseworkerPhone || null,
+          judgeName: restorePreview.case.judgeName || restorePreview.case.judge || null,
+          attorneyName: restorePreview.case.attorneyName || restorePreview.case.attorney || null,
+          attorneyPhone: restorePreview.case.attorneyPhone || null,
+          removalDate: restorePreview.case.removalDate || null,
+          targetReunificationDate: restorePreview.case.targetReunificationDate || null,
+          caseStatus: restorePreview.case.caseStatus || restorePreview.case.status || 'active',
+          notes: restorePreview.case.notes || null,
         })
-        if (!caseRes.ok) throw new Error('Failed to create case from backup')
-        const newCase = await caseRes.json()
         targetCaseId = newCase.id
         setActiveCaseId(targetCaseId)
       } else {
         // Update existing case with backup data
         const caseData = restorePreview.case
-        await fetch(`/api/cases/${targetCaseId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(caseData),
-        })
+        await dbUpdateCase(targetCaseId, caseData as Record<string, unknown>)
       }
 
       // Restore requirements first
       if (restorePreview.requirements && restorePreview.requirements.length > 0) {
         for (const req of restorePreview.requirements) {
-          await fetch('/api/requirements', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...(req as Record<string, unknown>), caseId: targetCaseId }),
-          })
+          await createItemByEndpoint('requirements', { ...(req as Record<string, unknown>), caseId: targetCaseId })
         }
       }
 
@@ -402,13 +414,8 @@ export function BackupView() {
         if (data && data.length > 0) {
           for (const item of data) {
             try {
-              const res = await fetch(`/api/${endpoint}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...(item as Record<string, unknown>), caseId: targetCaseId }),
-              })
-              if (res.ok) successCount++
-              else failCount++
+              await createItemByEndpoint(endpoint, { ...(item as Record<string, unknown>), caseId: targetCaseId })
+              successCount++
             } catch {
               failCount++
             }
@@ -420,13 +427,8 @@ export function BackupView() {
       if (restorePreview.naSteps && restorePreview.naSteps.length > 0) {
         for (const step of restorePreview.naSteps) {
           try {
-            const res = await fetch('/api/na-steps', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ...(step as Record<string, unknown>), caseId: targetCaseId }),
-            })
-            if (res.ok) successCount++
-            else failCount++
+            await createItemByEndpoint('na-steps', { ...(step as Record<string, unknown>), caseId: targetCaseId })
+            successCount++
           } catch {
             failCount++
           }
@@ -969,11 +971,7 @@ export function BackupView() {
                     setCloudRestoring(true)
                     try {
                       const caseData = cloudRestoreData.case as Record<string, unknown>
-                      await fetch(`/api/cases/${activeCaseId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(caseData),
-                      })
+                      await dbUpdateCase(activeCaseId, caseData as Record<string, unknown>)
 
                       const endpoints = [
                         { data: cloudRestoreData.counselingSessions as Record<string, unknown>[] | undefined, endpoint: 'counseling' },
@@ -989,32 +987,20 @@ export function BackupView() {
                       for (const { data, endpoint } of endpoints) {
                         if (data && Array.isArray(data) && data.length > 0) {
                           for (const item of data) {
-                            await fetch(`/api/${endpoint}`, {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ ...item, caseId: activeCaseId }),
-                            })
+                            await createItemByEndpoint(endpoint, { ...item, caseId: activeCaseId })
                           }
                         }
                       }
 
                       if (cloudRestoreData.naSteps && Array.isArray(cloudRestoreData.naSteps) && cloudRestoreData.naSteps.length > 0) {
                         for (const step of cloudRestoreData.naSteps as Record<string, unknown>[]) {
-                          await fetch(`/api/na-steps`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ ...step, caseId: activeCaseId }),
-                          })
+                          await createItemByEndpoint('na-steps', { ...step, caseId: activeCaseId })
                         }
                       }
 
                       if (cloudRestoreData.requirements && Array.isArray(cloudRestoreData.requirements) && cloudRestoreData.requirements.length > 0) {
                         for (const req of cloudRestoreData.requirements as Record<string, unknown>[]) {
-                          await fetch(`/api/requirements`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ ...req, caseId: activeCaseId }),
-                          })
+                          await createItemByEndpoint('requirements', { ...req, caseId: activeCaseId })
                         }
                       }
 

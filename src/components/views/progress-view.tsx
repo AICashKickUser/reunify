@@ -31,6 +31,7 @@ import { FileText } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import { useCase } from '@/lib/data-hooks'
 import { useSubscriptionStore } from '@/lib/subscription'
+import { exportAllData } from '@/lib/client-db'
 import { ProBadge } from '@/components/pro-badge'
 import { ChartContainer } from '@/components/ui/chart'
 import {
@@ -1028,16 +1029,31 @@ export function ProgressView() {
     if (!activeCaseId) return
     try {
       setExporting(true)
-      const res = await fetch(`/api/export?caseId=${activeCaseId}`)
-      if (!res.ok) throw new Error('Export failed')
-      const data = await res.json()
+      const dbData = await exportAllData()
+      const activeCase = dbData.cases.find(c => c.id === activeCaseId)
+      const data = {
+        exportDate: dbData.exportedAt,
+        exportType: 'reunify-full',
+        case: activeCase || {},
+        requirements: dbData.requirements.filter(r => r.caseId === activeCaseId),
+        counselingSessions: dbData.counselingSessions.filter(s => s.caseId === activeCaseId),
+        drugTests: dbData.drugTests.filter(t => t.caseId === activeCaseId),
+        naSteps: dbData.naSteps.filter(s => s.caseId === activeCaseId),
+        naMeetings: dbData.naMeetings.filter(m => m.caseId === activeCaseId),
+        supervisedVisits: dbData.supervisedVisits.filter(v => v.caseId === activeCaseId),
+        courtDates: dbData.courtDates.filter(d => d.caseId === activeCaseId),
+        parentingClasses: dbData.parentingClasses.filter(c => c.caseId === activeCaseId),
+        milestones: dbData.milestones.filter(m => m.caseId === activeCaseId),
+        dailyCheckIns: dbData.dailyCheckIns.filter(c => c.caseId === activeCaseId),
+        summary: {},
+      }
       const blob = new Blob([JSON.stringify(data, null, 2)], {
         type: 'application/json',
       })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `reunify-export-${data.case.caseNumber}-${new Date().toISOString().split('T')[0]}.json`
+      a.download = `reunify-export-${(data.case as Record<string, unknown>).caseNumber || 'case'}-${new Date().toISOString().split('T')[0]}.json`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)

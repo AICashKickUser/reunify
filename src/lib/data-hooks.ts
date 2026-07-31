@@ -9,6 +9,29 @@ import type {
 import { recordActivity, type CelebrationType } from '@/lib/streaks'
 import { canAddItem, FREE_TIER_LIMITS } from '@/lib/free-tier'
 import { useSubscriptionStore } from '@/lib/subscription'
+import {
+  getAllCases,
+  getCaseWithRelated,
+  getRequirements,
+  getCounselingSessions,
+  getDrugTests,
+  getNASteps,
+  getNAMeetings,
+  getSupervisedVisits,
+  getCourtDates,
+  getParentingClasses,
+  getMilestones,
+  getDailyCheckIns,
+  createCase as dbCreateCase,
+  deleteCase as dbDeleteCase,
+  createItemByEndpoint,
+  updateItemByEndpoint,
+  deleteItemByEndpoint,
+  resetCaseData,
+  seedDemoData,
+  clearAllData,
+  invalidateQueries,
+} from '@/lib/client-db'
 
 // Map endpoint names to activity types for streak tracking
 function endpointToActivityType(endpoint: string): string {
@@ -43,9 +66,7 @@ export function useCases() {
   return useQuery({
     queryKey: ['cases'],
     queryFn: async () => {
-      const res = await fetch('/api/cases')
-      if (!res.ok) throw new Error('Failed to fetch cases')
-      return res.json() as Promise<CaseInfo[]>
+      return getAllCases()
     },
   })
 }
@@ -56,20 +77,7 @@ export function useCase(id: string | null) {
     queryKey: ['case', id],
     queryFn: async () => {
       if (!id) return null
-      const res = await fetch(`/api/cases/${id}`)
-      if (!res.ok) throw new Error('Failed to fetch case')
-      return res.json() as Promise<CaseInfo & {
-        requirements: CaseRequirement[]
-        counselingSessions: CounselingSession[]
-        drugTests: DrugTest[]
-        naSteps: NAStep[]
-        naMeetings: NAMeeting[]
-        supervisedVisits: SupervisedVisit[]
-        courtDates: CourtDate[]
-        parentingClasses: ParentingClass[]
-        milestones: Milestone[]
-        dailyCheckIns: DailyCheckIn[]
-      }>
+      return getCaseWithRelated(id)
     },
     enabled: !!id,
   })
@@ -81,9 +89,7 @@ export function useRequirements(caseId: string | null) {
     queryKey: ['requirements', caseId],
     queryFn: async () => {
       if (!caseId) return []
-      const res = await fetch(`/api/requirements?caseId=${caseId}`)
-      if (!res.ok) throw new Error('Failed to fetch requirements')
-      return res.json() as Promise<CaseRequirement[]>
+      return getRequirements(caseId)
     },
     enabled: !!caseId,
   })
@@ -95,9 +101,7 @@ export function useCounselingSessions(caseId: string | null) {
     queryKey: ['counseling', caseId],
     queryFn: async () => {
       if (!caseId) return []
-      const res = await fetch(`/api/counseling?caseId=${caseId}`)
-      if (!res.ok) throw new Error('Failed to fetch counseling sessions')
-      return res.json() as Promise<CounselingSession[]>
+      return getCounselingSessions(caseId)
     },
     enabled: !!caseId,
   })
@@ -109,9 +113,7 @@ export function useDrugTests(caseId: string | null) {
     queryKey: ['drug-tests', caseId],
     queryFn: async () => {
       if (!caseId) return []
-      const res = await fetch(`/api/drug-tests?caseId=${caseId}`)
-      if (!res.ok) throw new Error('Failed to fetch drug tests')
-      return res.json() as Promise<DrugTest[]>
+      return getDrugTests(caseId)
     },
     enabled: !!caseId,
   })
@@ -123,9 +125,7 @@ export function useNASteps(caseId: string | null) {
     queryKey: ['na-steps', caseId],
     queryFn: async () => {
       if (!caseId) return []
-      const res = await fetch(`/api/na-steps?caseId=${caseId}`)
-      if (!res.ok) throw new Error('Failed to fetch NA steps')
-      return res.json() as Promise<NAStep[]>
+      return getNASteps(caseId)
     },
     enabled: !!caseId,
   })
@@ -137,9 +137,7 @@ export function useNAMeetings(caseId: string | null) {
     queryKey: ['na-meetings', caseId],
     queryFn: async () => {
       if (!caseId) return []
-      const res = await fetch(`/api/na-meetings?caseId=${caseId}`)
-      if (!res.ok) throw new Error('Failed to fetch NA meetings')
-      return res.json() as Promise<NAMeeting[]>
+      return getNAMeetings(caseId)
     },
     enabled: !!caseId,
   })
@@ -151,9 +149,7 @@ export function useSupervisedVisits(caseId: string | null) {
     queryKey: ['supervised-visits', caseId],
     queryFn: async () => {
       if (!caseId) return []
-      const res = await fetch(`/api/supervised-visits?caseId=${caseId}`)
-      if (!res.ok) throw new Error('Failed to fetch supervised visits')
-      return res.json() as Promise<SupervisedVisit[]>
+      return getSupervisedVisits(caseId)
     },
     enabled: !!caseId,
   })
@@ -165,9 +161,7 @@ export function useCourtDates(caseId: string | null) {
     queryKey: ['court-dates', caseId],
     queryFn: async () => {
       if (!caseId) return []
-      const res = await fetch(`/api/court-dates?caseId=${caseId}`)
-      if (!res.ok) throw new Error('Failed to fetch court dates')
-      return res.json() as Promise<CourtDate[]>
+      return getCourtDates(caseId)
     },
     enabled: !!caseId,
   })
@@ -179,9 +173,7 @@ export function useParentingClasses(caseId: string | null) {
     queryKey: ['parenting-classes', caseId],
     queryFn: async () => {
       if (!caseId) return []
-      const res = await fetch(`/api/parenting-classes?caseId=${caseId}`)
-      if (!res.ok) throw new Error('Failed to fetch parenting classes')
-      return res.json() as Promise<ParentingClass[]>
+      return getParentingClasses(caseId)
     },
     enabled: !!caseId,
   })
@@ -193,9 +185,7 @@ export function useMilestones(caseId: string | null) {
     queryKey: ['milestones', caseId],
     queryFn: async () => {
       if (!caseId) return []
-      const res = await fetch(`/api/milestones?caseId=${caseId}`)
-      if (!res.ok) throw new Error('Failed to fetch milestones')
-      return res.json() as Promise<Milestone[]>
+      return getMilestones(caseId)
     },
     enabled: !!caseId,
   })
@@ -207,9 +197,7 @@ export function useDailyCheckIns(caseId: string | null) {
     queryKey: ['daily-checkins', caseId],
     queryFn: async () => {
       if (!caseId) return []
-      const res = await fetch(`/api/daily-checkins?caseId=${caseId}`)
-      if (!res.ok) throw new Error('Failed to fetch daily checkins')
-      return res.json() as Promise<DailyCheckIn[]>
+      return getDailyCheckIns(caseId)
     },
     enabled: !!caseId,
   })
@@ -240,24 +228,18 @@ export function useCreateItem(endpoint: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (data: Record<string, unknown>) => {
-      const res = await fetch(`/api/${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-      if (!res.ok) throw new Error(`Failed to create ${endpoint}`)
-      return res.json()
+      return createItemByEndpoint(endpoint, data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [endpoint] })
       queryClient.invalidateQueries({ queryKey: ['case'] })
+      // Also dispatch our custom invalidation event
+      invalidateQueries([endpoint, 'case'])
       // Record activity for streak tracking
       handleActivityRecorded(endpointToActivityType(endpoint))
       // Dispatch free tier limit event if this category has a limit
       const limit = FREE_TIER_LIMITS[endpoint]
       if (limit !== undefined) {
-        // We dispatch after creation so the UI can show the upgrade prompt
-        // The count will be refreshed via query invalidation above
         window.dispatchEvent(new CustomEvent('free-tier-item-created', { detail: { category: endpoint } }))
       }
     },
@@ -269,17 +251,12 @@ export function useUpdateItem(endpoint: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, ...data }: { id: string } & Record<string, unknown>) => {
-      const res = await fetch(`/api/${endpoint}/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-      if (!res.ok) throw new Error(`Failed to update ${endpoint}`)
-      return res.json()
+      return updateItemByEndpoint(endpoint, id, data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [endpoint] })
       queryClient.invalidateQueries({ queryKey: ['case'] })
+      invalidateQueries([endpoint, 'case'])
       // Record activity for streak tracking (updates count as activity too)
       handleActivityRecorded(endpointToActivityType(endpoint))
     },
@@ -291,15 +268,12 @@ export function useDeleteItem(endpoint: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/${endpoint}/${id}`, {
-        method: 'DELETE',
-      })
-      if (!res.ok) throw new Error(`Failed to delete ${endpoint}`)
-      return res.json()
+      return deleteItemByEndpoint(endpoint, id)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [endpoint] })
       queryClient.invalidateQueries({ queryKey: ['case'] })
+      invalidateQueries([endpoint, 'case'])
     },
   })
 }
@@ -309,16 +283,11 @@ export function useCreateCase() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (data: Record<string, unknown>) => {
-      const res = await fetch('/api/cases', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-      if (!res.ok) throw new Error('Failed to create case')
-      return res.json()
+      return dbCreateCase(data as Partial<CaseInfo>)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cases'] })
+      invalidateQueries(['cases'])
     },
   })
 }
@@ -328,11 +297,7 @@ export function useDeleteCase() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (caseId: string) => {
-      const res = await fetch(`/api/cases/${caseId}`, {
-        method: 'DELETE',
-      })
-      if (!res.ok) throw new Error('Failed to delete case')
-      return res.json()
+      return dbDeleteCase(caseId)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cases'] })
@@ -347,6 +312,7 @@ export function useDeleteCase() {
       queryClient.invalidateQueries({ queryKey: ['parenting-classes'] })
       queryClient.invalidateQueries({ queryKey: ['milestones'] })
       queryClient.invalidateQueries({ queryKey: ['daily-checkins'] })
+      invalidateQueries()
     },
   })
 }
@@ -356,15 +322,11 @@ export function useSeedDatabase() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async () => {
-      const res = await fetch('/api/seed', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      })
-      if (!res.ok) throw new Error('Failed to seed database')
-      return res.json()
+      return seedDemoData()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cases'] })
+      invalidateQueries(['cases'])
     },
   })
 }
@@ -374,12 +336,7 @@ export function useResetCase() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (caseId: string) => {
-      const res = await fetch(`/api/cases/${caseId}/reset`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      })
-      if (!res.ok) throw new Error('Failed to reset case data')
-      return res.json()
+      return resetCaseData(caseId)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['case'] })
@@ -393,6 +350,7 @@ export function useResetCase() {
       queryClient.invalidateQueries({ queryKey: ['parenting-classes'] })
       queryClient.invalidateQueries({ queryKey: ['milestones'] })
       queryClient.invalidateQueries({ queryKey: ['daily-checkins'] })
+      invalidateQueries()
     },
   })
 }
