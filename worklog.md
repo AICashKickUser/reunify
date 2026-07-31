@@ -1,24 +1,28 @@
 ---
 Task ID: 1
 Agent: Main
-Task: Fix dev server stability and app not creating case plans
+Task: Fix Reunify app - data not showing, case creation broken, backup restore broken
 
 Work Log:
-- Investigated dev server crash/refresh loop reported by user
-- Found that the dev server keeps dying after serving the page due to memory pressure
-- The Next.js server uses ~1.5GB of memory during page compilation on a 3.9GB system
-- Added `allowedDevOrigins: ["*.space-z.ai"]` to next.config.ts to allow cross-origin requests from preview panel
-- Note: The `.space-z.ai` pattern does NOT work (empty string in split), must use `*.space-z.ai`
-- Verified that both API endpoints work correctly:
-  - POST /api/cases - creates new case successfully
-  - POST /api/seed - generates demo data successfully
-- The server is stable when accessed directly via curl, but dies when agent-browser's Chrome process is running
-- The Caddy proxy works when the server is running (returns 200)
-- The server dies after serving 3-7 requests due to memory pressure
+- Verified data exists in SQLite database (1 case with 17 requirements, 14 daily checkins, 13 drug tests, etc.)
+- Identified root cause: `activeCaseId` in Zustand store was not persisted to localStorage, so every page reload showed the OnboardingWizard instead of the actual case data
+- Fixed store.ts to persist `activeCaseId` to localStorage under key `reunify-active-case-id`
+- Added `useAutoSelectCase()` hook in page.tsx that auto-selects the first case from the API when no activeCaseId is set
+- Fixed backup export API (export/route.ts) to use correct field names matching API POST endpoints (e.g., `counselorName` instead of `counselor`, `sessionType` instead of `type`, `isCompleted` instead of `completed`)
+- Fixed backup restore function (backup-view.tsx) to:
+  - Use correct API endpoint names (e.g., `counseling` instead of `counseling-sessions`)
+  - Create a new case from backup data if no activeCaseId exists
+  - Include requirements in the restore process
+  - Add error counting and partial success reporting
+  - Invalidate React Query cache after restore
+  - Added `useQueryClient` import for cache invalidation
+- Updated ExportData interface with explicit field names for better type safety
+- All lint checks pass, no TypeScript errors
+- Verified with Agent Browser that the app loads correctly, shows dashboard with data, case plan view works, drug testing view works, backup view works
 
 Stage Summary:
-- Added `allowedDevOrigins: ["*.space-z.ai"]` to next.config.ts
-- Confirmed API endpoints work correctly
-- Server stability issue is due to memory pressure (1.5GB+ usage on 3.9GB system)
-- The agent-browser's Chrome process consumes additional memory, causing the server to die faster
-- The code itself is correct - the issue is the dev server memory usage
+- App now auto-selects existing case on load (no more showing onboarding wizard when data exists)
+- `activeCaseId` persists across page reloads via localStorage
+- Backup export now uses field names that match API POST endpoints
+- Backup restore now works even without an active case (creates one from backup data)
+- All API endpoints verified to accept the correct field names from the export format

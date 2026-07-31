@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAppStore } from '@/lib/store'
 import { useSubscriptionStore, useProFeature } from '@/lib/subscription'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -30,7 +31,26 @@ import {
 interface ExportData {
   exportDate: string
   exportType: string
-  case: { caseNumber?: string; [key: string]: unknown }
+  case: {
+    caseNumber?: string
+    courtName?: string
+    caseworkerName?: string
+    caseworkerPhone?: string
+    judgeName?: string
+    attorneyName?: string
+    attorneyPhone?: string
+    removalDate?: string | null
+    targetReunificationDate?: string | null
+    caseStatus?: string
+    notes?: string | null
+    // Legacy field names (from old export format)
+    court?: string
+    caseworker?: string
+    judge?: string
+    attorney?: string
+    status?: string
+    [key: string]: unknown
+  }
   requirements: unknown[]
   counselingSessions: unknown[]
   drugTests: unknown[]
@@ -45,7 +65,8 @@ interface ExportData {
 }
 
 export function BackupView() {
-  const { activeCaseId } = useAppStore()
+  const { activeCaseId, setActiveCaseId } = useAppStore()
+  const queryClient = useQueryClient()
   const { tier } = useSubscriptionStore()
   const proFeature = useProFeature('data_export')
   const isPro = tier === 'pro'
@@ -312,20 +333,59 @@ export function BackupView() {
 
   // Execute restore
   const handleRestore = async () => {
-    if (!restorePreview || !activeCaseId) return
+    if (!restorePreview) return
 
     setRestoring(true)
     try {
-      const caseData = restorePreview.case
+      let targetCaseId = activeCaseId
 
-      await fetch(`/api/cases/${activeCaseId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(caseData),
-      })
+      // If no active case, create one from the backup data
+      if (!targetCaseId) {
+        const caseRes = await fetch('/api/cases', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            caseNumber: restorePreview.case.caseNumber || 'CPS-RESTORED',
+            courtName: restorePreview.case.courtName || restorePreview.case.court || null,
+            caseworkerName: restorePreview.case.caseworkerName || restorePreview.case.caseworker || null,
+            caseworkerPhone: restorePreview.case.caseworkerPhone || null,
+            judgeName: restorePreview.case.judgeName || restorePreview.case.judge || null,
+            attorneyName: restorePreview.case.attorneyName || restorePreview.case.attorney || null,
+            attorneyPhone: restorePreview.case.attorneyPhone || null,
+            removalDate: restorePreview.case.removalDate || null,
+            targetReunificationDate: restorePreview.case.targetReunificationDate || null,
+            caseStatus: restorePreview.case.caseStatus || restorePreview.case.status || 'active',
+            notes: restorePreview.case.notes || null,
+          }),
+        })
+        if (!caseRes.ok) throw new Error('Failed to create case from backup')
+        const newCase = await caseRes.json()
+        targetCaseId = newCase.id
+        setActiveCaseId(targetCaseId)
+      } else {
+        // Update existing case with backup data
+        const caseData = restorePreview.case
+        await fetch(`/api/cases/${targetCaseId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(caseData),
+        })
+      }
 
+      // Restore requirements first
+      if (restorePreview.requirements && restorePreview.requirements.length > 0) {
+        for (const req of restorePreview.requirements) {
+          await fetch('/api/requirements', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...(req as Record<string, unknown>), caseId: targetCaseId }),
+          })
+        }
+      }
+
+      // Restore all related data — endpoint names must match the API routes
       const endpoints = [
-        { data: restorePreview.counselingSessions, endpoint: 'counseling-sessions' },
+        { data: restorePreview.counselingSessions, endpoint: 'counseling' },
         { data: restorePreview.drugTests, endpoint: 'drug-tests' },
         { data: restorePreview.naMeetings, endpoint: 'na-meetings' },
         { data: restorePreview.supervisedVisits, endpoint: 'supervised-visits' },
@@ -335,31 +395,57 @@ export function BackupView() {
         { data: restorePreview.dailyCheckIns, endpoint: 'daily-checkins' },
       ]
 
+      let successCount = 0
+      let failCount = 0
+
       for (const { data, endpoint } of endpoints) {
         if (data && data.length > 0) {
           for (const item of data) {
-            await fetch(`/api/${endpoint}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ...(item as Record<string, unknown>), caseId: activeCaseId }),
-            })
+            try {
+              const res = await fetch(`/api/${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...(item as Record<string, unknown>), caseId: targetCaseId }),
+              })
+              if (res.ok) successCount++
+              else failCount++
+            } catch {
+              failCount++
+            }
           }
         }
       }
 
+      // Restore NA steps separately
       if (restorePreview.naSteps && restorePreview.naSteps.length > 0) {
         for (const step of restorePreview.naSteps) {
-          await fetch(`/api/na-steps`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...(step as Record<string, unknown>), caseId: activeCaseId }),
-          })
+          try {
+            const res = await fetch('/api/na-steps', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...(step as Record<string, unknown>), caseId: targetCaseId }),
+            })
+            if (res.ok) successCount++
+            else failCount++
+          } catch {
+            failCount++
+          }
         }
       }
 
-      toast.success('Data restored!', {
-        description: 'Your backup data has been imported. Refresh to see the updates.',
-      })
+      // Invalidate queries to refresh the UI
+      queryClient.invalidateQueries({ queryKey: ['cases'] })
+      queryClient.invalidateQueries({ queryKey: ['case'] })
+
+      if (failCount === 0) {
+        toast.success('Data restored!', {
+          description: `All ${successCount} items imported successfully.`,
+        })
+      } else {
+        toast.success('Data partially restored', {
+          description: `${successCount} items imported, ${failCount} failed. Some items may need manual entry.`,
+        })
+      }
       setConfirmRestore(false)
       setRestorePreview(null)
     } catch {

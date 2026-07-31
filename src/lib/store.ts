@@ -16,6 +16,30 @@ export type ViewType =
   | 'backup'
   | 'go-pro'
 
+const ACTIVE_CASE_KEY = 'reunify-active-case-id'
+
+function getStoredCaseId(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return localStorage.getItem(ACTIVE_CASE_KEY)
+  } catch {
+    return null
+  }
+}
+
+function storeCaseId(id: string | null): void {
+  if (typeof window === 'undefined') return
+  try {
+    if (id) {
+      localStorage.setItem(ACTIVE_CASE_KEY, id)
+    } else {
+      localStorage.removeItem(ACTIVE_CASE_KEY)
+    }
+  } catch {
+    // localStorage not available
+  }
+}
+
 interface AppState {
   activeView: ViewType
   activeCaseId: string | null
@@ -31,7 +55,8 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set, get) => ({
   activeView: 'dashboard',
-  activeCaseId: null,
+  // Initialize from localStorage so the case survives page reloads
+  activeCaseId: getStoredCaseId(),
   sidebarOpen: true,
   addDialogTrigger: 0,
   viewHistory: [],
@@ -52,7 +77,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     })
     return previousView
   },
-  setActiveCaseId: (id) => set({ activeCaseId: id }),
+  setActiveCaseId: (id) => {
+    storeCaseId(id)
+    set({ activeCaseId: id })
+  },
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   triggerAddDialog: () => set((state) => ({ addDialogTrigger: state.addDialogTrigger + 1 })),
 }))

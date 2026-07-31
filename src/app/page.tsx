@@ -16,6 +16,24 @@ import { useNavigationHistory } from '@/hooks/use-navigation-history'
 import { AppLockScreen, useAppLock } from '@/components/app-lock'
 import { CelebrationOverlay } from '@/components/celebration-overlay'
 import { useAutoBackup } from '@/hooks/use-auto-backup'
+import { useCases } from '@/lib/data-hooks'
+
+/**
+ * Auto-detects existing cases and sets the activeCaseId if none is set.
+ * This prevents the app from showing the onboarding wizard when there's
+ * already a case in the database.
+ */
+function useAutoSelectCase() {
+  const { activeCaseId, setActiveCaseId } = useAppStore()
+  const { data: cases } = useCases()
+
+  useEffect(() => {
+    // Only auto-select if no activeCaseId is set and we have cases
+    if (!activeCaseId && cases && cases.length > 0) {
+      setActiveCaseId(cases[0].id)
+    }
+  }, [activeCaseId, cases, setActiveCaseId])
+}
 
 // All views use standard lazy() with default exports
 // This avoids ChunkLoadError on Vercel's CDN that safeLazy+named exports caused
@@ -92,6 +110,9 @@ export default function Home() {
 
   // Enable auto-backup for Pro users
   useAutoBackup()
+
+  // Auto-select existing case so the app doesn't show onboarding when data exists
+  useAutoSelectCase()
 
   // Handle Stripe checkout return
   useEffect(() => {
