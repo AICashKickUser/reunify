@@ -50,6 +50,7 @@ import { UpgradePromptDialog } from '@/components/upgrade-prompt-dialog'
 import type { SupervisedVisit } from '@/lib/types'
 import { toast } from 'sonner'
 import { getLocalDateString } from '@/lib/utils'
+import { DateInputField } from '@/components/date-input-field'
 
 const VISIT_TYPE_COLORS: Record<string, string> = {
   supervised: 'bg-sky-100 text-sky-700 border-sky-200',
@@ -215,12 +216,13 @@ function AddVisitDialog({
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="visit-date">Date *</Label>
-            <Input
+            <DateInputField
               id="visit-date"
-              type="date"
+              label="Visit Date"
               value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
+              onChange={(v) => setForm({ ...form, date: v })}
+              required
+              helperText="When did this visit happen? Past dates are fine."
             />
           </div>
           <div className="grid gap-2">
@@ -412,12 +414,12 @@ function EditVisitDialog({
             </Label>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="edit-visit-date">Date</Label>
-            <Input
+            <DateInputField
               id="edit-visit-date"
-              type="date"
+              label="Visit Date"
               value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
+              onChange={(v) => setForm({ ...form, date: v })}
+              helperText="When did this visit happen? Past dates are fine."
             />
           </div>
           <div className="grid gap-2">

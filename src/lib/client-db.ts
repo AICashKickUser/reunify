@@ -977,7 +977,7 @@ export async function importAllData(data: ExportData): Promise<void> {
 
   const db = await getDB()
 
-  // Import each store
+  // Import each store — ensure every item has an id (keyPath)
   const storeNames: { name: StoreName; items: unknown[] }[] = [
     { name: 'cases', items: data.cases },
     { name: 'requirements', items: data.requirements },
@@ -995,7 +995,12 @@ export async function importAllData(data: ExportData): Promise<void> {
   for (const { name, items } of storeNames) {
     if (items && items.length > 0) {
       const tx = db.transaction(name, 'readwrite')
-      for (const item of items) {
+      for (const rawItem of items) {
+        const item = { ...(rawItem as Record<string, unknown>) }
+        // Ensure every item has an id — IndexedDB requires it as keyPath
+        if (!item.id) {
+          item.id = generateId()
+        }
         await tx.store.put(item)
       }
       await tx.done

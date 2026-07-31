@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { forceBackup, getServerBackupStatus, restoreFromCloud, type BackupStatus } from '@/lib/cloud-backup'
-import { exportAllData, importAllData, createCase as dbCreateCase, updateCase as dbUpdateCase, createItemByEndpoint, resetCaseData } from '@/lib/client-db'
+import { exportAllData, importAllData, createCase as dbCreateCase, updateCase as dbUpdateCase, createItemByEndpoint, resetCaseData, clearAllData } from '@/lib/client-db'
 import {
   HardDriveDownload,
   Download,
@@ -363,94 +363,125 @@ export function BackupView() {
 
     setRestoring(true)
     try {
-      let targetCaseId = activeCaseId
+      // Generate a new case ID for the restored case
+      const now = new Date().toISOString()
+      const newCaseId = `c${Date.now().toString(36)}${Math.random().toString(36).substring(2, 10)}`
 
-      // If no active case, create one from the backup data
-      if (!targetCaseId) {
-        const newCase = await dbCreateCase({
-          caseNumber: restorePreview.case.caseNumber || 'CPS-RESTORED',
-          courtName: restorePreview.case.courtName || restorePreview.case.court || null,
-          caseworkerName: restorePreview.case.caseworkerName || restorePreview.case.caseworker || null,
-          caseworkerPhone: restorePreview.case.caseworkerPhone || null,
-          judgeName: restorePreview.case.judgeName || restorePreview.case.judge || null,
-          attorneyName: restorePreview.case.attorneyName || restorePreview.case.attorney || null,
-          attorneyPhone: restorePreview.case.attorneyPhone || null,
-          removalDate: restorePreview.case.removalDate || null,
-          targetReunificationDate: restorePreview.case.targetReunificationDate || null,
-          caseStatus: restorePreview.case.caseStatus || restorePreview.case.status || 'active',
-          notes: restorePreview.case.notes || null,
+      // Build the case object from the backup
+      const caseData = {
+        id: newCaseId,
+        caseNumber: restorePreview.case.caseNumber || 'CPS-RESTORED',
+        courtName: restorePreview.case.courtName || restorePreview.case.court || null,
+        caseworkerName: restorePreview.case.caseworkerName || restorePreview.case.caseworker || null,
+        caseworkerPhone: restorePreview.case.caseworkerPhone || null,
+        judgeName: restorePreview.case.judgeName || restorePreview.case.judge || null,
+        attorneyName: restorePreview.case.attorneyName || restorePreview.case.attorney || null,
+        attorneyPhone: restorePreview.case.attorneyPhone || null,
+        removalDate: restorePreview.case.removalDate || null,
+        targetReunificationDate: restorePreview.case.targetReunificationDate || null,
+        caseStatus: restorePreview.case.caseStatus || restorePreview.case.status || 'active',
+        notes: restorePreview.case.notes || null,
+        createdAt: now,
+        updatedAt: now,
+      }
+
+      // Helper to remap caseId and strip old IDs for clean import
+      const remapItems = (items: unknown[]): unknown[] =>
+        items.map((item) => {
+          const rec = { ...(item as Record<string, unknown>) }
+          // Always remap caseId to the new case
+          rec.caseId = newCaseId
+          // Remove old id so IndexedDB generates a fresh one (avoids conflicts)
+          delete rec.id
+          // Ensure timestamps exist
+          if (!rec.createdAt) rec.createdAt = now
+          rec.updatedAt = now
+          return rec
         })
-        targetCaseId = newCase.id
-        setActiveCaseId(targetCaseId)
-      } else {
-        // Update existing case with backup data
-        const caseData = restorePreview.case
-        await dbUpdateCase(targetCaseId, caseData as Record<string, unknown>)
+
+      // Build the full import data structure that importAllData expects
+      const importData = {
+        version: 1,
+        exportedAt: now,
+        cases: [caseData],
+        requirements: remapItems(restorePreview.requirements || []),
+        counselingSessions: remapItems(restorePreview.counselingSessions || []),
+        drugTests: remapItems(restorePreview.drugTests || []),
+        naSteps: remapItems(restorePreview.naSteps || []),
+        naMeetings: remapItems(restorePreview.naMeetings || []),
+        supervisedVisits: remapItems(restorePreview.supervisedVisits || []),
+        courtDates: remapItems(restorePreview.courtDates || []),
+        parentingClasses: remapItems(restorePreview.parentingClasses || []),
+        milestones: remapItems(restorePreview.milestones || []),
+        dailyCheckIns: remapItems(restorePreview.dailyCheckIns || []),
       }
 
-      // Restore requirements first
-      if (restorePreview.requirements && restorePreview.requirements.length > 0) {
-        for (const req of restorePreview.requirements) {
-          await createItemByEndpoint('requirements', { ...(req as Record<string, unknown>), caseId: targetCaseId })
+      // Count total items for the success message
+      const totalItems =
+        importData.requirements.length +
+        importData.counselingSessions.length +
+        importData.drugTests.length +
+        importData.naSteps.length +
+        importData.naMeetings.length +
+        importData.supervisedVisits.length +
+        importData.courtDates.length +
+        importData.parentingClasses.length +
+        importData.milestones.length +
+        importData.dailyCheckIns.length
+
+      // If user has an existing case, keep it — just add the restored case
+      // importAllData clears everything first, so we need a different approach
+      // to preserve existing data. We'll use a direct bulk import instead.
+      if (activeCaseId) {
+        // User has existing data — just add the restored case alongside it
+        // Use the low-level importAllData but we need to preserve existing data
+        const existingData = await exportAllData()
+        // Merge: keep existing data + add restored data
+        const mergedData = {
+          version: 1,
+          exportedAt: now,
+          cases: [...existingData.cases, caseData],
+          requirements: [...existingData.requirements, ...importData.requirements],
+          counselingSessions: [...existingData.counselingSessions, ...importData.counselingSessions],
+          drugTests: [...existingData.drugTests, ...importData.drugTests],
+          naSteps: [...existingData.naSteps, ...importData.naSteps],
+          naMeetings: [...existingData.naMeetings, ...importData.naMeetings],
+          supervisedVisits: [...existingData.supervisedVisits, ...importData.supervisedVisits],
+          courtDates: [...existingData.courtDates, ...importData.courtDates],
+          parentingClasses: [...existingData.parentingClasses, ...importData.parentingClasses],
+          milestones: [...existingData.milestones, ...importData.milestones],
+          dailyCheckIns: [...existingData.dailyCheckIns, ...importData.dailyCheckIns],
         }
+        await importAllData(mergedData)
+      } else {
+        // No existing data — just import the restored data
+        await importAllData(importData)
       }
 
-      // Restore all related data — endpoint names must match the API routes
-      const endpoints = [
-        { data: restorePreview.counselingSessions, endpoint: 'counseling' },
-        { data: restorePreview.drugTests, endpoint: 'drug-tests' },
-        { data: restorePreview.naMeetings, endpoint: 'na-meetings' },
-        { data: restorePreview.supervisedVisits, endpoint: 'supervised-visits' },
-        { data: restorePreview.courtDates, endpoint: 'court-dates' },
-        { data: restorePreview.parentingClasses, endpoint: 'parenting-classes' },
-        { data: restorePreview.milestones, endpoint: 'milestones' },
-        { data: restorePreview.dailyCheckIns, endpoint: 'daily-checkins' },
+      // Set the restored case as the active case
+      setActiveCaseId(newCaseId)
+
+      // Invalidate ALL query keys to force a complete refresh
+      const allQueryKeys = [
+        'cases', 'case', 'requirements', 'counseling', 'drug-tests',
+        'na-steps', 'na-meetings', 'supervised-visits', 'court-dates',
+        'parenting-classes', 'milestones', 'daily-checkins',
       ]
-
-      let successCount = 0
-      let failCount = 0
-
-      for (const { data, endpoint } of endpoints) {
-        if (data && data.length > 0) {
-          for (const item of data) {
-            try {
-              await createItemByEndpoint(endpoint, { ...(item as Record<string, unknown>), caseId: targetCaseId })
-              successCount++
-            } catch {
-              failCount++
-            }
-          }
-        }
+      for (const key of allQueryKeys) {
+        queryClient.invalidateQueries({ queryKey: [key] })
       }
 
-      // Restore NA steps separately
-      if (restorePreview.naSteps && restorePreview.naSteps.length > 0) {
-        for (const step of restorePreview.naSteps) {
-          try {
-            await createItemByEndpoint('na-steps', { ...(step as Record<string, unknown>), caseId: targetCaseId })
-            successCount++
-          } catch {
-            failCount++
-          }
-        }
-      }
+      // Also reset React Query cache completely for this data
+      queryClient.resetQueries({ queryKey: ['cases'] })
+      queryClient.resetQueries({ queryKey: ['case'] })
 
-      // Invalidate queries to refresh the UI
-      queryClient.invalidateQueries({ queryKey: ['cases'] })
-      queryClient.invalidateQueries({ queryKey: ['case'] })
-
-      if (failCount === 0) {
-        toast.success('Data restored!', {
-          description: `All ${successCount} items imported successfully.`,
-        })
-      } else {
-        toast.success('Data partially restored', {
-          description: `${successCount} items imported, ${failCount} failed. Some items may need manual entry.`,
-        })
-      }
+      toast.success('Data restored!', {
+        description: `${totalItems} items imported successfully. Your case "${caseData.caseNumber}" is now active.`,
+      })
       setConfirmRestore(false)
       setRestorePreview(null)
-    } catch {
+    } catch (err) {
+      console.error('Restore failed:', err)
       toast.error('Restore failed', { description: 'Some data could not be restored. Please try again.' })
     } finally {
       setRestoring(false)
@@ -967,49 +998,97 @@ export function BackupView() {
                 <Button
                   className="flex-1 gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
                   onClick={async () => {
-                    if (!activeCaseId || !cloudRestoreData) return
+                    if (!cloudRestoreData) return
                     setCloudRestoring(true)
                     try {
-                      const caseData = cloudRestoreData.case as Record<string, unknown>
-                      await dbUpdateCase(activeCaseId, caseData as Record<string, unknown>)
+                      const now = new Date().toISOString()
+                      const targetCaseId = activeCaseId || `c${Date.now().toString(36)}${Math.random().toString(36).substring(2, 10)}`
 
-                      const endpoints = [
-                        { data: cloudRestoreData.counselingSessions as Record<string, unknown>[] | undefined, endpoint: 'counseling' },
-                        { data: cloudRestoreData.drugTests as Record<string, unknown>[] | undefined, endpoint: 'drug-tests' },
-                        { data: cloudRestoreData.naMeetings as Record<string, unknown>[] | undefined, endpoint: 'na-meetings' },
-                        { data: cloudRestoreData.supervisedVisits as Record<string, unknown>[] | undefined, endpoint: 'supervised-visits' },
-                        { data: cloudRestoreData.courtDates as Record<string, unknown>[] | undefined, endpoint: 'court-dates' },
-                        { data: cloudRestoreData.parentingClasses as Record<string, unknown>[] | undefined, endpoint: 'parenting-classes' },
-                        { data: cloudRestoreData.milestones as Record<string, unknown>[] | undefined, endpoint: 'milestones' },
-                        { data: cloudRestoreData.dailyCheckIns as Record<string, unknown>[] | undefined, endpoint: 'daily-checkins' },
+                      // Build case object from cloud backup
+                      const caseObj = {
+                        id: targetCaseId,
+                        caseNumber: (cloudRestoreData.case as Record<string, unknown>)?.caseNumber || 'CPS-RESTORED',
+                        courtName: (cloudRestoreData.case as Record<string, unknown>)?.courtName || (cloudRestoreData.case as Record<string, unknown>)?.court || null,
+                        caseworkerName: (cloudRestoreData.case as Record<string, unknown>)?.caseworkerName || (cloudRestoreData.case as Record<string, unknown>)?.caseworker || null,
+                        caseworkerPhone: (cloudRestoreData.case as Record<string, unknown>)?.caseworkerPhone || null,
+                        judgeName: (cloudRestoreData.case as Record<string, unknown>)?.judgeName || (cloudRestoreData.case as Record<string, unknown>)?.judge || null,
+                        attorneyName: (cloudRestoreData.case as Record<string, unknown>)?.attorneyName || (cloudRestoreData.case as Record<string, unknown>)?.attorney || null,
+                        attorneyPhone: (cloudRestoreData.case as Record<string, unknown>)?.attorneyPhone || null,
+                        removalDate: (cloudRestoreData.case as Record<string, unknown>)?.removalDate || null,
+                        targetReunificationDate: (cloudRestoreData.case as Record<string, unknown>)?.targetReunificationDate || null,
+                        caseStatus: (cloudRestoreData.case as Record<string, unknown>)?.caseStatus || (cloudRestoreData.case as Record<string, unknown>)?.status || 'active',
+                        notes: (cloudRestoreData.case as Record<string, unknown>)?.notes || null,
+                        createdAt: now,
+                        updatedAt: now,
+                      }
+
+                      // Remap items: strip old IDs, assign new caseId
+                      const remapItems = (items: unknown[] | undefined): unknown[] =>
+                        (items || []).map((item) => {
+                          const rec = { ...(item as Record<string, unknown>) }
+                          rec.caseId = targetCaseId
+                          delete rec.id
+                          if (!rec.createdAt) rec.createdAt = now
+                          rec.updatedAt = now
+                          return rec
+                        })
+
+                      const importPayload = {
+                        version: 1,
+                        exportedAt: now,
+                        cases: [caseObj],
+                        requirements: remapItems(cloudRestoreData.requirements as unknown[] | undefined),
+                        counselingSessions: remapItems(cloudRestoreData.counselingSessions as unknown[] | undefined),
+                        drugTests: remapItems(cloudRestoreData.drugTests as unknown[] | undefined),
+                        naSteps: remapItems(cloudRestoreData.naSteps as unknown[] | undefined),
+                        naMeetings: remapItems(cloudRestoreData.naMeetings as unknown[] | undefined),
+                        supervisedVisits: remapItems(cloudRestoreData.supervisedVisits as unknown[] | undefined),
+                        courtDates: remapItems(cloudRestoreData.courtDates as unknown[] | undefined),
+                        parentingClasses: remapItems(cloudRestoreData.parentingClasses as unknown[] | undefined),
+                        milestones: remapItems(cloudRestoreData.milestones as unknown[] | undefined),
+                        dailyCheckIns: remapItems(cloudRestoreData.dailyCheckIns as unknown[] | undefined),
+                      }
+
+                      // Merge with existing data if user has other cases
+                      const existingData = await exportAllData()
+                      const mergedData = {
+                        version: 1,
+                        exportedAt: now,
+                        cases: [...existingData.cases, caseObj],
+                        requirements: [...existingData.requirements, ...importPayload.requirements],
+                        counselingSessions: [...existingData.counselingSessions, ...importPayload.counselingSessions],
+                        drugTests: [...existingData.drugTests, ...importPayload.drugTests],
+                        naSteps: [...existingData.naSteps, ...importPayload.naSteps],
+                        naMeetings: [...existingData.naMeetings, ...importPayload.naMeetings],
+                        supervisedVisits: [...existingData.supervisedVisits, ...importPayload.supervisedVisits],
+                        courtDates: [...existingData.courtDates, ...importPayload.courtDates],
+                        parentingClasses: [...existingData.parentingClasses, ...importPayload.parentingClasses],
+                        milestones: [...existingData.milestones, ...importPayload.milestones],
+                        dailyCheckIns: [...existingData.dailyCheckIns, ...importPayload.dailyCheckIns],
+                      }
+                      await importAllData(mergedData)
+
+                      setActiveCaseId(targetCaseId)
+
+                      // Invalidate ALL query keys
+                      const allQueryKeys = [
+                        'cases', 'case', 'requirements', 'counseling', 'drug-tests',
+                        'na-steps', 'na-meetings', 'supervised-visits', 'court-dates',
+                        'parenting-classes', 'milestones', 'daily-checkins',
                       ]
-
-                      for (const { data, endpoint } of endpoints) {
-                        if (data && Array.isArray(data) && data.length > 0) {
-                          for (const item of data) {
-                            await createItemByEndpoint(endpoint, { ...item, caseId: activeCaseId })
-                          }
-                        }
+                      for (const key of allQueryKeys) {
+                        queryClient.invalidateQueries({ queryKey: [key] })
                       }
-
-                      if (cloudRestoreData.naSteps && Array.isArray(cloudRestoreData.naSteps) && cloudRestoreData.naSteps.length > 0) {
-                        for (const step of cloudRestoreData.naSteps as Record<string, unknown>[]) {
-                          await createItemByEndpoint('na-steps', { ...step, caseId: activeCaseId })
-                        }
-                      }
-
-                      if (cloudRestoreData.requirements && Array.isArray(cloudRestoreData.requirements) && cloudRestoreData.requirements.length > 0) {
-                        for (const req of cloudRestoreData.requirements as Record<string, unknown>[]) {
-                          await createItemByEndpoint('requirements', { ...req, caseId: activeCaseId })
-                        }
-                      }
+                      queryClient.resetQueries({ queryKey: ['cases'] })
+                      queryClient.resetQueries({ queryKey: ['case'] })
 
                       toast.success('Cloud data restored!', {
-                        description: 'Your cloud backup has been imported. Refresh to see the updates.',
+                        description: 'Your cloud backup has been imported successfully.',
                       })
                       setConfirmCloudRestore(false)
                       setCloudRestoreData(null)
-                    } catch {
+                    } catch (err) {
+                      console.error('Cloud restore failed:', err)
                       toast.error('Restore failed', { description: 'Some data could not be restored.' })
                     } finally {
                       setCloudRestoring(false)

@@ -46,10 +46,11 @@ function getHearingTypeConfig(type: string | null) {
   return HEARING_TYPES.find(h => h.value === type) ?? { value: type, label: type ?? 'Other', color: 'bg-gray-100 text-gray-700 border-gray-200' }
 }
 
-function DatePickerField({ value, onChange, label }: {
+function DatePickerField({ value, onChange, label, helperText }: {
   value: Date | undefined
   onChange: (date: Date | undefined) => void
   label: string
+  helperText?: string
 }) {
   const [open, setOpen] = useState(false)
   return (
@@ -71,6 +72,7 @@ function DatePickerField({ value, onChange, label }: {
           />
         </PopoverContent>
       </Popover>
+      {helperText && <p className="text-[11px] text-muted-foreground">{helperText}</p>}
     </div>
   )
 }
@@ -115,7 +117,7 @@ function AddCourtDateDialog({ open, onOpenChange, caseId }: {
           <DialogDescription>Schedule a new court hearing</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <DatePickerField value={date} onChange={setDate} label="Hearing Date *" />
+          <DatePickerField value={date} onChange={setDate} label="Hearing Date *" helperText="When is (or was) this hearing? Past dates OK." />
           <div className="space-y-2">
             <Label>Hearing Type</Label>
             <Select value={hearingType} onValueChange={setHearingType}>
@@ -215,7 +217,7 @@ function EditCourtDateDialog({ open, onOpenChange, courtDate }: {
           <DialogDescription>Update hearing details and outcomes</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <DatePickerField value={date} onChange={setDate} label="Hearing Date" />
+          <DatePickerField value={date} onChange={setDate} label="Hearing Date" helperText="When is (or was) this hearing? Past dates OK." />
           <div className="space-y-2">
             <Label>Hearing Type</Label>
             <Select value={hearingType} onValueChange={setHearingType}>

@@ -44,6 +44,7 @@ import {
   Trophy,
 } from 'lucide-react'
 import { getLocalDateString } from '@/lib/utils'
+import { DateInputField } from '@/components/date-input-field'
 
 interface StepFormData {
   stepNumber: string
@@ -595,12 +596,12 @@ export function NAStepsView() {
             </div>
             {editForm.isCompleted && (
               <div className="space-y-2">
-                <Label htmlFor="edit-completed-at">Completed Date</Label>
-                <Input
+                <DateInputField
                   id="edit-completed-at"
-                  type="date"
+                  label="Completed Date"
                   value={editForm.completedAt}
-                  onChange={(e) => setEditForm((f) => ({ ...f, completedAt: e.target.value }))}
+                  onChange={(v) => setEditForm((f) => ({ ...f, completedAt: v }))}
+                  helperText="When did you complete this step? Past dates OK."
                 />
               </div>
             )}
@@ -637,12 +638,12 @@ export function NAStepsView() {
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="complete-date">Completed Date</Label>
-              <Input
+              <DateInputField
                 id="complete-date"
-                type="date"
+                label="Completed Date"
                 value={completeForm.completedAt}
-                onChange={(e) => setCompleteForm((f) => ({ ...f, completedAt: e.target.value }))}
+                onChange={(v) => setCompleteForm((f) => ({ ...f, completedAt: v }))}
+                helperText="When did you complete this step? Past dates OK."
               />
             </div>
             <div className="space-y-2">

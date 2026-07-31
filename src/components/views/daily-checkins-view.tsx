@@ -42,6 +42,7 @@ import {
 } from 'lucide-react'
 import { format, isToday } from 'date-fns'
 import { getLocalDateString, parseLocalDate } from '@/lib/utils'
+import { DateInputField } from '@/components/date-input-field'
 
 const MOOD_OPTIONS = [
   { value: 'great', label: 'Great', icon: Smile, color: 'text-emerald-600' },
@@ -535,15 +536,13 @@ function CheckinFormDialog({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="checkin-date">Date</Label>
-            <Input
-              id="checkin-date"
-              type="date"
-              value={formDate}
-              onChange={(e) => setFormDate(e.target.value)}
-            />
-          </div>
+          <DateInputField
+            id="checkin-date"
+            label="Check-in Date"
+            value={formDate}
+            onChange={(v) => setFormDate(v)}
+            helperText="Which day is this check-in for? Past dates OK."
+          />
 
           <div className="space-y-2">
             <Label>How are you feeling?</Label>

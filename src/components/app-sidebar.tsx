@@ -130,7 +130,7 @@ export function AppSidebar() {
   const deleteMutation = useDeleteCase()
   const { tier } = useSubscriptionStore()
   const isPro = tier === 'pro'
-  const { isMobile, setOpenMobile } = useSidebar()
+  const { isMobile, setOpenMobile, toggleSidebar, state: sidebarState } = useSidebar()
   // Use useSyncExternalStore for SSR-safe lock state reading
   const isClient = useSyncExternalStore(emptySubscribe, returnTrue, returnFalse)
   const [lockVersion, setLockVersion] = useState(0)
@@ -207,9 +207,17 @@ export function AppSidebar() {
 
   const handleNavClick = (view: ViewType) => {
     setActiveView(view)
-    // Always close mobile sidebar — on TWA/Android, isMobile detection
-    // can be unreliable, so we always close the sheet overlay
-    setOpenMobile(false)
+    // Auto-hide sidebar on navigation:
+    // - On mobile (sheet overlay): close the sheet
+    // - On tablet/small desktop (icon-collapsible): collapse to icon mode if expanded
+    // This gives more content space on smaller screens
+    if (isMobile) {
+      setOpenMobile(false)
+    } else if (window.innerWidth < 1280 && sidebarState === 'expanded') {
+      // On tablet and small desktop, collapse the sidebar to icon mode
+      // xl breakpoint is 1280px — below that, auto-collapse for more space
+      toggleSidebar()
+    }
   }
 
   return (

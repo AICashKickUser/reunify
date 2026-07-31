@@ -14,6 +14,8 @@ import {
 import { Calendar } from '@/components/ui/calendar'
 import { useCreateCase, useCreateItem, useSeedDatabase } from '@/lib/data-hooks'
 import { useAppStore } from '@/lib/store'
+import { getLocalAutoBackup } from '@/hooks/use-auto-backup'
+import { importAllData, exportAllData } from '@/lib/client-db'
 import {
   Loader2,
   CalendarIcon,
@@ -841,6 +843,35 @@ export function OnboardingWizard() {
   const [step, setStep] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [direction, setDirection] = useState<'forward' | 'backward'>('forward')
+  const [isRestoring, setIsRestoring] = useState(false)
+
+  // Check for local auto-backup on mount
+  const localBackup = typeof window !== 'undefined' ? getLocalAutoBackup() : null
+  const hasRecoverableData = !!localBackup && (localBackup.data as { cases?: unknown[] })?.cases && ((localBackup.data as { cases: unknown[] }).cases.length > 0)
+
+  // Handle recovery from local auto-backup
+  const handleRecoverData = useCallback(async () => {
+    if (!localBackup) return
+    setIsRestoring(true)
+    try {
+      const backupData = localBackup.data as Parameters<typeof importAllData>[0]
+      await importAllData(backupData)
+      // Set the first case as active
+      if (backupData.cases && backupData.cases.length > 0) {
+        const firstCase = backupData.cases[0] as { id: string }
+        setActiveCaseId(firstCase.id)
+      }
+      toast.success('Data recovered!', {
+        description: 'Your saved data has been restored from the auto-backup.',
+      })
+    } catch {
+      toast.error('Recovery failed', {
+        description: 'Could not restore your data. Please try restoring from a backup file.',
+      })
+    } finally {
+      setIsRestoring(false)
+    }
+  }, [localBackup, setActiveCaseId])
 
   // Step 1 state
   const [caseNumber, setCaseNumber] = useState('')
@@ -1008,6 +1039,7 @@ export function OnboardingWizard() {
   }, [])
 
   // If onboarding was already completed, show a simple welcome
+  // If there's recoverable data, offer to restore it
   if (hasCompletedOnboarding) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4">
@@ -1023,6 +1055,34 @@ export function OnboardingWizard() {
               Track your CPS reunification case plan progress. Stay organized, stay focused, and bring your kids home.
             </p>
           </div>
+
+          {/* Data Recovery Prompt */}
+          {hasRecoverableData && (
+            <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20 text-left">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="size-5 text-amber-600" />
+                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                    We found your saved data!
+                  </p>
+                </div>
+                <p className="text-xs text-amber-700/80 dark:text-amber-400/80">
+                  An auto-backup from {localBackup ? new Date(localBackup.timestamp).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'a previous session'} was found. Would you like to restore it?
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                    onClick={handleRecoverData}
+                    disabled={isRestoring}
+                  >
+                    {isRestoring ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
+                    {isRestoring ? 'Restoring...' : 'Restore My Data'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <ExploreDemoCard />
         </div>
       </div>

@@ -43,6 +43,7 @@ import { UpgradePromptDialog } from '@/components/upgrade-prompt-dialog'
 import type { ParentingClass } from '@/lib/types'
 import { toast } from 'sonner'
 import { getLocalDateString } from '@/lib/utils'
+import { DateInputField } from '@/components/date-input-field'
 
 // How many weekly classes are required in the case plan
 const TOTAL_WEEKLY_CLASSES = 16
@@ -134,8 +135,13 @@ function EditClassDialog({
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="edit-class-date">Date</Label>
-            <Input id="edit-class-date" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+            <DateInputField
+              id="edit-class-date"
+              label="Class Date"
+              value={form.date}
+              onChange={(v) => setForm({ ...form, date: v })}
+              helperText="When did you attend this class? Past dates OK."
+            />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="edit-class-name">Class Name</Label>

@@ -110,3 +110,28 @@ Stage Summary:
 - The server database is now empty and only used for Pro features (Stripe, cloud backup)
 - The app works exactly the same as before, but with full privacy isolation
 - Case creation, demo data generation, and all views work correctly
+
+---
+Task ID: 1
+Agent: main
+Task: Fix backup/restore system, dashboard auto-hide, past-date entry, and data protection
+
+Work Log:
+- Rewrote handleRestore in backup-view.tsx to use importAllData() for bulk restore instead of slow item-by-item createItemByEndpoint
+- Added comprehensive query invalidation after restore (all 12 query keys + resetQueries)
+- Rewrote cloud restore handler with same improvements
+- Fixed importAllData in client-db.ts to generate IDs for items missing them (IndexedDB keyPath requirement)
+- Added sidebar auto-collapse on tablet/small desktop (< 1280px) after navigation
+- Created DateInputField component with helper text, past/future date visual indicators
+- Updated counseling, supervised visits, NA meetings, parenting classes, NA steps, daily check-ins, and court dates views to use DateInputField
+- Added local auto-backup to localStorage (safety net for ALL users, not just Pro)
+- Added data recovery prompt in onboarding wizard when local auto-backup exists
+- The auto-backup hook now saves to localStorage on every data change (debounced, 1 min interval)
+
+Stage Summary:
+- Backup/restore now uses bulk importAllData() which is faster and more reliable
+- All query keys are invalidated after restore, so dashboard refreshes correctly
+- Sidebar auto-collapses on tablet/small desktop after navigation
+- Date inputs now have clear labels, helper text, and visual indicators for past/future dates
+- Local auto-backup to localStorage provides a safety net against data loss
+- Data recovery prompt appears in onboarding wizard if auto-backup exists

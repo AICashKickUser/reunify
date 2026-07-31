@@ -54,6 +54,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getLocalDateString } from '@/lib/utils'
+import { DateInputField } from '@/components/date-input-field'
 
 // ─── Constants ───────────────────────────────────────────────────────
 const WEEKLY_GOAL = 3
@@ -693,11 +694,11 @@ export function NAMeetingsView() {
                   <CardContent className="p-3 sm:p-4 space-y-3">
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Date</Label>
-                        <Input
-                          type="date"
+                        <DateInputField
+                          label="Meeting Date"
                           value={form.date}
-                          onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                          onChange={(v) => setForm((f) => ({ ...f, date: v }))}
+                          helperText="When was this meeting? Past dates OK."
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -897,12 +898,13 @@ export function NAMeetingsView() {
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="add-date">Date *</Label>
-                <Input
+                <DateInputField
                   id="add-date"
-                  type="date"
+                  label="Meeting Date"
                   value={form.date}
-                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                  onChange={(v) => setForm((f) => ({ ...f, date: v }))}
+                  required
+                  helperText="When was this meeting? Past dates OK."
                 />
               </div>
               <div className="space-y-2">
@@ -998,12 +1000,13 @@ export function NAMeetingsView() {
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="edit-date">Date *</Label>
-                <Input
+                <DateInputField
                   id="edit-date"
-                  type="date"
+                  label="Meeting Date"
                   value={form.date}
-                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                  onChange={(v) => setForm((f) => ({ ...f, date: v }))}
+                  required
+                  helperText="When was this meeting? Past dates OK."
                 />
               </div>
               <div className="space-y-2">

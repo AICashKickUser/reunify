@@ -46,6 +46,7 @@ import {
   Crown,
 } from 'lucide-react'
 import { getLocalDateString } from '@/lib/utils'
+import { DateInputField } from '@/components/date-input-field'
 
 const SESSION_TYPES = ['individual', 'group', 'family', 'couples'] as const
 
@@ -424,12 +425,12 @@ export function CounselingView() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="add-date">Date</Label>
-              <Input
+              <DateInputField
                 id="add-date"
-                type="date"
+                label="Session Date"
                 value={form.date}
-                onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                onChange={(v) => setForm((f) => ({ ...f, date: v }))}
+                helperText="When did this session happen? Past dates are fine."
               />
             </div>
             <div className="space-y-2">
@@ -505,12 +506,12 @@ export function CounselingView() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-date">Date</Label>
-              <Input
+              <DateInputField
                 id="edit-date"
-                type="date"
+                label="Session Date"
                 value={form.date}
-                onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                onChange={(v) => setForm((f) => ({ ...f, date: v }))}
+                helperText="When did this session happen? Past dates are fine."
               />
             </div>
             <div className="space-y-2">
