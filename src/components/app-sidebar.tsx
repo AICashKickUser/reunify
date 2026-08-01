@@ -185,6 +185,8 @@ export function AppSidebar() {
       setLockVersion(v => v + 1)
       setShowSetupDialog(false)
       setLockBusy(false)
+      // Notify other components (like useAppLock in page.tsx) that lock state changed
+      window.dispatchEvent(new Event('reunify-lock-change'))
       toast.success('App lock enabled! Your data is protected.')
     }
   }, [setupPin, setupConfirm, setupStep])
@@ -198,6 +200,8 @@ export function AppSidebar() {
       clearAppLock()
       setLockVersion(v => v + 1)
       setShowDisableDialog(false)
+      // Notify other components that lock state changed
+      window.dispatchEvent(new Event('reunify-lock-change'))
       toast.success('App lock disabled')
     } else {
       toast.error('Incorrect PIN')

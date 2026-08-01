@@ -308,13 +308,22 @@ export function AppLockScreen({ onUnlock }: AppLockScreenProps) {
 
 /**
  * Hook to manage app lock state.
- * Uses useSyncExternalStore for SSR-safe client detection
- * and derived state to avoid setState-in-effect issues.
+ * - Auto-relocks when app goes to background (visibilitychange)
+ * - Auto-relocks after inactivity timeout (5 minutes)
+ * - Reactive to localStorage changes from sidebar toggle
+ * - Uses useSyncExternalStore for SSR-safe client detection
  */
+const AUTO_LOCK_MINUTES = 5
+
 export function useAppLock() {
   const isClient = useIsClient()
-  const lockEnabled = isClient && isAppLockEnabled()
+  // Version counter forces re-render when lock state changes externally
+  const [version, setVersion] = useState(0)
   const [unlockState, setUnlockState] = useState(false)
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Read lock state reactively (version bump triggers re-read)
+  const lockEnabled = isClient && isAppLockEnabled()
 
   // If lock is not enabled, the app is considered unlocked
   const isUnlocked = !lockEnabled || unlockState
@@ -323,18 +332,97 @@ export function useAppLock() {
     setUnlockState(true)
   }, [])
 
-  const refreshLockState = useCallback(() => {
-    // Force re-render by toggling unlock state if lock is disabled
-    if (!isAppLockEnabled()) {
-      setUnlockState(true)
-    }
-  }, [])
-
   const lockApp = useCallback(() => {
     if (isAppLockEnabled()) {
       setUnlockState(false)
     }
   }, [])
+
+  // Refresh lock state — always forces re-render
+  const refreshLockState = useCallback(() => {
+    setVersion((v) => v + 1)
+    if (!isAppLockEnabled()) {
+      setUnlockState(true)
+    } else {
+      // Lock was just enabled — lock the app immediately
+      setUnlockState(false)
+    }
+  }, [])
+
+  // Listen for localStorage changes from other components (e.g., sidebar toggle)
+  // Uses both the native 'storage' event (cross-tab) and a custom event (same-tab)
+  useEffect(() => {
+    if (!isClient) return
+
+    const handleLockChange = () => {
+      setVersion((v) => v + 1)
+      if (!isAppLockEnabled()) {
+        setUnlockState(true)
+      } else {
+        // Lock was just enabled — lock the app immediately
+        setUnlockState(false)
+      }
+    }
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'reunify-app-lock-enabled' || e.key === 'reunify-app-lock-pin-hash') {
+        handleLockChange()
+      }
+    }
+
+    // Custom event for same-tab communication (storage event only fires cross-tab)
+    window.addEventListener('storage', handleStorage)
+    window.addEventListener('reunify-lock-change', handleLockChange)
+    return () => {
+      window.removeEventListener('storage', handleStorage)
+      window.removeEventListener('reunify-lock-change', handleLockChange)
+    }
+  }, [isClient])
+
+  // Auto-lock when app goes to background (visibilitychange)
+  useEffect(() => {
+    if (!isClient || !lockEnabled || !unlockState) return
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && isAppLockEnabled()) {
+        // App went to background — lock it
+        setUnlockState(false)
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [isClient, lockEnabled, unlockState])
+
+  // Inactivity timer — auto-lock after 5 minutes of no interaction
+  useEffect(() => {
+    if (!isClient || !lockEnabled || !unlockState) return
+
+    const resetTimer = () => {
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current)
+      }
+      inactivityTimerRef.current = setTimeout(() => {
+        if (isAppLockEnabled()) {
+          setUnlockState(false)
+        }
+      }, AUTO_LOCK_MINUTES * 60 * 1000)
+    }
+
+    // Reset timer on user activity
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'] as const
+    events.forEach((event) => document.addEventListener(event, resetTimer, { passive: true }))
+
+    // Start initial timer
+    resetTimer()
+
+    return () => {
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current)
+      }
+      events.forEach((event) => document.removeEventListener(event, resetTimer))
+    }
+  }, [isClient, lockEnabled, unlockState])
 
   return {
     isUnlocked,
