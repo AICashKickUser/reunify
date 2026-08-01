@@ -204,7 +204,42 @@ export async function getAllCases(): Promise<CaseInfo[]> {
 }
 
 export async function updateCase(id: string, data: Partial<CaseInfo>): Promise<CaseInfo> {
-  return updateItem('cases', id, data) as Promise<CaseInfo>
+  const db = await getDB()
+  const existing = await db.get('cases', id)
+  const now = new Date().toISOString()
+
+  if (existing) {
+    // Update existing case
+    const updated = {
+      ...existing,
+      ...data,
+      id, // ensure id is not overwritten
+      updatedAt: now,
+    }
+    await db.put('cases', updated)
+    return updated as CaseInfo
+  } else {
+    // Case doesn't exist — create it (upsert pattern)
+    // This can happen if localStorage still has a caseId but IndexedDB was cleared
+    const newCase: CaseInfo = {
+      id,
+      caseNumber: data.caseNumber || '',
+      courtName: data.courtName ?? null,
+      caseworkerName: data.caseworkerName ?? null,
+      caseworkerPhone: data.caseworkerPhone ?? null,
+      judgeName: data.judgeName ?? null,
+      attorneyName: data.attorneyName ?? null,
+      attorneyPhone: data.attorneyPhone ?? null,
+      removalDate: data.removalDate ?? null,
+      targetReunificationDate: data.targetReunificationDate ?? null,
+      caseStatus: data.caseStatus || 'active',
+      notes: data.notes ?? null,
+      createdAt: now,
+      updatedAt: now,
+    }
+    await db.put('cases', newCase)
+    return newCase
+  }
 }
 
 export async function deleteCase(caseId: string): Promise<void> {

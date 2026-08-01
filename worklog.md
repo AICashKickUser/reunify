@@ -135,3 +135,21 @@ Stage Summary:
 - Date inputs now have clear labels, helper text, and visual indicators for past/future dates
 - Local auto-backup to localStorage provides a safety net against data loss
 - Data recovery prompt appears in onboarding wizard if auto-backup exists
+
+---
+Task ID: 1
+Agent: main
+Task: Fix scan-case-plan "Item {id} not found in cases" error
+
+Work Log:
+- Identified the bug: `updateCase()` in client-db.ts calls `updateItem()` which throws `Item ${id} not found in ${storeName}` when the case doesn't exist in IndexedDB
+- This happens when localStorage has a stale `activeCaseId` but IndexedDB was cleared (e.g. browser data cleared, different browser context)
+- Fixed `updateCase()` to use upsert pattern: if case doesn't exist, create it instead of throwing
+- Also wrapped the `updateCase` call in scan-case-plan.tsx `handleApply` in try-catch so it doesn't crash the whole apply flow
+- Verified with agent browser that the scan feature works correctly
+
+Stage Summary:
+- Root cause: `updateItem()` threw when case ID from localStorage didn't exist in IndexedDB
+- Fix: `updateCase()` now upserts (creates case if missing) instead of throwing
+- Secondary fix: `handleApply` now catches errors per-section instead of crashing the whole flow
+- Files modified: `src/lib/client-db.ts`, `src/components/scan-case-plan.tsx`

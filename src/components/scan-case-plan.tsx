@@ -546,21 +546,25 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
     const errors: string[] = []
 
     try {
-      // 1. Update case info
+      // 1. Update case info (uses upsert — will create the case if it doesn't exist)
       if (sectionToggles.caseInfo) {
         setApplyProgress('Updating case information...')
         const ci = extractedData.caseInfo
-        await updateCase(activeCaseId, {
-          caseNumber: ci.caseNumber || undefined,
-          courtName: ci.courtName,
-          judgeName: ci.judgeName,
-          caseworkerName: ci.caseworkerName,
-          caseworkerPhone: ci.caseworkerPhone,
-          attorneyName: ci.attorneyName,
-          attorneyPhone: ci.attorneyPhone,
-          removalDate: ci.removalDate,
-          targetReunificationDate: ci.targetReunificationDate,
-        })
+        try {
+          await updateCase(activeCaseId, {
+            caseNumber: ci.caseNumber || undefined,
+            courtName: ci.courtName,
+            judgeName: ci.judgeName,
+            caseworkerName: ci.caseworkerName,
+            caseworkerPhone: ci.caseworkerPhone,
+            attorneyName: ci.attorneyName,
+            attorneyPhone: ci.attorneyPhone,
+            removalDate: ci.removalDate,
+            targetReunificationDate: ci.targetReunificationDate,
+          })
+        } catch {
+          errors.push('Case information update')
+        }
       }
 
       // 2. Create requirements
