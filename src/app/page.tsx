@@ -40,6 +40,7 @@ function useAutoSelectCase() {
 const DashboardView = lazy(() => import('@/components/views/dashboard-view'))
 const TimelineView = lazy(() => import('@/components/views/timeline-view'))
 const CasePlanView = lazy(() => import('@/components/views/case-plan-view'))
+const ScanCasePlanView = lazy(() => import('@/components/views/scan-case-plan-view'))
 const CounselingView = lazy(() => import('@/components/views/counseling-view'))
 const DrugTestingView = lazy(() => import('@/components/views/drug-testing-view'))
 const NAStepsView = lazy(() => import('@/components/views/na-steps-view'))
@@ -56,6 +57,7 @@ const VIEW_MAP: Record<ViewType, React.ComponentType> = {
   'dashboard': DashboardView,
   'timeline': TimelineView,
   'case-plan': CasePlanView,
+  'scan-case-plan': ScanCasePlanView,
   'counseling': CounselingView,
   'drug-testing': DrugTestingView,
   'na-steps': NAStepsView,

@@ -26,6 +26,7 @@ import {
   HardDriveDownload,
   Lock,
   Unlock,
+  ScanLine,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -95,6 +96,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Case Plan',
     items: [
       { view: 'case-plan', label: 'Case Plan', icon: ClipboardList },
+      { view: 'scan-case-plan', label: 'Scan Plan', icon: ScanLine },
       { view: 'court-dates', label: 'Court Dates', icon: Scale },
     ],
   },

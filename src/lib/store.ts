@@ -4,6 +4,7 @@ export type ViewType =
   | 'dashboard'
   | 'timeline'
   | 'case-plan'
+  | 'scan-case-plan'
   | 'counseling'
   | 'drug-testing'
   | 'na-steps'
@@ -89,6 +90,7 @@ export const VIEW_LABELS: Record<ViewType, string> = {
   'dashboard': 'Dashboard',
   'timeline': 'Timeline',
   'case-plan': 'Case Plan',
+  'scan-case-plan': 'Scan Case Plan',
   'counseling': 'Counseling',
   'drug-testing': 'Drug Testing',
   'na-steps': '12 Steps',

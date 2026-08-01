@@ -1,0 +1,190 @@
+import { NextRequest, NextResponse } from 'next/server'
+import ZAI from 'z-ai-web-dev-sdk'
+
+// Cache the SDK instance
+let zaiInstance: Awaited<ReturnType<typeof ZAI.create>> | null = null
+
+async function getZAI() {
+  if (!zaiInstance) {
+    zaiInstance = await ZAI.create()
+  }
+  return zaiInstance
+}
+
+const SYSTEM_PROMPT = `You are an expert at reading and extracting information from CPS (Child Protective Services) reunification case plans. These are official court-ordered documents that specify what a parent must do to reunify with their children.
+
+You will be given photo(s) of a case plan document. Extract ALL the information you can find and return it as structured JSON.
+
+IMPORTANT: Return ONLY valid JSON, no markdown, no code fences, no extra text.
+
+The JSON structure must be:
+{
+  "caseInfo": {
+    "caseNumber": "string or null",
+    "courtName": "string or null",
+    "judgeName": "string or null",
+    "caseworkerName": "string or null",
+    "caseworkerPhone": "string or null",
+    "attorneyName": "string or null",
+    "attorneyPhone": "string or null",
+    "removalDate": "YYYY-MM-DD or null",
+    "targetReunificationDate": "YYYY-MM-DD or null"
+  },
+  "requirements": [
+    {
+      "category": "counseling|drug-testing|na-meetings|na-steps|supervised-visits|parenting-classes|housing|employment|other",
+      "title": "string - short name of the requirement",
+      "description": "string - full description of what is required",
+      "frequency": "daily|weekly|biweekly|monthly|as-needed|one-time",
+      "dueDate": "YYYY-MM-DD or null"
+    }
+  ],
+  "counseling": {
+    "sessionType": "individual|group|family|couples or null",
+    "frequency": "string describing how often, e.g. weekly, twice monthly",
+    "counselorName": "string or null",
+    "duration": "number in minutes or null",
+    "notes": "string or null"
+  },
+  "drugTesting": {
+    "testType": "urine|hair|blood|saliva or null",
+    "frequency": "string describing how often, e.g. weekly, random, twice weekly",
+    "testingFacility": "string or null",
+    "isRandom": true or false,
+    "notes": "string or null"
+  },
+  "naMeetings": {
+    "frequency": "string describing how often, e.g. 3 per week, weekly",
+    "notes": "string or null"
+  },
+  "supervisedVisits": {
+    "frequency": "string describing how often, e.g. weekly, biweekly",
+    "location": "string or null",
+    "supervisorName": "string or null",
+    "duration": "number in minutes or null",
+    "visitType": "supervised|semi-supervised|unsupervised or null",
+    "notes": "string or null"
+  },
+  "parentingClasses": {
+    "className": "string or null",
+    "provider": "string or null",
+    "frequency": "string describing how often",
+    "notes": "string or null"
+  },
+  "courtDates": [
+    {
+      "date": "YYYY-MM-DD or null",
+      "hearingType": "emergency|adjudication|disposition|review|permanency|termination|final or null",
+      "notes": "string or null"
+    }
+  ],
+  "milestones": [
+    {
+      "title": "string",
+      "category": "legal|recovery|family|housing|employment|education|other",
+      "targetDate": "YYYY-MM-DD or null",
+      "description": "string or null"
+    }
+  ],
+  "additionalNotes": "string - any other information found on the document that does not fit above"
+}
+
+EXTRACTION RULES:
+- If you cannot determine a value, use null (not empty string)
+- For dates, try to parse them into YYYY-MM-DD format. If you can only determine month or year, use the 1st of that month.
+- For frequency, use the most specific description you can find (e.g. twice weekly not just regular)
+- Look for key CPS terms: case plan, reunification, disposition, adjudication, review hearing, permanency hearing
+- Common categories: mental health counseling, substance abuse treatment, drug testing, NA or AA meetings, parenting classes, supervised visitation, housing, employment, domestic violence classes, anger management
+- If something mentions random drug testing, set isRandom to true
+- Map hearing types: review hearing to review, permanency hearing to permanency, adjudication hearing to adjudication, disposition hearing to disposition, emergency to emergency, final to final
+- NA or AA meetings are under na-meetings category. NA 12-step work is under na-steps category.
+- Extract EVERYTHING you can find - even if you are not sure about the category, put it in requirements with other category and add a note`
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { images } = body as { images: string[] }
+
+    if (!images || !Array.isArray(images) || images.length === 0) {
+      return NextResponse.json(
+        { error: 'At least one image is required' },
+        { status: 400 }
+      )
+    }
+
+    if (images.length > 5) {
+      return NextResponse.json(
+        { error: 'Maximum 5 pages allowed' },
+        { status: 400 }
+      )
+    }
+
+    const zai = await getZAI()
+
+    // Build the content array with all images
+    const imageContents = images.map((img) => ({
+      type: 'image_url' as const,
+      image_url: { url: img },
+    }))
+
+    const pageText = images.length === 1
+      ? 'I am uploading a photo of my CPS reunification case plan. Extract all the information.'
+      : `I am uploading ${images.length} pages of my CPS reunification case plan. Page 1 is first, page ${images.length} is last. Analyze all pages together and extract all the information.`
+
+    const response = await zai.chat.completions.createVision({
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: SYSTEM_PROMPT },
+            ...imageContents,
+            { type: 'text', text: pageText },
+          ],
+        },
+      ],
+      thinking: { type: 'disabled' },
+    })
+
+    const content = response.choices[0]?.message?.content
+
+    if (!content) {
+      return NextResponse.json(
+        { error: 'No response from vision model' },
+        { status: 500 }
+      )
+    }
+
+    // Parse the JSON response - handle potential markdown code fences
+    let cleanedContent = content.trim()
+    if (cleanedContent.startsWith('```')) {
+      cleanedContent = cleanedContent
+        .replace(/^```(?:json)?\s*\n?/, '')
+        .replace(/\n?```\s*$/, '')
+        .trim()
+    }
+
+    let parsed
+    try {
+      parsed = JSON.parse(cleanedContent)
+    } catch {
+      // If JSON parse fails, return the raw content for the frontend to handle
+      return NextResponse.json({
+        success: true,
+        raw: true,
+        content: cleanedContent,
+      })
+    }
+
+    return NextResponse.json({
+      success: true,
+      raw: false,
+      data: parsed,
+    })
+  } catch (error) {
+    console.error('Scan case plan error:', error)
+    return NextResponse.json(
+      { error: 'Failed to analyze case plan images' },
+      { status: 500 }
+    )
+  }
+}
