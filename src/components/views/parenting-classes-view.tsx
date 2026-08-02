@@ -339,11 +339,33 @@ export function ParentingClassesView() {
     }
 
     if (existing) {
+      // Try to update — if the item was deleted from IndexedDB (e.g., data cleared),
+      // fall back to creating a new entry instead of showing an error
       updateMutation.mutate(
         { id: existing.id, isCompleted: !existing.isCompleted },
         {
           onSuccess: () => { wrappedOnDone(); toast.success(existing.isCompleted ? `Orientation ${orientationNumber} marked incomplete` : `Orientation ${orientationNumber} completed!`) },
-          onError: () => { wrappedOnDone(); toast.error('Failed to update orientation. Please try again.') },
+          onError: () => {
+            // Update failed — likely "Item not found" because IndexedDB was cleared.
+            // Fall back to creating a new entry with the desired state.
+            console.warn('[ParentingClasses] Update failed for orientation', orientationNumber, '— creating new entry as fallback')
+            createMutation.mutate(
+              {
+                caseId: activeCaseId!,
+                date: getLocalDateString(),
+                className: `Parenting Orientation ${orientationNumber}`,
+                provider: null,
+                topic: null,
+                isCompleted: true,
+                hasCertificate: false,
+                notes: null,
+              },
+              {
+                onSuccess: () => { wrappedOnDone(); toast.success(`Orientation ${orientationNumber} completed!`) },
+                onError: () => { wrappedOnDone(); toast.error('Failed to mark orientation. Please try again.') },
+              }
+            )
+          },
         }
       )
     } else {
@@ -352,8 +374,11 @@ export function ParentingClassesView() {
           caseId: activeCaseId,
           date: getLocalDateString(),
           className: `Parenting Orientation ${orientationNumber}`,
+          provider: null,
+          topic: null,
           isCompleted: true,
           hasCertificate: false,
+          notes: null,
         },
         {
           onSuccess: () => { wrappedOnDone(); toast.success(`Orientation ${orientationNumber} completed!`) },
@@ -391,7 +416,12 @@ export function ParentingClassesView() {
       { id: existing.id, hasCertificate: !existing.hasCertificate },
       {
         onSuccess: () => { onDone(); toast.success(existing.hasCertificate ? 'Certificate removed' : 'Certificate added!') },
-        onError: () => { onDone(); toast.error('Failed to update certificate. Please try again.') },
+        onError: () => {
+          onDone()
+          // If update failed (item not found), try recreating with certificate toggled
+          console.warn('[ParentingClasses] Certificate update failed for orientation', orientationNumber)
+          toast.error('Failed to update certificate. Please try again.')
+        },
       }
     )
   }

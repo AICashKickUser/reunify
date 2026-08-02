@@ -144,18 +144,32 @@ async function updateItem<T extends Record<string, unknown>>(
 ): Promise<T & { id: string; updatedAt: string }> {
   const db = await getDB()
   const existing = await db.get(storeName, id)
-  if (!existing) {
-    throw new Error(`Item ${id} not found in ${storeName}`)
-  }
   const now = new Date().toISOString()
-  const updated = {
-    ...existing,
-    ...data,
-    id, // ensure id is not overwritten
-    updatedAt: now,
+
+  if (existing) {
+    // Normal update: merge with existing data
+    const updated = {
+      ...existing,
+      ...data,
+      id, // ensure id is not overwritten
+      updatedAt: now,
+    }
+    await db.put(storeName, updated)
+    return updated as T & { id: string; updatedAt: string }
+  } else {
+    // Upsert: if the item doesn't exist (e.g., IndexedDB was cleared but
+    // React Query still has stale data), create it with the provided data.
+    // This prevents the "Item not found" error that breaks the UI.
+    console.warn(`[client-db] Item ${id} not found in ${storeName} — creating via upsert`)
+    const created = {
+      ...data,
+      id,
+      createdAt: (data as Record<string, unknown>).createdAt as string || now,
+      updatedAt: now,
+    }
+    await db.put(storeName, created)
+    return created as T & { id: string; updatedAt: string }
   }
-  await db.put(storeName, updated)
-  return updated as T & { id: string; updatedAt: string }
 }
 
 async function deleteItem(storeName: StoreName, id: string): Promise<void> {

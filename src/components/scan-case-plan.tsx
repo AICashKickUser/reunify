@@ -256,7 +256,8 @@ function applyExifOrientation(
  */
 async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promise<string> {
   // Mobile-safe: cap dimensions to avoid canvas memory issues
-  const safeMaxWidth = Math.min(maxWidth, 600)
+  // Use 1000px max (was 600px which was too aggressive and caused blurry/distorted images)
+  const safeMaxWidth = Math.min(maxWidth, 1000)
   // Try createImageBitmap with imageOrientation first (handles EXIF automatically)
   try {
     if (typeof createImageBitmap === 'function') {
@@ -273,7 +274,7 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promis
         let height = bitmap.height
 
         // Scale down if needed — use mobile-safe dimensions
-        const maxDim = Math.min(safeMaxWidth, 600)
+        const maxDim = Math.min(safeMaxWidth, 1000)
         if (width > maxDim) {
           height = Math.round((height * maxDim) / width)
           width = maxDim
@@ -328,7 +329,7 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promis
             let height = img.naturalHeight || img.height
 
             // Scale down if needed — use mobile-safe dimensions
-            const maxDim = Math.min(safeMaxWidth, 600)
+            const maxDim = Math.min(safeMaxWidth, 1000)
             if (width > maxDim) {
               height = Math.round((height * maxDim) / width)
               width = maxDim
@@ -507,13 +508,31 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
 
     for (const file of filesToProcess) {
       try {
+        // Validate file type — accept common image formats
+        const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+        // Some browsers report HEIC as application/octet-stream or empty type, so also check extension
+        const isHeic = file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')
+        if (!validTypes.includes(file.type) && !file.type.startsWith('image/') && !isHeic) {
+          toast.error(`Unsupported file type: ${file.type || 'unknown'}. Please use JPG, PNG, or WebP images.`)
+          continue
+        }
+
         // Validate file size (max 20MB)
         if (file.size > 20 * 1024 * 1024) {
           toast.error(`Image too large (${Math.round(file.size / 1024 / 1024)}MB). Max 20MB.`)
           continue
         }
-        // Use more aggressive compression for server upload (lower quality, smaller max)
-        const dataUrl = await compressImage(file, 600, 0.3)
+
+        // Handle HEIC files — browsers can't process these directly
+        // Most modern iOS devices convert HEIC to JPEG when sharing via the file picker
+        if (isHeic && !file.type.startsWith('image/')) {
+          toast.error('HEIC format not supported by your browser. Please convert to JPG first or use the camera to take a photo instead.')
+          continue
+        }
+
+        // Compress for server upload — balanced quality (0.5) and size (1000px max)
+        // Was 0.3 quality which was too blurry for the AI to read text accurately
+        const dataUrl = await compressImage(file, 1000, 0.5)
         const thumbnail = await createThumbnail(dataUrl)
         const newPage: CapturedPage = {
           id: generatePageId(),
@@ -524,8 +543,15 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
         setPages((prev) => [...prev, newPage])
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Unknown error'
-        console.error('[scan-case-plan] Image processing error:', msg)
-        toast.error(`Failed to process image: ${msg}. Try a different photo or take it from further away.`)
+        console.error('[scan-case-plan] Image processing error:', msg, 'File:', file.name, 'Type:', file.type, 'Size:', file.size)
+        // Provide more specific error messages based on common failures
+        if (msg.includes('canvas') || msg.includes('getContext')) {
+          toast.error('Your browser cannot process this image. Try using the camera instead of uploading.')
+        } else if (msg.includes('Failed to load image') || msg.includes('corrupted')) {
+          toast.error('Could not read this image file. Try a different photo.')
+        } else {
+          toast.error(`Failed to process image: ${msg}. Try a different photo or take it from further away.`)
+        }
       }
     }
   }, [pages.length])
@@ -593,7 +619,8 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
       console.log(`[scan-case-plan] Sending ${images.length} images, total payload: ${(totalSize / 1024 / 1024).toFixed(2)}MB`)
 
       // Check payload size before sending — if too large, warn the user
-      if (totalSize > 5 * 1024 * 1024) {
+      // Increased limit to 8MB (was 5MB) to allow better quality images for AI reading
+      if (totalSize > 8 * 1024 * 1024) {
         setPhase('capture')
         toast.error('Photos are too large even after compression. Please retake photos from further away or use fewer pages.')
         return
@@ -643,6 +670,12 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
         }
         if (response.status === 504) {
           throw new Error('Analysis timed out on the server. Please try with fewer or smaller photos.')
+        }
+        if (response.status === 500) {
+          throw new Error('Server error — this may be temporary. Please try again, or use fewer pages.')
+        }
+        if (response.status >= 500) {
+          throw new Error(`Server error (${response.status}). Please try again in a moment.`)
         }
         throw new Error(errorMsg)
       }
@@ -1115,7 +1148,7 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
       <input
         ref={cameraInputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
         capture="environment"
         className="hidden"
         onChange={(e) => handleFilesSelected(e.target.files, true)}
@@ -1123,7 +1156,7 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
       <input
         ref={galleryInputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
         multiple
         className="hidden"
         onChange={(e) => handleFilesSelected(e.target.files, false)}

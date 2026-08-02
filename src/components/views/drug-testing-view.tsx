@@ -290,7 +290,19 @@ export function DrugTestingView() {
       if (mutatingDatesRef.current.has(key)) return
 
       // Always read the latest testByDate from the ref to avoid stale closures
-      const existing = testByDateRef.current.get(key)
+      let existing = testByDateRef.current.get(key)
+
+      // CRITICAL: Verify the found entry actually belongs to this date.
+      // If the map has a stale/wrong entry (e.g., a different date's test was
+      // stored under this key due to a race condition), skip the update and
+      // create a new entry instead. This fixes the "5th button changes 4th" bug.
+      if (existing) {
+        const existingDateKey = safeDateKey(existing.date)
+        if (existingDateKey !== key) {
+          console.warn('[DrugTesting] Date mismatch: expected', key, 'but found', existingDateKey, '— creating new entry instead')
+          existing = undefined
+        }
+      }
 
       // Mark this date as mutating (update ref + trigger re-render)
       mutatingDatesRef.current = new Set([...mutatingDatesRef.current, key])
@@ -339,6 +351,8 @@ export function DrugTestingView() {
         setMutatingDatesVersion(v => v + 1)
       }
 
+      const dayLabel = DAY_NAMES[dayIndex !== -1 ? dayIndex : 4] // fallback to Fri if index not found
+
       if (existing) {
         // Update existing entry
         updateMutation.mutate(
@@ -347,7 +361,7 @@ export function DrugTestingView() {
             onSuccess: () => {
               onDone()
               const label = newStatus === 'not-required' ? 'Called — Not Required' : newStatus === 'called-tested' ? 'Called & Tested' : 'Reset'
-              toast.success(`${DAY_NAMES[currentWeekDates.findIndex(d => formatDateKey(d) === key)]}: ${label}`)
+              toast.success(`${dayLabel}: ${label}`)
             },
             onError: () => { onDone(); toast.error('Failed to update — please try again') },
           }
@@ -364,7 +378,7 @@ export function DrugTestingView() {
             onSuccess: () => {
               onDone()
               const label = newStatus === 'not-required' ? 'Called — Not Required' : 'Called & Tested'
-              toast.success(`${DAY_NAMES[currentWeekDates.findIndex(d => formatDateKey(d) === key)]}: ${label}`)
+              toast.success(`${dayLabel}: ${label}`)
             },
             onError: () => { onDone(); toast.error('Failed to save — please try again') },
           }
