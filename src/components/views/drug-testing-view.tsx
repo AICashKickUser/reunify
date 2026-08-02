@@ -143,6 +143,7 @@ export function DrugTestingView() {
 
   const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set())
   const [previousWeeksExpanded, setPreviousWeeksExpanded] = useState(true)
+  const [mutatingDates, setMutatingDates] = useState<Set<string>>(new Set())
 
   // ─── Current Week ────────────────────────────────────────────────────────
 
@@ -266,7 +267,14 @@ export function DrugTestingView() {
       if (!activeCaseId) return
 
       const key = formatDateKey(date)
+
+      // Prevent double-clicking the same day
+      if (mutatingDates.has(key)) return
+
       const existing = testByDate.get(key)
+
+      // Mark this date as mutating
+      setMutatingDates(prev => new Set([...prev, key]))
 
       // Determine the mutation payload based on the new status
       let payload: Record<string, unknown>
@@ -304,16 +312,25 @@ export function DrugTestingView() {
         setExpandedResults(prev => new Set([...prev, key]))
       }
 
+      const onDone = () => {
+        setMutatingDates(prev => {
+          const next = new Set(prev)
+          next.delete(key)
+          return next
+        })
+      }
+
       if (existing) {
         // Update existing entry
         updateMutation.mutate(
           { id: existing.id, ...payload },
           {
             onSuccess: () => {
+              onDone()
               const label = newStatus === 'not-required' ? 'Called — Not Required' : newStatus === 'called-tested' ? 'Called & Tested' : 'Reset'
               toast.success(`${DAY_NAMES[currentWeekDates.findIndex(d => formatDateKey(d) === key)]}: ${label}`)
             },
-            onError: () => toast.error('Failed to update — please try again'),
+            onError: () => { onDone(); toast.error('Failed to update — please try again') },
           }
         )
       } else {
@@ -326,15 +343,16 @@ export function DrugTestingView() {
           },
           {
             onSuccess: () => {
+              onDone()
               const label = newStatus === 'not-required' ? 'Called — Not Required' : 'Called & Tested'
               toast.success(`${DAY_NAMES[currentWeekDates.findIndex(d => formatDateKey(d) === key)]}: ${label}`)
             },
-            onError: () => toast.error('Failed to save — please try again'),
+            onError: () => { onDone(); toast.error('Failed to save — please try again') },
           }
         )
       }
     },
-    [activeCaseId, testByDate, createMutation, updateMutation, currentWeekDates]
+    [activeCaseId, testByDate, createMutation, updateMutation, currentWeekDates, mutatingDates]
   )
 
   // ─── Handler: Update test result ─────────────────────────────────────────
@@ -347,14 +365,23 @@ export function DrugTestingView() {
       const existing = testByDate.get(key)
 
       if (existing) {
+        setMutatingDates(prev => new Set([...prev, key]))
+        const onDone = () => {
+          setMutatingDates(prev => {
+            const next = new Set(prev)
+            next.delete(key)
+            return next
+          })
+        }
         updateMutation.mutate(
           { id: existing.id, result },
           {
             onSuccess: () => {
+              onDone()
               const resultLabel = RESULT_OPTIONS.find(r => r.value === result)?.label ?? result
               toast.success(`Result updated: ${resultLabel}`)
             },
-            onError: () => toast.error('Failed to update result'),
+            onError: () => { onDone(); toast.error('Failed to update result') },
           }
         )
       }
@@ -401,7 +428,7 @@ export function DrugTestingView() {
 
   // ─── Render ──────────────────────────────────────────────────────────────
 
-  const isMutating = createMutation.isPending || updateMutation.isPending
+  // Per-day mutation tracking — only block the specific day being mutated, not ALL buttons
 
   return (
     <div className="space-y-3 sm:space-y-4 max-w-3xl mx-auto overflow-x-hidden">
@@ -582,7 +609,7 @@ export function DrugTestingView() {
                         {/* Not Called */}
                         <Button
                           variant="outline"
-                          disabled={isMutating}
+                          disabled={mutatingDates.has(key)}
                           onClick={() => handleStatusChange(date, 'not-called')}
                           className={`flex-1 h-8 sm:h-10 text-xs sm:text-sm transition-all ${
                             status === 'not-called'
@@ -598,7 +625,7 @@ export function DrugTestingView() {
                         {/* Called — Not Required */}
                         <Button
                           variant="outline"
-                          disabled={isMutating}
+                          disabled={mutatingDates.has(key)}
                           onClick={() => handleStatusChange(date, 'not-required')}
                           className={`flex-1 h-8 sm:h-10 text-xs sm:text-sm transition-all ${
                             status === 'not-required'
@@ -614,7 +641,7 @@ export function DrugTestingView() {
                         {/* Called & Tested */}
                         <Button
                           variant="outline"
-                          disabled={isMutating}
+                          disabled={mutatingDates.has(key)}
                           onClick={() => handleStatusChange(date, 'called-tested')}
                           className={`flex-1 h-8 sm:h-10 text-xs sm:text-sm transition-all ${
                             status === 'called-tested'
@@ -658,7 +685,7 @@ export function DrugTestingView() {
                             key={opt.value}
                             variant="outline"
                             size="sm"
-                            disabled={isMutating}
+                            disabled={mutatingDates.has(key)}
                             onClick={() => handleResultChange(date, opt.value)}
                             className={`h-7 sm:h-9 text-xs transition-all ${
                               isSelected

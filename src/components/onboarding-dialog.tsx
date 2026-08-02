@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { FolderHeart, Plus, ArrowRight, RotateCcw, Sparkles, Check } from 'lucide-react'
+import { FolderHeart, Plus, ArrowRight, RotateCcw, Camera, Check } from 'lucide-react'
 
 const ONBOARDING_KEY = 'reunify-onboarding-seen'
 
@@ -43,11 +43,11 @@ const steps = [
     bg: 'bg-rose-100 dark:bg-rose-900/30',
   },
   {
-    icon: Sparkles,
-    title: 'Go Pro for Court',
-    description: 'Need a professional report for your judge, attorney, or caseworker? Upgrade to Pro for court-ready PDF reports, detailed summaries, and more.',
-    color: 'text-amber-600',
-    bg: 'bg-amber-100 dark:bg-amber-900/30',
+    icon: Camera,
+    title: 'Scan Your Case Plan',
+    description: 'Take a photo of your printed case plan and the AI will automatically extract all your requirements, court dates, and case info. No manual entry needed!',
+    color: 'text-violet-600',
+    bg: 'bg-violet-100 dark:bg-violet-900/30',
   },
 ]
 

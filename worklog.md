@@ -75,3 +75,24 @@ Stage Summary:
 - Gallery/file picker works with specific MIME types
 - Drag-and-drop fallback available for desktop users
 - Browser test confirmed: scan dialog opens with "Take Photo" and "From Gallery" buttons
+
+---
+Task ID: 1-6
+Agent: main
+Task: Fix 4 bugs reported by user on phone/tablet + remove premature Go Pro upsell
+
+Work Log:
+- Fixed drug testing 5th button bug: Replaced shared `isMutating` state (which blocked ALL buttons when ANY mutation was pending) with per-day `mutatingDates` Set tracking. Now only the specific day being mutated is disabled, not all 5 days.
+- Fixed family orientation button: Replaced unreliable array index lookup (`orientationClasses[orientationNumber - 1]`) with `getOrientationByNumber()` that finds by class name pattern. Added `mutatingOrientations` and `mutatingClasses` Sets for per-item mutation tracking. Added `disabled` attribute and loading spinner to buttons. Fixed `totalOrientations` to always be 2 (CPS requirement).
+- Fixed scan case plan photo distortion: Replaced manual EXIF orientation correction with `createImageBitmap({ imageOrientation: 'from-image' })` as primary method (handles EXIF automatically in modern browsers), with manual fallback for older browsers.
+- Fixed photo upload from device: Changed `accept` attribute from specific MIME types (`image/jpeg,image/png,image/webp,image/heic,image/heif`) to `image/*` which works on all mobile devices.
+- Reduced image compression quality from 0.6/1200px to 0.45/1000px to prevent payload size issues (likely cause of "error 209").
+- Added 90-second timeout to scan API fetch request with clear error messages.
+- Removed premature "Go Pro for Court" upsell from onboarding dialog, replaced with "Scan Your Case Plan" step that highlights the AI scan feature.
+- Verified all fixes with browser test: drug testing 5th button works, orientation 2 button toggles correctly, scan dialog opens with Take Photo and From Gallery buttons.
+
+Stage Summary:
+- Drug testing: Per-day mutation tracking instead of shared isMutating
+- Parenting classes: Reliable name-based lookup + per-item mutation tracking
+- Scan case plan: createImageBitmap with imageOrientation for EXIF, image/* accept, lower quality
+- Onboarding: Replaced Go Pro upsell with scan feature highlight

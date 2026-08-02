@@ -103,6 +103,18 @@ EXTRACTION RULES:
 // Route segment config for large payloads
 export const maxDuration = 60
 
+// Increase body size limit for image uploads (up to 5 compressed images)
+export async function OPTIONS() {
+  return NextResponse.json({}, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  })
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Try to parse the body - if it's too large, this will fail

@@ -247,28 +247,70 @@ function applyExifOrientation(
 
 /**
  * Compress an image file with EXIF orientation correction and size limits.
+ * Uses createImageBitmap with imageOrientation when available (modern browsers),
+ * falls back to manual EXIF correction for older browsers.
  * Handles the common mobile camera issues:
  * - EXIF orientation data (stripped by canvas, causing distortion)
  * - Very large images (12-20MP) that exceed canvas limits
  * - Memory constraints on mobile devices
  */
-function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promise<string> {
+async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promise<string> {
+  // Try createImageBitmap with imageOrientation first (handles EXIF automatically)
+  try {
+    if (typeof createImageBitmap === 'function') {
+      const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+      try {
+        let width = bitmap.width
+        let height = bitmap.height
+
+        // Scale down if needed
+        const maxDim = Math.min(maxWidth, 1200)
+        if (width > maxDim) {
+          height = Math.round((height * maxDim) / width)
+          width = maxDim
+        }
+        if (height > maxDim) {
+          width = Math.round((width * maxDim) / height)
+          height = maxDim
+        }
+
+        // Ensure even dimensions
+        width = Math.round(width / 2) * 2
+        height = Math.round(height / 2) * 2
+
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          ctx.drawImage(bitmap, 0, 0, width, height)
+          bitmap.close()
+          return canvas.toDataURL('image/jpeg', quality)
+        }
+        bitmap.close()
+      } catch {
+        bitmap.close()
+      }
+    }
+  } catch {
+    // createImageBitmap not supported or failed, fall through to manual method
+  }
+
+  // Fallback: manual EXIF orientation correction
   return new Promise(async (resolve, reject) => {
     try {
-      // Step 1: Read EXIF orientation
       const orientation = await getExifOrientation(file)
 
-      // Step 2: Read file as data URL
       const reader = new FileReader()
       reader.onload = (e) => {
         const img = document.createElement('img')
         img.onload = () => {
           try {
-            // Get original pixel dimensions (NOT swapped)
+            // Get original pixel dimensions
             let width = img.naturalWidth || img.width
             let height = img.naturalHeight || img.height
 
-            // Scale down if needed — use smaller max for mobile performance
+            // Scale down if needed
             const maxDim = Math.min(maxWidth, 1200)
             if (width > maxDim) {
               height = Math.round((height * maxDim) / width)
@@ -279,12 +321,11 @@ function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promise<stri
               height = maxDim
             }
 
-            // Ensure dimensions are even numbers (some encoders require it)
+            // Ensure even dimensions
             width = Math.round(width / 2) * 2
             height = Math.round(height / 2) * 2
 
-            // For orientations 5-8, the display dimensions are swapped (90°/270° rotation)
-            // Set canvas to the DISPLAY dimensions, but keep original for transform calc
+            // For orientations 5-8, swap canvas dimensions
             const needsSwap = orientation >= 5 && orientation <= 8
             const canvasWidth = needsSwap ? height : width
             const canvasHeight = needsSwap ? width : height
@@ -299,17 +340,14 @@ function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promise<stri
               return
             }
 
-            // Apply EXIF orientation correction BEFORE drawing
-            // Pass ORIGINAL (non-swapped) dimensions for correct transform calculation
+            // Apply EXIF orientation correction
             applyExifOrientation(ctx, orientation, width, height)
 
-            // Draw the image with ORIGINAL (non-swapped) dimensions
-            // The transform will map it correctly onto the canvas
+            // Draw the image with original dimensions
             ctx.drawImage(img, 0, 0, width, height)
 
-            const dataUrl = canvas.toDataURL('image/jpeg', quality)
-            resolve(dataUrl)
-          } catch (err) {
+            resolve(canvas.toDataURL('image/jpeg', quality))
+          } catch {
             reject(new Error('Failed to process image'))
           }
         }
@@ -450,7 +488,8 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
           toast.error(`Image too large (${Math.round(file.size / 1024 / 1024)}MB). Max 20MB.`)
           continue
         }
-        const dataUrl = await compressImage(file)
+        // Use more aggressive compression for server upload (lower quality, smaller max)
+        const dataUrl = await compressImage(file, 1000, 0.45)
         const thumbnail = await createThumbnail(dataUrl)
         const newPage: CapturedPage = {
           id: generatePageId(),
@@ -524,6 +563,10 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
     try {
       const images = pages.map((p) => p.dataUrl)
 
+      // Log total payload size for debugging
+      const totalSize = images.reduce((sum, img) => sum + img.length, 0)
+      console.log(`[scan-case-plan] Sending ${images.length} images, total payload: ${(totalSize / 1024 / 1024).toFixed(2)}MB`)
+
       // Simulate progress messages while waiting
       let progressInterval: ReturnType<typeof setInterval> | null = null
       let currentProgressPage = 1
@@ -533,11 +576,27 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
         setAnalyzeProgress(`Analyzing page ${currentProgressPage} of ${pages.length}...`)
       }, 5000)
 
-      const response = await fetch('/api/scan-case-plan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ images }),
-      })
+      // Add a timeout (90 seconds) for the fetch request
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 90000)
+
+      let response: Response
+      try {
+        response = await fetch('/api/scan-case-plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ images }),
+          signal: controller.signal,
+        })
+      } catch (fetchError) {
+        clearTimeout(timeoutId)
+        if (progressInterval) clearInterval(progressInterval)
+        if (fetchError instanceof DOMException && fetchError.name === 'AbortError') {
+          throw new Error('Analysis timed out. Please try again with fewer or smaller photos.')
+        }
+        throw new Error('Network error. Please check your connection and try again.')
+      }
+      clearTimeout(timeoutId)
 
       if (progressInterval) clearInterval(progressInterval)
 
@@ -1017,7 +1076,7 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
       <input
         ref={cameraInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+        accept="image/*"
         capture="environment"
         className="hidden"
         onChange={(e) => handleFilesSelected(e.target.files, true)}
@@ -1025,7 +1084,7 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
       <input
         ref={galleryInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+        accept="image/*"
         multiple
         className="hidden"
         onChange={(e) => handleFilesSelected(e.target.files, false)}
