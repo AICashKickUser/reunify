@@ -153,41 +153,172 @@ interface SectionToggle {
 type Phase = 'capture' | 'analyzing' | 'review' | 'applying'
 
 // ============================================================
-// Image compression utility
+// Image compression utility with EXIF orientation support
 // ============================================================
 
-function compressImage(file: File, maxWidth = 1920, quality = 0.8): Promise<string> {
-  return new Promise((resolve, reject) => {
+/**
+ * Read EXIF orientation from a JPEG file's binary data.
+ * Returns the orientation value (1-8) or 1 if not found.
+ * Orientation mapping:
+ *  1 = normal, 2 = flipped horizontal, 3 = rotated 180°, 4 = flipped vertical
+ *  5 = rotated 90° CCW + flipped, 6 = rotated 90° CW
+ *  7 = rotated 90° CW + flipped, 8 = rotated 90° CCW
+ */
+function getExifOrientation(file: File): Promise<number> {
+  return new Promise((resolve) => {
     const reader = new FileReader()
     reader.onload = (e) => {
-      const img = document.createElement('img')
-      img.onload = () => {
-        const canvas = document.createElement('canvas')
-        let { width, height } = img
-
-        if (width > maxWidth) {
-          height = (height * maxWidth) / width
-          width = maxWidth
-        }
-
-        canvas.width = width
-        canvas.height = height
-
-        const ctx = canvas.getContext('2d')
-        if (!ctx) {
-          reject(new Error('Could not get canvas context'))
+      try {
+        const view = new DataView(e.target?.result as ArrayBuffer)
+        // Check for JPEG SOI marker
+        if (view.getUint16(0, false) !== 0xFFD8) {
+          resolve(1)
           return
         }
-
-        ctx.drawImage(img, 0, 0, width, height)
-        const dataUrl = canvas.toDataURL('image/jpeg', quality)
-        resolve(dataUrl)
+        let offset = 2
+        while (offset < view.byteLength - 2) {
+          const marker = view.getUint16(offset, false)
+          offset += 2
+          // APP1 marker (EXIF)
+          if (marker === 0xFFE1) {
+            const length = view.getUint16(offset, false)
+            // Check for "Exif" string
+            if (length > 8 && view.getUint32(offset + 2, false) === 0x45786966) {
+              // TIFF header starts at offset + 8
+              const tiffOffset = offset + 8
+              const isLittleEndian = view.getUint16(tiffOffset, false) === 0x4949
+              // IFD0 offset
+              const ifdOffset = view.getUint32(tiffOffset + 4, isLittleEndian)
+              const ifdStart = tiffOffset + ifdOffset
+              const numEntries = view.getUint16(ifdStart, isLittleEndian)
+              // Search for orientation tag (0x0112)
+              for (let i = 0; i < numEntries; i++) {
+                const entryOffset = ifdStart + 2 + i * 12
+                if (entryOffset + 12 > view.byteLength) break
+                const tag = view.getUint16(entryOffset, isLittleEndian)
+                if (tag === 0x0112) {
+                  const orientation = view.getUint16(entryOffset + 8, isLittleEndian)
+                  resolve(orientation)
+                  return
+                }
+              }
+            }
+            offset += length
+          } else if ((marker & 0xFF00) === 0xFF00) {
+            // Skip other markers
+            offset += view.getUint16(offset, false)
+          } else {
+            break
+          }
+        }
+      } catch {
+        // If EXIF parsing fails, just use default orientation
       }
-      img.onerror = () => reject(new Error('Failed to load image'))
-      img.src = e.target?.result as string
+      resolve(1)
     }
-    reader.onerror = () => reject(new Error('Failed to read file'))
-    reader.readAsDataURL(file)
+    reader.onerror = () => resolve(1)
+    // Only read first 64KB for EXIF data
+    reader.readAsArrayBuffer(file.slice(0, 65536))
+  })
+}
+
+/**
+ * Apply EXIF orientation correction to canvas context.
+ * Transforms the canvas to account for the orientation.
+ */
+function applyExifOrientation(
+  ctx: CanvasRenderingContext2D,
+  orientation: number,
+  width: number,
+  height: number
+): { width: number; height: number } {
+  switch (orientation) {
+    case 2: ctx.transform(-1, 0, 0, 1, width, 0); break
+    case 3: ctx.transform(-1, 0, 0, -1, width, height); break
+    case 4: ctx.transform(1, 0, 0, -1, 0, height); break
+    case 5: ctx.transform(0, 1, 1, 0, 0, 0); return { width: height, height: width }
+    case 6: ctx.transform(0, 1, -1, 0, height, 0); return { width: height, height: width }
+    case 7: ctx.transform(0, -1, -1, 0, height, width); return { width: height, height: width }
+    case 8: ctx.transform(0, -1, 1, 0, 0, width); return { width: height, height: width }
+    default: break
+  }
+  return { width, height }
+}
+
+/**
+ * Compress an image file with EXIF orientation correction and size limits.
+ * Handles the common mobile camera issues:
+ * - EXIF orientation data (stripped by canvas, causing distortion)
+ * - Very large images (12-20MP) that exceed canvas limits
+ * - Memory constraints on mobile devices
+ */
+function compressImage(file: File, maxWidth = 1600, quality = 0.75): Promise<string> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      // Step 1: Read EXIF orientation
+      const orientation = await getExifOrientation(file)
+
+      // Step 2: Read file as data URL
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const img = document.createElement('img')
+        img.onload = () => {
+          try {
+            let { width, height } = img
+
+            // Apply EXIF orientation to get correct dimensions
+            if (orientation >= 5 && orientation <= 8) {
+              // Swap width/height for 90°/270° rotations
+              ;[width, height] = [height, width]
+            }
+
+            // Scale down if needed — use smaller max for mobile performance
+            const maxDim = Math.min(maxWidth, 1600)
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width)
+              width = maxDim
+            }
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height)
+              height = maxDim
+            }
+
+            // Ensure dimensions are even numbers (some encoders require it)
+            width = Math.round(width / 2) * 2
+            height = Math.round(height / 2) * 2
+
+            const canvas = document.createElement('canvas')
+            canvas.width = width
+            canvas.height = height
+
+            const ctx = canvas.getContext('2d')
+            if (!ctx) {
+              reject(new Error('Could not get canvas context'))
+              return
+            }
+
+            // Apply EXIF orientation correction
+            const corrected = applyExifOrientation(ctx, orientation, width, height)
+            if (corrected.width !== width || corrected.height !== height) {
+              canvas.width = corrected.width
+              canvas.height = corrected.height
+            }
+
+            ctx.drawImage(img, 0, 0, corrected.width, corrected.height)
+            const dataUrl = canvas.toDataURL('image/jpeg', quality)
+            resolve(dataUrl)
+          } catch (err) {
+            reject(new Error('Failed to process image'))
+          }
+        }
+        img.onerror = () => reject(new Error('Failed to load image'))
+        img.src = e.target?.result as string
+      }
+      reader.onerror = () => reject(new Error('Failed to read file'))
+      reader.readAsDataURL(file)
+    } catch {
+      reject(new Error('Failed to process image'))
+    }
   })
 }
 
@@ -195,32 +326,36 @@ function createThumbnail(dataUrl: string, maxSize = 200): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = document.createElement('img')
     img.onload = () => {
-      const canvas = document.createElement('canvas')
-      let { width, height } = img
+      try {
+        const canvas = document.createElement('canvas')
+        let { width, height } = img
 
-      if (width > height) {
-        if (width > maxSize) {
-          height = (height * maxSize) / width
-          width = maxSize
+        if (width > height) {
+          if (width > maxSize) {
+            height = (height * maxSize) / width
+            width = maxSize
+          }
+        } else {
+          if (height > maxSize) {
+            width = (width * maxSize) / height
+            height = maxSize
+          }
         }
-      } else {
-        if (height > maxSize) {
-          width = (width * maxSize) / height
-          height = maxSize
+
+        canvas.width = Math.round(width)
+        canvas.height = Math.round(height)
+
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          reject(new Error('Could not get canvas context'))
+          return
         }
+
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        resolve(canvas.toDataURL('image/jpeg', 0.7))
+      } catch {
+        reject(new Error('Failed to create thumbnail'))
       }
-
-      canvas.width = width
-      canvas.height = height
-
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        reject(new Error('Could not get canvas context'))
-        return
-      }
-
-      ctx.drawImage(img, 0, 0, width, height)
-      resolve(canvas.toDataURL('image/jpeg', 0.7))
     }
     img.onerror = () => reject(new Error('Failed to create thumbnail'))
     img.src = dataUrl
@@ -307,6 +442,11 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
 
     for (const file of filesToProcess) {
       try {
+        // Validate file size (max 20MB)
+        if (file.size > 20 * 1024 * 1024) {
+          toast.error(`Image too large (${Math.round(file.size / 1024 / 1024)}MB). Max 20MB.`)
+          continue
+        }
         const dataUrl = await compressImage(file)
         const thumbnail = await createThumbnail(dataUrl)
         const newPage: CapturedPage = {
@@ -316,8 +456,9 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
           name: isCamera ? `Page ${pages.length + 1}` : file.name,
         }
         setPages((prev) => [...prev, newPage])
-      } catch {
-        toast.error(`Failed to process image: ${file.name}`)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Unknown error'
+        toast.error(`Failed to process image: ${msg}. Try a different photo.`)
       }
     }
   }, [pages.length])

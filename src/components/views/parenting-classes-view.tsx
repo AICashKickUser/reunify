@@ -219,19 +219,21 @@ export function ParentingClassesView() {
 
   const allClasses = classes || []
   
-  // Separate orientation from weekly classes
-  const orientationClass = allClasses.find((c) => c.className?.toLowerCase().includes('orientation'))
+  // Separate orientation from weekly classes (support multiple orientations)
+  const orientationClasses = allClasses.filter((c) => c.className?.toLowerCase().includes('orientation'))
   const weeklyClasses = allClasses.filter((c) => !c.className?.toLowerCase().includes('orientation'))
+  const completedOrientations = orientationClasses.filter((c) => c.isCompleted).length
+  const totalOrientations = Math.max(orientationClasses.length, 2) // Support at least 2 orientations
   
   const completedWeekly = weeklyClasses.filter((c) => c.isCompleted).length
   const completionRate = TOTAL_WEEKLY_CLASSES > 0 ? Math.round((completedWeekly / TOTAL_WEEKLY_CLASSES) * 100) : 0
 
   // Determine start date for class schedule (use earliest class date, or default to case removal date)
   const earliestDate = weeklyClasses.length > 0
-    ? weeklyClasses.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0].date
+    ? [...weeklyClasses].sort((a, b) => a.date.slice(0, 10).localeCompare(b.date.slice(0, 10)))[0].date
     : getLocalDateString()
   
-  const tuesdayDates = generateTuesdayDates(new Date(earliestDate))
+  const tuesdayDates = generateTuesdayDates(new Date(earliestDate.slice(0, 10) + 'T12:00:00'))
 
   // Check if a class entry exists for a given date
   function getClassForDate(date: Date): ParentingClass | undefined {
@@ -276,17 +278,18 @@ export function ParentingClassesView() {
     }
   }
 
-  // Handle orientation toggle
-  function toggleOrientation() {
+  // Handle orientation toggle for a specific orientation class
+  function toggleOrientation(orientationNumber: number) {
     if (freeTier.atLimit) {
       setUpgradePromptOpen(true)
       return
     }
-    if (orientationClass) {
+    const existing = orientationClasses[orientationNumber - 1]
+    if (existing) {
       updateMutation.mutate(
-        { id: orientationClass.id, isCompleted: !orientationClass.isCompleted },
+        { id: existing.id, isCompleted: !existing.isCompleted },
         {
-          onSuccess: () => toast.success(orientationClass.isCompleted ? 'Orientation marked incomplete' : 'Orientation completed!'),
+          onSuccess: () => toast.success(existing.isCompleted ? `Orientation ${orientationNumber} marked incomplete` : `Orientation ${orientationNumber} completed!`),
           onError: () => toast.error('Failed to update orientation'),
         }
       )
@@ -295,11 +298,11 @@ export function ParentingClassesView() {
         {
           caseId: activeCaseId,
           date: getLocalDateString(),
-          className: 'Parenting Orientation',
+          className: `Parenting Orientation ${orientationNumber}`,
           isCompleted: true,
         },
         {
-          onSuccess: () => toast.success('Orientation completed!'),
+          onSuccess: () => toast.success(`Orientation ${orientationNumber} completed!`),
           onError: () => toast.error('Failed to mark orientation'),
         }
       )
@@ -344,7 +347,7 @@ export function ParentingClassesView() {
               </div>
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground">Orientation</p>
-                <p className="text-lg sm:text-2xl font-bold text-emerald-600">{orientationClass?.isCompleted ? 'Done' : 'Pending'}</p>
+                <p className="text-lg sm:text-2xl font-bold text-emerald-600">{completedOrientations}/{totalOrientations}</p>
               </div>
             </div>
           </CardContent>
@@ -381,12 +384,12 @@ export function ParentingClassesView() {
       </Card>
 
       {/* Parenting Orientation */}
-      <Card className={`border-l-4 ${orientationClass?.isCompleted ? 'border-l-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/10' : 'border-l-amber-400'}`}>
+      <Card className={`border-l-4 ${completedOrientations >= totalOrientations ? 'border-l-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/10' : 'border-l-amber-400'}`}>
         <CardContent className="p-3 sm:p-4">
-          <div className="flex items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center justify-between gap-2 sm:gap-4 mb-3">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className={`flex size-8 sm:size-10 shrink-0 items-center justify-center rounded-full ${orientationClass?.isCompleted ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-amber-100 dark:bg-amber-900/30'}`}>
-                {orientationClass?.isCompleted ? (
+              <div className={`flex size-8 sm:size-10 shrink-0 items-center justify-center rounded-full ${completedOrientations >= totalOrientations ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-amber-100 dark:bg-amber-900/30'}`}>
+                {completedOrientations >= totalOrientations ? (
                   <CheckCircle2 className="size-4 sm:size-5 text-emerald-600" />
                 ) : (
                   <GraduationCap className="size-4 sm:size-5 text-amber-600" />
@@ -394,21 +397,64 @@ export function ParentingClassesView() {
               </div>
               <div className="min-w-0">
                 <h3 className="text-sm sm:text-base font-semibold text-foreground">Parenting Orientation</h3>
-                <p className="text-xs sm:text-sm text-muted-foreground">One-time orientation session — required before weekly classes</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Orientation sessions — required before weekly classes</p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {orientationClass?.isCompleted && (
+              {completedOrientations >= totalOrientations && (
                 <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
-                  Completed
+                  All Done
                 </Badge>
               )}
-              {orientationClass && (
-                <Button variant="ghost" size="sm" onClick={() => setEditClass(orientationClass)}>
-                  <Pencil className="size-4" />
-                </Button>
-              )}
             </div>
+          </div>
+          {/* Orientation toggle buttons */}
+          <div className="space-y-2">
+            {Array.from({ length: totalOrientations }, (_, i) => {
+              const num = i + 1
+              const oc = orientationClasses[i]
+              const isCompleted = oc?.isCompleted ?? false
+              const hasCertificate = oc?.hasCertificate ?? false
+              return (
+                <div
+                  key={num}
+                  className={`flex items-center gap-2 sm:gap-3 p-2 rounded-lg transition-colors ${
+                    isCompleted
+                      ? 'bg-emerald-50 dark:bg-emerald-950/10'
+                      : 'bg-amber-50 dark:bg-amber-950/10'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    className={`flex size-8 sm:size-9 shrink-0 items-center justify-center rounded-full transition-all ${
+                      isCompleted
+                        ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
+                        : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 hover:bg-amber-200 dark:hover:bg-amber-900/50'
+                    }`}
+                    onClick={() => toggleOrientation(num)}
+                    aria-label={isCompleted ? `Mark orientation ${num} incomplete` : `Mark orientation ${num} complete`}
+                  >
+                    {isCompleted ? <Check className="size-4" /> : <span className="text-xs font-bold">{num}</span>}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium text-foreground">
+                      {oc?.className || `Orientation ${num}`}
+                    </span>
+                    {hasCertificate && (
+                      <Badge className="ml-2 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs">
+                        <Award className="size-3" />
+                        Certificate
+                      </Badge>
+                    )}
+                  </div>
+                  {oc && (
+                    <Button variant="ghost" size="sm" onClick={() => setEditClass(oc)}>
+                      <Pencil className="size-4" />
+                    </Button>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </CardContent>
       </Card>

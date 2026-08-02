@@ -5,16 +5,16 @@
  */
 
 export const FREE_TIER_LIMITS: Record<string, number> = {
-  counseling: 3,
-  'drug-tests': 3,
-  'na-meetings': 3,
-  'na-steps': 3,
-  'supervised-visits': 3,
-  'court-dates': 3,
-  'parenting-classes': 3,
-  'daily-checkins': 3,
-  milestones: 3,
-  requirements: 3,
+  counseling: 5,
+  'drug-tests': 15,
+  'na-meetings': 5,
+  'na-steps': 12,
+  'supervised-visits': 5,
+  'court-dates': 5,
+  'parenting-classes': 20,
+  'daily-checkins': 7,
+  milestones: 5,
+  requirements: 10,
 }
 
 /**
@@ -34,7 +34,7 @@ export function canAddItem(category: string, currentCount: number, isPro: boolea
  */
 export function getFreeTierMessage(category: string): string {
   const displayName = getCategoryDisplayName(category)
-  const limit = FREE_TIER_LIMITS[category] ?? 3
+  const limit = FREE_TIER_LIMITS[category] ?? 5
   return `You've logged ${limit} ${displayName}! That's great progress!`
 }
 

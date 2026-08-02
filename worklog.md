@@ -153,3 +153,79 @@ Stage Summary:
 - Fix: `updateCase()` now upserts (creates case if missing) instead of throwing
 - Secondary fix: `handleApply` now catches errors per-section instead of crashing the whole flow
 - Files modified: `src/lib/client-db.ts`, `src/components/scan-case-plan.tsx`
+
+---
+Task ID: 1
+Agent: main
+Task: Fix drug testing 5th button bug (timezone issue)
+
+Work Log:
+- Identified root cause: `testByDate` map used `new Date(test.date)` which parses YYYY-MM-DD strings as UTC midnight, shifting to the previous day in timezones behind UTC (e.g. PST)
+- Added `safeDateKey()` function that extracts the date portion directly from YYYY-MM-DD strings without timezone shifting
+- Updated `testByDate` map to use `safeDateKey()` instead of `formatDateKey(new Date(test.date))`
+- Also fixed `parenting-classes-view.tsx` to use `date.slice(0, 10).localeCompare()` for sorting instead of `new Date().getTime()`
+
+Stage Summary:
+- Drug testing 5th button (Friday) now works correctly
+- The timezone bug affected all date parsing in the drug testing view
+- Files modified: `src/components/views/drug-testing-view.tsx`, `src/components/views/parenting-classes-view.tsx`
+
+---
+Task ID: 2
+Agent: main
+Task: Fix family orientation button - can't mark as completed + support 2 classes
+
+Work Log:
+- Found that the orientation card had NO clickable button to mark completion - the `toggleOrientation()` function existed but was never called
+- Changed from single orientation to support multiple orientations (2 by default)
+- Added clickable circle buttons for each orientation (like the weekly class buttons)
+- Updated stats card to show "0/2" format instead of "Done/Pending"
+- Added certificate badge display for orientations
+- Updated `toggleOrientation()` to accept orientation number parameter
+
+Stage Summary:
+- Orientation section now has 2 clickable items (Orientation 1, Orientation 2)
+- Each has a green circle button that toggles completion
+- Certificate badges are shown for orientations with certificates
+- Files modified: `src/components/views/parenting-classes-view.tsx`
+
+---
+Task ID: 3
+Agent: main
+Task: Fix scan case plan - EXIF orientation, large image handling, upload from gallery
+
+Work Log:
+- Added EXIF orientation parsing (`getExifOrientation()`) to read JPEG EXIF data
+- Added `applyExifOrientation()` to apply correct rotation/flip transforms to canvas
+- Updated `compressImage()` to:
+  - Read EXIF orientation before processing
+  - Apply correct rotation/flip transforms
+  - Use smaller max dimensions (1600px) for mobile performance
+  - Use lower quality (0.75) to reduce payload size
+  - Ensure even dimensions for encoder compatibility
+- Added file size validation (max 20MB)
+- Better error messages with specific failure reasons
+- Added try/catch around canvas operations
+- Improved API route with better error handling and logging for VLM API errors
+
+Stage Summary:
+- Photos from mobile cameras will no longer appear distorted (EXIF orientation handled)
+- Large images are properly scaled down for mobile performance
+- Better error messages when image processing fails
+- Files modified: `src/components/scan-case-plan.tsx`, `src/app/api/scan-case-plan/route.ts`
+
+---
+Task ID: 4
+Agent: main
+Task: Increase free tier limits for practical use
+
+Work Log:
+- Free tier limits were too restrictive (3 items per category)
+- Drug testing needs 5/week (Mon-Fri), so 3 was completely unusable
+- Parenting classes needs 16+ entries, so 3 was unusable
+- Increased limits: drug-tests: 15, parenting-classes: 20, na-steps: 12, requirements: 10
+- Other categories increased to 5-7 items
+
+Stage Summary:
+- Free tier limits now allow practical use of the app
+- Files modified: `src/lib/free-tier.ts`, `src/components/upgrade-prompt-dialog.tsx`

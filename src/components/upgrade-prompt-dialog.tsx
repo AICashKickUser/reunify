@@ -24,7 +24,7 @@ interface UpgradePromptDialogProps {
 export function UpgradePromptDialog({ open, onOpenChange, category }: UpgradePromptDialogProps) {
   const { setActiveView } = useAppStore()
   const displayName = getCategoryDisplayName(category)
-  const limit = FREE_TIER_LIMITS[category] ?? 3
+  const limit = FREE_TIER_LIMITS[category] ?? 5
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>

@@ -79,6 +79,20 @@ function formatDateKey(date: Date): string {
   return `${y}-${m}-${d}`
 }
 
+/**
+ * Safely extract a YYYY-MM-DD date key from a stored date string.
+ * IMPORTANT: `new Date("2025-03-07")` parses as UTC midnight, which shifts
+ * to the previous day in timezones behind UTC (e.g. PST → March 6th).
+ * To avoid this, we extract the date portion directly from the string.
+ */
+function safeDateKey(dateStr: string): string {
+  if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+    return dateStr.slice(0, 10)
+  }
+  // Fallback for non-standard formats
+  return formatDateKey(new Date(dateStr))
+}
+
 /** Format date for display: "Mon Jul 21" */
 function formatDayLabel(date: Date, dayName: string): string {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -133,9 +147,8 @@ export function DrugTestingView() {
     const map = new Map<string, DrugTest>()
     if (!drugTests) return map
     for (const test of drugTests) {
-      // The API returns date as ISO string; parse it and get the local date key
-      const d = new Date(test.date)
-      const key = formatDateKey(d)
+      // Use safeDateKey to avoid timezone shift when parsing YYYY-MM-DD strings
+      const key = safeDateKey(test.date)
       // If multiple entries for same date, prefer the most recent
       const existing = map.get(key)
       if (!existing || new Date(test.updatedAt) > new Date(existing.updatedAt)) {

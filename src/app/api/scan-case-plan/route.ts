@@ -119,6 +119,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Log total payload size for debugging
+    const totalSize = images.reduce((sum, img) => sum + img.length, 0)
+    console.log(`[scan-case-plan] Processing ${images.length} images, total size: ${(totalSize / 1024 / 1024).toFixed(2)}MB`)
+
     const zai = await getZAI()
 
     // Build the content array with all images
@@ -131,26 +135,36 @@ export async function POST(request: NextRequest) {
       ? 'I am uploading a photo of my CPS reunification case plan. Extract all the information.'
       : `I am uploading ${images.length} pages of my CPS reunification case plan. Page 1 is first, page ${images.length} is last. Analyze all pages together and extract all the information.`
 
-    const response = await zai.chat.completions.createVision({
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: SYSTEM_PROMPT },
-            ...imageContents,
-            { type: 'text', text: pageText },
-          ],
-        },
-      ],
-      thinking: { type: 'disabled' },
-    })
+    let response
+    try {
+      response = await zai.chat.completions.createVision({
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: SYSTEM_PROMPT },
+              ...imageContents,
+              { type: 'text', text: pageText },
+            ],
+          },
+        ],
+        thinking: { type: 'disabled' },
+      })
+    } catch (vlmError) {
+      console.error('[scan-case-plan] VLM API error:', vlmError)
+      const errMsg = vlmError instanceof Error ? vlmError.message : 'Unknown VLM error'
+      return NextResponse.json(
+        { error: `AI analysis failed: ${errMsg}. Please try again with clearer, smaller photos.` },
+        { status: 502 }
+      )
+    }
 
     const content = response.choices[0]?.message?.content
 
     if (!content) {
       return NextResponse.json(
-        { error: 'No response from vision model' },
-        { status: 500 }
+        { error: 'No response from vision model. Please try again.' },
+        { status: 502 }
       )
     }
 
@@ -168,6 +182,7 @@ export async function POST(request: NextRequest) {
       parsed = JSON.parse(cleanedContent)
     } catch {
       // If JSON parse fails, return the raw content for the frontend to handle
+      console.log('[scan-case-plan] JSON parse failed, returning raw content')
       return NextResponse.json({
         success: true,
         raw: true,
@@ -175,15 +190,18 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    console.log(`[scan-case-plan] Successfully extracted data: ${parsed.requirements?.length || 0} requirements, ${parsed.courtDates?.length || 0} court dates`)
+
     return NextResponse.json({
       success: true,
       raw: false,
       data: parsed,
     })
   } catch (error) {
-    console.error('Scan case plan error:', error)
+    console.error('[scan-case-plan] Unexpected error:', error)
+    const errMsg = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to analyze case plan images' },
+      { error: `Failed to analyze case plan: ${errMsg}` },
       { status: 500 }
     )
   }
