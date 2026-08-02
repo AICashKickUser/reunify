@@ -7,6 +7,8 @@ import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { useAppStore, VIEW_LABELS, type ViewType } from '@/lib/store'
 import { useCase } from '@/lib/data-hooks'
+import { ProBadge } from '@/components/pro-badge'
+import { useSubscriptionStore, isProActive } from '@/lib/subscription'
 
 
 const VIEW_ADD_LABELS: Partial<Record<ViewType, string>> = {
@@ -27,6 +29,8 @@ export function AppHeader() {
   const { data: caseData } = useCase(activeCaseId)
   const addLabel = VIEW_ADD_LABELS[activeView]
   const canGoBack = viewHistory.length > 0
+  const subscription = useSubscriptionStore()
+  const isProUser = isProActive(subscription)
 
   // Calculate overall progress from requirements
   const requirements = caseData?.requirements ?? []
@@ -58,6 +62,10 @@ export function AppHeader() {
       <h1 className="text-sm sm:text-base font-semibold text-foreground flex-1 truncate">
         {title}
       </h1>
+
+      {isProUser && (
+        <ProBadge size="sm" showIcon className="mr-1" />
+      )}
 
       {activeCaseId && (
         <div className="hidden sm:flex items-center gap-2 mr-2">

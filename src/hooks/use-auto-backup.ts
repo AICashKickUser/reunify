@@ -6,6 +6,7 @@ import { autoBackup } from '@/lib/cloud-backup'
 import { useAppStore } from '@/lib/store'
 import { exportAllData } from '@/lib/client-db'
 import { toast } from 'sonner'
+import { isProActive, useSubscriptionStore } from '@/lib/subscription'
 
 const LOCAL_BACKUP_KEY = 'reunify-local-auto-backup'
 const LOCAL_BACKUP_TIMESTAMP_KEY = 'reunify-local-auto-backup-timestamp'
@@ -66,12 +67,16 @@ export function getLocalAutoBackup(): { data: unknown; timestamp: number } | nul
 export function useAutoBackup() {
   const queryClient = useQueryClient()
   const { activeCaseId } = useAppStore()
+  const subscription = useSubscriptionStore()
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isBackingUpRef = useRef(false)
 
   const triggerAutoBackup = useCallback(async (caseId: string) => {
     if (isBackingUpRef.current) return
     if (typeof navigator !== 'undefined' && !navigator.onLine) return
+
+    // Cloud auto-backup is a Pro feature
+    if (!isProActive(subscription)) return
 
     isBackingUpRef.current = true
     try {

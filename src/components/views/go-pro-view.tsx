@@ -1,0 +1,252 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useAppStore } from '@/lib/store'
+import { isProActive, useSubscriptionStore, PRO_FEATURES } from '@/lib/subscription'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Crown, Check, Sparkles, Loader2, Shield, FileText, Cloud, Mail, BarChart3 } from 'lucide-react'
+import { toast } from 'sonner'
+
+const FEATURE_ICONS: Record<string, React.ElementType> = {
+  'court-reports': FileText,
+  'auto-backup': Cloud,
+  'email-reports': Mail,
+  'enhanced-charts': BarChart3,
+  'verified-badge': Shield,
+}
+
+export function GoProView() {
+  const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
+  const [loading, setLoading] = useState(false)
+  const [configured, setConfigured] = useState(false)
+  const subscription = useSubscriptionStore()
+  const isPro = isProActive(subscription)
+
+  useEffect(() => {
+    fetch('/api/stripe/config')
+      .then(r => r.json())
+      .then(data => setConfigured(data.configured === true))
+      .catch(() => setConfigured(false))
+  }, [])
+
+  const handleUpgrade = async () => {
+    if (!configured) {
+      toast.error('Payment system is being set up. Please try again later.')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const response = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: billing }),
+      })
+
+      const data = await response.json()
+
+      if (data.error) {
+        toast.error(data.error)
+        return
+      }
+
+      if (data.url) {
+        window.location.href = data.url
+      }
+    } catch {
+      toast.error('Could not start checkout. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleManage = async () => {
+    if (!subscription.stripeCustomerId) {
+      toast.error('No billing account found')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const response = await fetch('/api/stripe/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerId: subscription.stripeCustomerId }),
+      })
+
+      const data = await response.json()
+
+      if (data.error) {
+        toast.error(data.error)
+        return
+      }
+
+      if (data.url) {
+        window.location.href = data.url
+      }
+    } catch {
+      toast.error('Could not open billing portal.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const monthlyPrice = 4.99
+  const annualPrice = 39.99
+  const annualMonthly = (annualPrice / 12).toFixed(2)
+
+  return (
+    <div className="space-y-4 max-w-2xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="flex size-10 sm:size-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 shadow-lg shadow-amber-500/20">
+          <Crown className="size-5 sm:size-6 text-white" />
+        </div>
+        <div>
+          <h2 className="text-lg sm:text-xl font-bold text-foreground">Reunify Pro</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Look your best for judges and social workers
+          </p>
+        </div>
+      </div>
+
+      {/* Pro Status Banner */}
+      {isPro && (
+        <Card className="border-emerald-200 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/20">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+              <Check className="size-5 text-emerald-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                {subscription.status === 'trialing' ? 'Free Trial Active' : 'Pro Subscription Active'}
+              </p>
+              {subscription.currentPeriodEnd && (
+                <p className="text-xs text-muted-foreground">
+                  {subscription.cancelAtPeriodEnd
+                    ? `Ends ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`
+                    : `Renews ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`}
+                </p>
+              )}
+            </div>
+            {subscription.stripeCustomerId && (
+              <Button variant="outline" size="sm" onClick={handleManage} disabled={loading}>
+                {loading ? <Loader2 className="size-4 animate-spin" /> : 'Manage'}
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Free Tier Reassurance */}
+      <Card className="border-emerald-200 dark:border-emerald-800">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-2.5">
+            <Shield className="size-4 text-emerald-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+                Your free app is always fully functional
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                All case tracking, drug testing logs, progress, and scan features work for free — forever. 
+                Pro adds features that make you look great to the court.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Pro Features */}
+      <Card>
+        <CardHeader className="pb-3 px-4 sm:px-6">
+          <CardTitle className="text-sm sm:text-base font-semibold">Pro Features</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 px-4 sm:px-6">
+          {PRO_FEATURES.map((feature) => {
+            const Icon = FEATURE_ICONS[feature.id] || Check
+            return (
+              <div key={feature.id} className="flex items-start gap-3 p-2.5 rounded-lg bg-amber-50/50 dark:bg-amber-950/10">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
+                  <Icon className="size-4 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{feature.title}</p>
+                  <p className="text-xs text-muted-foreground">{feature.description}</p>
+                </div>
+              </div>
+            )
+          })}
+        </CardContent>
+      </Card>
+
+      {/* Pricing */}
+      {!isPro && (
+        <Card className="border-amber-200 dark:border-amber-800">
+          <CardContent className="p-4 sm:p-6 space-y-4">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setBilling('monthly')}
+                className={`flex-1 p-3 rounded-lg border-2 text-center transition-all ${
+                  billing === 'monthly'
+                    ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20'
+                    : 'border-muted hover:border-amber-200'
+                }`}
+              >
+                <p className="text-base font-bold">${monthlyPrice}</p>
+                <p className="text-xs text-muted-foreground">per month</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setBilling('annual')}
+                className={`flex-1 p-3 rounded-lg border-2 text-center transition-all relative ${
+                  billing === 'annual'
+                    ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20'
+                    : 'border-muted hover:border-amber-200'
+                }`}
+              >
+                <Badge className="absolute -top-2 -right-1 bg-emerald-600 text-white text-[9px] px-1.5 py-0 h-4">
+                  Save 33%
+                </Badge>
+                <p className="text-base font-bold">${annualMonthly}</p>
+                <p className="text-xs text-muted-foreground">per month (${annualPrice}/yr)</p>
+              </button>
+            </div>
+
+            <Button
+              onClick={handleUpgrade}
+              disabled={loading || !configured}
+              className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white h-12 text-base font-semibold shadow-lg shadow-amber-500/20"
+            >
+              {loading ? (
+                <Loader2 className="size-5 animate-spin mr-2" />
+              ) : (
+                <Sparkles className="size-5 mr-2" />
+              )}
+              {configured ? 'Start 7-Day Free Trial' : 'Coming Soon'}
+            </Button>
+
+            <p className="text-[11px] text-center text-muted-foreground">
+              7-day free trial, then {billing === 'monthly' ? `$${monthlyPrice}/month` : `$${annualPrice}/year`}. Cancel anytime. No restrictions on the free tier.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Why Pro */}
+      <Card className="border-dashed">
+        <CardContent className="p-4">
+          <p className="text-xs text-muted-foreground text-center leading-relaxed">
+            <strong className="text-foreground">Why Pro?</strong> When you walk into court with a professional progress report 
+            showing your compliance, clean drug tests, and completed classes — judges and social workers take notice. 
+            Pro helps you present your best self. Your basic app is always free and fully functional.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+export default GoProView

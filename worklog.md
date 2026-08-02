@@ -96,3 +96,91 @@ Stage Summary:
 - Parenting classes: Reliable name-based lookup + per-item mutation tracking
 - Scan case plan: createImageBitmap with imageOrientation for EXIF, image/* accept, lower quality
 - Onboarding: Replaced Go Pro upsell with scan feature highlight
+
+## Bug Fix: 5th Drug Testing Button (Friday) Affects Thursday Instead
+
+**Date**: 2026-03-04
+**File**: `src/components/views/drug-testing-view.tsx`
+
+### Problem
+When the user pressed the 5th drug testing button (Friday), it changed the 4th day (Thursday) instead, and the 5th day didn't change.
+
+### Root Cause
+The `handleStatusChange` callback used `useCallback` with `mutatingDates` (a `useState` variable) and `testByDate` in its dependency array. This caused two issues:
+
+1. **Stale `testByDate` closure**: When `mutatingDates` changed (triggering a re-render and callback recreation), the `testByDate` value captured in the closure could be stale if `queryClient.invalidateQueries` hadn't finished refetching yet. This caused the `testByDate.get(key)` lookup to return the wrong entry (e.g., Thursday's entry when looking up Friday).
+
+2. **Callback recreation on every mutation**: Since `mutatingDates` was in the dependency array, every mutation start/completion caused `handleStatusChange` to be recreated, which could capture stale state in the process.
+
+### Fix Applied
+1. **Changed `mutatingDates` from `useState` to `useRef`**: This prevents the `handleStatusChange` callback from being recreated when the mutating set changes. A version counter state (`setMutatingDatesVersion`) is used to trigger UI re-renders when the ref changes.
+
+2. **Added `testByDateRef`**: A ref that mirrors `testByDate` and is updated on every render. The callback reads from `testByDateRef.current` instead of the closure-captured `testByDate`, ensuring it always has the latest lookup data.
+
+3. **Added safety check for the 5th day**: A `currentWeekDates.findIndex` validation verifies the computed date key belongs to the current week, catching stale-closure or off-by-one issues.
+
+4. **Removed stale dependencies**: `mutatingDates` and `testByDate` were removed from the `handleStatusChange` dependency array, and `testByDate` was removed from `handleResultChange`'s dependency array.
+
+5. **Updated all UI references**: Changed `mutatingDates.has(key)` to `mutatingDatesRef.current.has(key)` in all button `disabled` props.
+
+### Verification
+- Lint passes with no errors in the edited file
+- Dev server compiles successfully
+
+---
+Task ID: 7
+Agent: main
+Task: Fix 2 bugs: (1) Family orientation button can't be marked completed, (2) Scan case plan still broken
+
+Work Log:
+
+**Bug 1: Family orientation button can't be marked completed**
+- Root cause: `mutatingOrientations` and `mutatingClasses` were `useState<Set<number>>` which caused stale closures — when `toggleOrientation()` read `mutatingOrientations.has(orientationNumber)`, it got a stale value from the closure, preventing the button from working.
+- Fix: Converted `mutatingOrientations` and `mutatingClasses` from `useState` to `useRef<Set<number>>` so the mutation check always reads the current value. Added companion version state (`mutatingOrientationsVersion`, `mutatingClassesVersion`) to trigger re-renders when the ref changes.
+- Made orientation button larger (from `size-8 sm:size-9` to `size-11` = 44px) for better touch targets on mobile, and added `touch-manipulation` CSS class.
+- Improved error messages: "Failed to update orientation" → "Failed to update orientation. Please try again."
+- Files changed: `/home/z/my-project/src/components/views/parenting-classes-view.tsx`
+
+**Bug 2: Scan case plan still broken**
+- `compressImage` function: Added a try/catch around `createImageBitmap(file, { imageOrientation: 'from-image' })` to fall back to `createImageBitmap(file)` without the `imageOrientation` option for devices that don't support it. This prevents the function from failing entirely on older Android devices.
+- Reduced max dimension cap from 1200 to 800 pixels in both the `createImageBitmap` path and the manual fallback path. This ensures smaller images that won't hit canvas memory limits on mobile devices.
+- Added canvas memory safety check: if `width * height > 4,000,000`, downscale further to avoid canvas memory issues on mobile devices.
+- Changed compression parameters in `handleFilesSelected` from `compressImage(file, 1000, 0.45)` to `compressImage(file, 800, 0.35)` — smaller images and lower quality to prevent payload size issues.
+- Added payload size check before sending: if total payload > 10MB, show error and return to capture phase.
+- Added specific error handling for HTTP 502 (AI service unavailable) and 504 (timeout) errors.
+- Improved error messages throughout: more descriptive messages for canvas context failures, image loading failures, and file reading failures.
+- Added console.error logging for image processing errors and analysis errors.
+- Added `multiple` attribute to camera input for multi-page capture.
+- Changed `accept` attribute from `image/*` to `image/jpeg,image/png,image/webp,image/*` for better Android compatibility (specific MIME types first, then wildcard fallback).
+- Files changed: `/home/z/my-project/src/components/scan-case-plan.tsx`
+
+Stage Summary:
+- Orientation button: Ref-based mutation tracking fixes stale closure, 44px touch target, better error messages
+- Scan case plan: Robust createImageBitmap fallback, 800px/0.35 compression, payload size check, better error messages, multi-page camera input
+
+---
+Task ID: 5
+Agent: main
+Task: Rebuild Stripe subscription system with non-restrictive free tier + additive pro features
+
+Work Log:
+- Created subscription store (src/lib/subscription.ts) with Zustand persist middleware
+- Created Stripe API routes: checkout, portal, webhook, status, config
+- Created UpgradeDialog component with monthly/annual billing toggle
+- Created ProBadge component with Crown icon
+- Created GoProView with full pricing page and feature descriptions
+- Added 'go-pro' to ViewType and VIEW_LABELS in store.ts
+- Added 'Go Pro' nav item to sidebar with Pro group
+- Added 'Upgrade to Pro' button in sidebar footer (non-intrusive)
+- Added ProBadge in sidebar for Pro users
+- Fixed app-header.tsx and app-sidebar.tsx to use isProActive() correctly
+- Fixed use-auto-backup.ts to use isProActive() with subscription state
+- Added .env Stripe key placeholders
+
+Stage Summary:
+- Stripe subscription system rebuilt with non-restrictive approach
+- Free tier: ALL features fully usable (no limits, no paywalls)
+- Pro tier ($4.99/mo or $39.99/yr): Court-Ready PDF reports, auto cloud backup, email reports, enhanced charts, verified badge
+- 7-day free trial, cancel anytime
+- App works fully without Stripe keys (graceful degradation)
+- Pro features are ADDITIVE — they make users look better to judges/social workers, not restrictive

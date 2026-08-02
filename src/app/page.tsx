@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, lazy, Suspense } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
 import { AppHeader } from '@/components/app-header'
@@ -15,6 +15,7 @@ import { AppLockScreen, useAppLock } from '@/components/app-lock'
 import { CelebrationOverlay } from '@/components/celebration-overlay'
 import { useAutoBackup } from '@/hooks/use-auto-backup'
 import { useCases } from '@/lib/data-hooks'
+import { UpgradeDialog } from '@/components/upgrade-dialog'
 
 /**
  * Auto-detects existing cases and sets the activeCaseId if none is set.
@@ -49,6 +50,7 @@ const ParentingClassesView = lazy(() => import('@/components/views/parenting-cla
 const ProgressView = lazy(() => import('@/components/views/progress-view'))
 const DailyCheckinsView = lazy(() => import('@/components/views/daily-checkins-view'))
 const BackupView = lazy(() => import('@/components/views/backup-view'))
+const GoProView = lazy(() => import('@/components/views/go-pro-view'))
 
 const VIEW_MAP: Record<ViewType, React.ComponentType> = {
   'dashboard': DashboardView,
@@ -65,6 +67,7 @@ const VIEW_MAP: Record<ViewType, React.ComponentType> = {
   'daily-checkins': DailyCheckinsView,
   'progress': ProgressView,
   'backup': BackupView,
+  'go-pro': GoProView,
 }
 
 function ViewLoader() {
@@ -98,9 +101,31 @@ function ActiveView() {
   )
 }
 
+/**
+ * Hook that listens for the 'reunify-show-upgrade' custom event
+ * and opens the UpgradeDialog.
+ */
+function useUpgradeDialog() {
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [upgradeFeature, setUpgradeFeature] = useState<string | undefined>()
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const customEvent = e as CustomEvent
+      setUpgradeFeature(customEvent.detail?.feature)
+      setUpgradeOpen(true)
+    }
+    window.addEventListener('reunify-show-upgrade', handler)
+    return () => window.removeEventListener('reunify-show-upgrade', handler)
+  }, [])
+
+  return { upgradeOpen, setUpgradeOpen, upgradeFeature }
+}
+
 export default function Home() {
   const { activeCaseId, activeView } = useAppStore()
   const { isUnlocked, handleUnlock, mounted } = useAppLock()
+  const { upgradeOpen, setUpgradeOpen, upgradeFeature } = useUpgradeDialog()
 
   // Enable browser history management for Android back button support
   useNavigationHistory()
@@ -147,6 +172,11 @@ export default function Home() {
       </SidebarInset>
       <OnboardingDialog />
       <CelebrationOverlay />
+      <UpgradeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        feature={upgradeFeature}
+      />
     </SidebarProvider>
   )
 }

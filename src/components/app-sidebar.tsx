@@ -22,7 +22,7 @@ import {
   FolderHeart,
   CalendarCheck,
   Trash2,
-
+  Crown,
   HardDriveDownload,
   Lock,
   Unlock,
@@ -54,6 +54,8 @@ import { useAppStore, type ViewType } from '@/lib/store'
 import { useCases, useDeleteCase } from '@/lib/data-hooks'
 
 import { StreakBadge } from '@/components/streak-display'
+import { ProBadge } from '@/components/pro-badge'
+import { useSubscriptionStore, isProActive } from '@/lib/subscription'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -122,6 +124,12 @@ const NAV_GROUPS: NavGroup[] = [
       { view: 'backup', label: 'Backup & Restore', icon: HardDriveDownload },
     ],
   },
+  {
+    label: 'Pro',
+    items: [
+      { view: 'go-pro', label: 'Go Pro', icon: Crown },
+    ],
+  },
 ]
 
 export function AppSidebar() {
@@ -129,6 +137,8 @@ export function AppSidebar() {
   const { data: cases } = useCases()
   const deleteMutation = useDeleteCase()
   const { isMobile, setOpenMobile, toggleSidebar, state: sidebarState } = useSidebar()
+  const subscription = useSubscriptionStore()
+  const isProUser = isProActive(subscription)
   // Use useSyncExternalStore for SSR-safe lock state reading
   const isClient = useSyncExternalStore(emptySubscribe, returnTrue, returnFalse)
   const [lockVersion, setLockVersion] = useState(0)
@@ -497,6 +507,47 @@ export function AppSidebar() {
             </AlertDialog>
           </div>
         )}
+        {/* Upgrade to Pro / Pro Badge */}
+        <div className="group-data-[collapsible=icon]:hidden mt-2">
+          {isProUser ? (
+            <div className="flex items-center justify-center gap-1.5">
+              <ProBadge size="sm" showIcon />
+              <span className="text-xs text-muted-foreground">Reunify Pro</span>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('reunify-show-upgrade', { detail: { feature: 'Reunify Pro' } }))
+                }
+              }}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-950/40 transition-colors"
+            >
+              <Crown className="size-3.5" />
+              Upgrade to Pro
+            </button>
+          )}
+        </div>
+
+        {/* Collapsed icon mode: just show Crown icon */}
+        <div className="hidden group-data-[collapsible=icon]:flex items-center justify-center mt-2">
+          {isProUser ? (
+            <ProBadge size="sm" showIcon />
+          ) : (
+            <button
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('reunify-show-upgrade', { detail: { feature: 'Reunify Pro' } }))
+                }
+              }}
+              className="flex items-center justify-center size-8 rounded-md text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-colors"
+              title="Upgrade to Pro"
+            >
+              <Crown className="size-4" />
+            </button>
+          )}
+        </div>
+
         {/* Last Synced Indicator */}
         <div className="group-data-[collapsible=icon]:hidden mt-2">
           <LastSynced caseId={activeCaseId} compact />

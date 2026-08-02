@@ -258,13 +258,20 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promis
   // Try createImageBitmap with imageOrientation first (handles EXIF automatically)
   try {
     if (typeof createImageBitmap === 'function') {
-      const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+      // Try with imageOrientation option first (modern browsers)
+      let bitmap: ImageBitmap
+      try {
+        bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+      } catch {
+        // imageOrientation option not supported on this device, try without it
+        bitmap = await createImageBitmap(file)
+      }
       try {
         let width = bitmap.width
         let height = bitmap.height
 
-        // Scale down if needed
-        const maxDim = Math.min(maxWidth, 1200)
+        // Scale down if needed — use the smaller of maxWidth or 800 for mobile safety
+        const maxDim = Math.min(maxWidth, 800)
         if (width > maxDim) {
           height = Math.round((height * maxDim) / width)
           width = maxDim
@@ -277,6 +284,14 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promis
         // Ensure even dimensions
         width = Math.round(width / 2) * 2
         height = Math.round(height / 2) * 2
+
+        // Safety check: skip canvas if dimensions are too large for mobile devices
+        if (width * height > 4000000) {
+          // Downscale further to avoid canvas memory issues
+          const scale = Math.sqrt(4000000 / (width * height))
+          width = Math.round((width * scale) / 2) * 2
+          height = Math.round((height * scale) / 2) * 2
+        }
 
         const canvas = document.createElement('canvas')
         canvas.width = width
@@ -310,8 +325,8 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promis
             let width = img.naturalWidth || img.width
             let height = img.naturalHeight || img.height
 
-            // Scale down if needed
-            const maxDim = Math.min(maxWidth, 1200)
+            // Scale down if needed — use the smaller of maxWidth or 800 for mobile safety
+            const maxDim = Math.min(maxWidth, 800)
             if (width > maxDim) {
               height = Math.round((height * maxDim) / width)
               width = maxDim
@@ -325,6 +340,13 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promis
             width = Math.round(width / 2) * 2
             height = Math.round(height / 2) * 2
 
+            // Safety check: skip canvas if dimensions are too large for mobile devices
+            if (width * height > 4000000) {
+              const scale = Math.sqrt(4000000 / (width * height))
+              width = Math.round((width * scale) / 2) * 2
+              height = Math.round((height * scale) / 2) * 2
+            }
+
             // For orientations 5-8, swap canvas dimensions
             const needsSwap = orientation >= 5 && orientation <= 8
             const canvasWidth = needsSwap ? height : width
@@ -336,7 +358,7 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promis
 
             const ctx = canvas.getContext('2d')
             if (!ctx) {
-              reject(new Error('Could not get canvas context'))
+              reject(new Error('Could not get canvas context. Try a different browser or device.'))
               return
             }
 
@@ -348,16 +370,16 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promis
 
             resolve(canvas.toDataURL('image/jpeg', quality))
           } catch {
-            reject(new Error('Failed to process image'))
+            reject(new Error('Failed to process image. Try a smaller photo or different format.'))
           }
         }
-        img.onerror = () => reject(new Error('Failed to load image'))
+        img.onerror = () => reject(new Error('Failed to load image. The file may be corrupted.'))
         img.src = e.target?.result as string
       }
-      reader.onerror = () => reject(new Error('Failed to read file'))
+      reader.onerror = () => reject(new Error('Failed to read file. Please try again.'))
       reader.readAsDataURL(file)
     } catch {
-      reject(new Error('Failed to process image'))
+      reject(new Error('Failed to process image. Try a different photo.'))
     }
   })
 }
@@ -489,7 +511,7 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
           continue
         }
         // Use more aggressive compression for server upload (lower quality, smaller max)
-        const dataUrl = await compressImage(file, 1000, 0.45)
+        const dataUrl = await compressImage(file, 800, 0.35)
         const thumbnail = await createThumbnail(dataUrl)
         const newPage: CapturedPage = {
           id: generatePageId(),
@@ -500,7 +522,8 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
         setPages((prev) => [...prev, newPage])
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Unknown error'
-        toast.error(`Failed to process image: ${msg}. Try a different photo.`)
+        console.error('[scan-case-plan] Image processing error:', msg)
+        toast.error(`Failed to process image: ${msg}. Try a different photo or take it from further away.`)
       }
     }
   }, [pages.length])
@@ -567,6 +590,13 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
       const totalSize = images.reduce((sum, img) => sum + img.length, 0)
       console.log(`[scan-case-plan] Sending ${images.length} images, total payload: ${(totalSize / 1024 / 1024).toFixed(2)}MB`)
 
+      // Check payload size before sending — if too large, warn the user
+      if (totalSize > 10 * 1024 * 1024) {
+        setPhase('capture')
+        toast.error('Photos are too large even after compression. Please retake photos from further away or use fewer pages.')
+        return
+      }
+
       // Simulate progress messages while waiting
       let progressInterval: ReturnType<typeof setInterval> | null = null
       let currentProgressPage = 1
@@ -605,6 +635,12 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
         const errorMsg = errorData.error || `Server error: ${response.status}`
         if (response.status === 413) {
           throw new Error('Photos are too large for the server. Please retake photos from further away, or use fewer pages.')
+        }
+        if (response.status === 502) {
+          throw new Error('The AI service is temporarily unavailable. Please try again in a moment.')
+        }
+        if (response.status === 504) {
+          throw new Error('Analysis timed out on the server. Please try with fewer or smaller photos.')
         }
         throw new Error(errorMsg)
       }
@@ -655,7 +691,8 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
       setExtractedData(validatedData)
       setPhase('review')
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to analyze case plan'
+      const message = err instanceof Error ? err.message : 'Failed to analyze case plan. Please try again.'
+      console.error('[scan-case-plan] Analysis error:', message)
       toast.error(message)
       setPhase('capture')
     }
@@ -1076,15 +1113,16 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
       <input
         ref={cameraInputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/*"
         capture="environment"
+        multiple
         className="hidden"
         onChange={(e) => handleFilesSelected(e.target.files, true)}
       />
       <input
         ref={galleryInputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/*"
         multiple
         className="hidden"
         onChange={(e) => handleFilesSelected(e.target.files, false)}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import { useAppStore } from '@/lib/store'
 import {
   useDrugTests,
@@ -143,7 +143,14 @@ export function DrugTestingView() {
 
   const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set())
   const [previousWeeksExpanded, setPreviousWeeksExpanded] = useState(true)
-  const [mutatingDates, setMutatingDates] = useState<Set<string>>(new Set())
+  // Ref-based mutation tracking to avoid stale closures in handleStatusChange.
+  // A version counter triggers re-renders so the UI (disabled prop) stays correct.
+  const mutatingDatesRef = useRef<Set<string>>(new Set())
+  const [, setMutatingDatesVersion] = useState(0)
+
+  // Keep a ref to the latest testByDate so callbacks always read fresh data
+  const testByDateRef = useRef(testByDate)
+  testByDateRef.current = testByDate
 
   // ─── Current Week ────────────────────────────────────────────────────────
 
@@ -266,15 +273,27 @@ export function DrugTestingView() {
     (date: Date, newStatus: CallStatus) => {
       if (!activeCaseId) return
 
+      // Compute the date key fresh from the date parameter — never from the
+      // testByDate map. This guarantees the correct key for every day,
+      // including the 5th day (Friday), even when testByDate is stale.
       const key = formatDateKey(date)
 
-      // Prevent double-clicking the same day
-      if (mutatingDates.has(key)) return
+      // Safety check: verify the key belongs to the current week (catches
+      // stale-closure or off-by-one issues, especially for the 5th day)
+      const dayIndex = currentWeekDates.findIndex(d => formatDateKey(d) === key)
+      if (dayIndex === -1) {
+        console.warn('[DrugTesting] Date key not found in current week:', key, 'date:', date)
+      }
 
-      const existing = testByDate.get(key)
+      // Prevent double-clicking the same day — use the ref to avoid stale reads
+      if (mutatingDatesRef.current.has(key)) return
 
-      // Mark this date as mutating
-      setMutatingDates(prev => new Set([...prev, key]))
+      // Always read the latest testByDate from the ref to avoid stale closures
+      const existing = testByDateRef.current.get(key)
+
+      // Mark this date as mutating (update ref + trigger re-render)
+      mutatingDatesRef.current = new Set([...mutatingDatesRef.current, key])
+      setMutatingDatesVersion(v => v + 1)
 
       // Determine the mutation payload based on the new status
       let payload: Record<string, unknown>
@@ -313,11 +332,10 @@ export function DrugTestingView() {
       }
 
       const onDone = () => {
-        setMutatingDates(prev => {
-          const next = new Set(prev)
-          next.delete(key)
-          return next
-        })
+        const next = new Set(mutatingDatesRef.current)
+        next.delete(key)
+        mutatingDatesRef.current = next
+        setMutatingDatesVersion(v => v + 1)
       }
 
       if (existing) {
@@ -352,7 +370,7 @@ export function DrugTestingView() {
         )
       }
     },
-    [activeCaseId, testByDate, createMutation, updateMutation, currentWeekDates, mutatingDates]
+    [activeCaseId, createMutation, updateMutation, currentWeekDates]
   )
 
   // ─── Handler: Update test result ─────────────────────────────────────────
@@ -362,16 +380,17 @@ export function DrugTestingView() {
       if (!activeCaseId) return
 
       const key = formatDateKey(date)
-      const existing = testByDate.get(key)
+      // Always read the latest testByDate from the ref to avoid stale closures
+      const existing = testByDateRef.current.get(key)
 
       if (existing) {
-        setMutatingDates(prev => new Set([...prev, key]))
+        mutatingDatesRef.current = new Set([...mutatingDatesRef.current, key])
+        setMutatingDatesVersion(v => v + 1)
         const onDone = () => {
-          setMutatingDates(prev => {
-            const next = new Set(prev)
-            next.delete(key)
-            return next
-          })
+          const next = new Set(mutatingDatesRef.current)
+          next.delete(key)
+          mutatingDatesRef.current = next
+          setMutatingDatesVersion(v => v + 1)
         }
         updateMutation.mutate(
           { id: existing.id, result },
@@ -386,7 +405,7 @@ export function DrugTestingView() {
         )
       }
     },
-    [activeCaseId, testByDate, updateMutation]
+    [activeCaseId, updateMutation]
   )
 
   // ─── Toggle result expansion ─────────────────────────────────────────────
@@ -609,7 +628,7 @@ export function DrugTestingView() {
                         {/* Not Called */}
                         <Button
                           variant="outline"
-                          disabled={mutatingDates.has(key)}
+                          disabled={mutatingDatesRef.current.has(key)}
                           onClick={() => handleStatusChange(date, 'not-called')}
                           className={`flex-1 h-8 sm:h-10 text-xs sm:text-sm transition-all ${
                             status === 'not-called'
@@ -625,7 +644,7 @@ export function DrugTestingView() {
                         {/* Called — Not Required */}
                         <Button
                           variant="outline"
-                          disabled={mutatingDates.has(key)}
+                          disabled={mutatingDatesRef.current.has(key)}
                           onClick={() => handleStatusChange(date, 'not-required')}
                           className={`flex-1 h-8 sm:h-10 text-xs sm:text-sm transition-all ${
                             status === 'not-required'
@@ -641,7 +660,7 @@ export function DrugTestingView() {
                         {/* Called & Tested */}
                         <Button
                           variant="outline"
-                          disabled={mutatingDates.has(key)}
+                          disabled={mutatingDatesRef.current.has(key)}
                           onClick={() => handleStatusChange(date, 'called-tested')}
                           className={`flex-1 h-8 sm:h-10 text-xs sm:text-sm transition-all ${
                             status === 'called-tested'
@@ -685,7 +704,7 @@ export function DrugTestingView() {
                             key={opt.value}
                             variant="outline"
                             size="sm"
-                            disabled={mutatingDates.has(key)}
+                            disabled={mutatingDatesRef.current.has(key)}
                             onClick={() => handleResultChange(date, opt.value)}
                             className={`h-7 sm:h-9 text-xs transition-all ${
                               isSelected

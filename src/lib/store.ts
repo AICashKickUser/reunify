@@ -15,6 +15,7 @@ export type ViewType =
   | 'daily-checkins'
   | 'progress'
   | 'backup'
+  | 'go-pro'
 
 const ACTIVE_CASE_KEY = 'reunify-active-case-id'
 
@@ -100,4 +101,5 @@ export const VIEW_LABELS: Record<ViewType, string> = {
   'daily-checkins': 'Daily Check-in',
   'progress': 'Progress Report',
   'backup': 'Backup & Restore',
+  'go-pro': 'Go Pro',
 }

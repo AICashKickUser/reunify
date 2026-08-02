@@ -189,8 +189,14 @@ export function ParentingClassesView() {
   const createMutation = useCreateItem('parenting-classes')
   const updateMutation = useUpdateItem('parenting-classes')
   const [editClass, setEditClass] = useState<ParentingClass | null>(null)
-  const [mutatingOrientations, setMutatingOrientations] = useState<Set<number>>(new Set())
-  const [mutatingClasses, setMutatingClasses] = useState<Set<number>>(new Set())
+  // Use refs for mutation tracking to avoid stale closures (same pattern as drug testing fix)
+  const mutatingOrientationsRef = useRef<Set<number>>(new Set())
+  const [mutatingOrientationsVersion, setMutatingOrientationsVersion] = useState(0)
+  const mutatingClassesRef = useRef<Set<number>>(new Set())
+  const [mutatingClassesVersion, setMutatingClassesVersion] = useState(0)
+  // Read version states to ensure re-renders when refs change
+  void mutatingOrientationsVersion
+  void mutatingClassesVersion
   const prevTriggerRef = useRef(addDialogTrigger)
 
   if (addDialogTrigger !== prevTriggerRef.current && addDialogTrigger > 0) {
@@ -252,17 +258,17 @@ export function ParentingClassesView() {
   // Toggle completion for a class by date
   function toggleClassCompletion(classNumber: number, date: Date) {
     // Prevent double-clicking
-    if (mutatingClasses.has(classNumber)) return
+    if (mutatingClassesRef.current.has(classNumber)) return
 
     const existing = getClassForDate(date)
 
-    setMutatingClasses(prev => new Set([...prev, classNumber]))
+    mutatingClassesRef.current = new Set([...mutatingClassesRef.current, classNumber])
+    setMutatingClassesVersion(v => v + 1)
     const onDone = () => {
-      setMutatingClasses(prev => {
-        const next = new Set(prev)
-        next.delete(classNumber)
-        return next
-      })
+      const next = new Set(mutatingClassesRef.current)
+      next.delete(classNumber)
+      mutatingClassesRef.current = next
+      setMutatingClassesVersion(v => v + 1)
     }
 
     if (existing) {
@@ -293,18 +299,18 @@ export function ParentingClassesView() {
 
   // Handle orientation toggle for a specific orientation class
   function toggleOrientation(orientationNumber: number) {
-    // Prevent double-clicking
-    if (mutatingOrientations.has(orientationNumber)) return
+    // Prevent double-clicking — use ref to avoid stale closure
+    if (mutatingOrientationsRef.current.has(orientationNumber)) return
 
     const existing = getOrientationByNumber(orientationNumber)
 
-    setMutatingOrientations(prev => new Set([...prev, orientationNumber]))
+    mutatingOrientationsRef.current = new Set([...mutatingOrientationsRef.current, orientationNumber])
+    setMutatingOrientationsVersion(v => v + 1)
     const onDone = () => {
-      setMutatingOrientations(prev => {
-        const next = new Set(prev)
-        next.delete(orientationNumber)
-        return next
-      })
+      const next = new Set(mutatingOrientationsRef.current)
+      next.delete(orientationNumber)
+      mutatingOrientationsRef.current = next
+      setMutatingOrientationsVersion(v => v + 1)
     }
 
     if (existing) {
@@ -312,7 +318,7 @@ export function ParentingClassesView() {
         { id: existing.id, isCompleted: !existing.isCompleted },
         {
           onSuccess: () => { onDone(); toast.success(existing.isCompleted ? `Orientation ${orientationNumber} marked incomplete` : `Orientation ${orientationNumber} completed!`) },
-          onError: () => { onDone(); toast.error('Failed to update orientation') },
+          onError: () => { onDone(); toast.error('Failed to update orientation. Please try again.') },
         }
       )
     } else {
@@ -326,7 +332,7 @@ export function ParentingClassesView() {
         },
         {
           onSuccess: () => { onDone(); toast.success(`Orientation ${orientationNumber} completed!`) },
-          onError: () => { onDone(); toast.error('Failed to mark orientation') },
+          onError: () => { onDone(); toast.error('Failed to mark orientation. Please try again.') },
         }
       )
     }
@@ -339,22 +345,22 @@ export function ParentingClassesView() {
       toast.error('Complete the orientation first, then add the certificate')
       return
     }
-    if (mutatingOrientations.has(orientationNumber)) return
+    if (mutatingOrientationsRef.current.has(orientationNumber)) return
 
-    setMutatingOrientations(prev => new Set([...prev, orientationNumber]))
+    mutatingOrientationsRef.current = new Set([...mutatingOrientationsRef.current, orientationNumber])
+    setMutatingOrientationsVersion(v => v + 1)
     const onDone = () => {
-      setMutatingOrientations(prev => {
-        const next = new Set(prev)
-        next.delete(orientationNumber)
-        return next
-      })
+      const next = new Set(mutatingOrientationsRef.current)
+      next.delete(orientationNumber)
+      mutatingOrientationsRef.current = next
+      setMutatingOrientationsVersion(v => v + 1)
     }
 
     updateMutation.mutate(
       { id: existing.id, hasCertificate: !existing.hasCertificate },
       {
         onSuccess: () => { onDone(); toast.success(existing.hasCertificate ? 'Certificate removed' : 'Certificate added!') },
-        onError: () => { onDone(); toast.error('Failed to update certificate') },
+        onError: () => { onDone(); toast.error('Failed to update certificate. Please try again.') },
       }
     )
   }
@@ -476,18 +482,18 @@ export function ParentingClassesView() {
                 >
                   <button
                     type="button"
-                    className={`flex size-8 sm:size-9 shrink-0 items-center justify-center rounded-full transition-all ${
+                    className={`flex size-11 shrink-0 items-center justify-center rounded-full transition-all touch-manipulation ${
                       isCompleted
                         ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
-                        : mutatingOrientations.has(num)
+                        : mutatingOrientationsRef.current.has(num)
                         ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-400 cursor-wait'
                         : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 hover:bg-amber-200 dark:hover:bg-amber-900/50 active:scale-95'
                     }`}
                     onClick={() => toggleOrientation(num)}
-                    disabled={mutatingOrientations.has(num)}
+                    disabled={mutatingOrientationsRef.current.has(num)}
                     aria-label={isCompleted ? `Mark orientation ${num} incomplete` : `Mark orientation ${num} complete`}
                   >
-                    {mutatingOrientations.has(num) ? <Loader2 className="size-4 animate-spin" /> : isCompleted ? <Check className="size-4" /> : <span className="text-xs font-bold">{num}</span>}
+                    {mutatingOrientationsRef.current.has(num) ? <Loader2 className="size-4 animate-spin" /> : isCompleted ? <Check className="size-4" /> : <span className="text-xs font-bold">{num}</span>}
                   </button>
                   <div className="flex-1 min-w-0">
                     <span className="text-sm font-medium text-foreground">
@@ -564,7 +570,7 @@ export function ParentingClassesView() {
                       className={`flex size-8 sm:size-10 shrink-0 items-center justify-center rounded-full transition-all ${
                         isCompleted
                           ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
-                          : mutatingClasses.has(classNumber)
+                          : mutatingClassesRef.current.has(classNumber)
                           ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-400 cursor-wait'
                           : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 hover:bg-rose-200 dark:hover:bg-rose-900/50 active:scale-95'
                       }`}
@@ -572,10 +578,10 @@ export function ParentingClassesView() {
                         e.stopPropagation()
                         toggleClassCompletion(classNumber, date)
                       }}
-                      disabled={mutatingClasses.has(classNumber)}
+                      disabled={mutatingClassesRef.current.has(classNumber)}
                       aria-label={isCompleted ? `Mark class ${classNumber} incomplete` : `Mark class ${classNumber} complete`}
                     >
-                      {mutatingClasses.has(classNumber) ? <Loader2 className="size-4 sm:size-5 animate-spin" /> : isCompleted ? <Check className="size-4 sm:size-5" /> : <span className="text-xs sm:text-sm font-bold">{classNumber}</span>}
+                      {mutatingClassesRef.current.has(classNumber) ? <Loader2 className="size-4 sm:size-5 animate-spin" /> : isCompleted ? <Check className="size-4 sm:size-5" /> : <span className="text-xs sm:text-sm font-bold">{classNumber}</span>}
                     </button>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
