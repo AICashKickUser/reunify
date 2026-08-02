@@ -148,10 +148,6 @@ export function DrugTestingView() {
   const mutatingDatesRef = useRef<Set<string>>(new Set())
   const [, setMutatingDatesVersion] = useState(0)
 
-  // Keep a ref to the latest testByDate so callbacks always read fresh data
-  const testByDateRef = useRef(testByDate)
-  testByDateRef.current = testByDate
-
   // ─── Current Week ────────────────────────────────────────────────────────
 
   const currentMonday = useMemo(() => getMondayOfWeek(new Date()), [])
@@ -174,6 +170,11 @@ export function DrugTestingView() {
     }
     return map
   }, [drugTests])
+
+  // Keep a ref to the latest testByDate so callbacks always read fresh data
+  // MUST be after testByDate useMemo so it captures the correct value
+  const testByDateRef = useRef(testByDate)
+  testByDateRef.current = testByDate
 
   // ─── Previous Weeks ──────────────────────────────────────────────────────
 

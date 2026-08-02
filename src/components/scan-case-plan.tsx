@@ -255,6 +255,8 @@ function applyExifOrientation(
  * - Memory constraints on mobile devices
  */
 async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promise<string> {
+  // Mobile-safe: cap dimensions to avoid canvas memory issues
+  const safeMaxWidth = Math.min(maxWidth, 600)
   // Try createImageBitmap with imageOrientation first (handles EXIF automatically)
   try {
     if (typeof createImageBitmap === 'function') {
@@ -270,8 +272,8 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promis
         let width = bitmap.width
         let height = bitmap.height
 
-        // Scale down if needed — use the smaller of maxWidth or 800 for mobile safety
-        const maxDim = Math.min(maxWidth, 800)
+        // Scale down if needed — use mobile-safe dimensions
+        const maxDim = Math.min(safeMaxWidth, 600)
         if (width > maxDim) {
           height = Math.round((height * maxDim) / width)
           width = maxDim
@@ -325,8 +327,8 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promis
             let width = img.naturalWidth || img.width
             let height = img.naturalHeight || img.height
 
-            // Scale down if needed — use the smaller of maxWidth or 800 for mobile safety
-            const maxDim = Math.min(maxWidth, 800)
+            // Scale down if needed — use mobile-safe dimensions
+            const maxDim = Math.min(safeMaxWidth, 600)
             if (width > maxDim) {
               height = Math.round((height * maxDim) / width)
               width = maxDim
@@ -511,7 +513,7 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
           continue
         }
         // Use more aggressive compression for server upload (lower quality, smaller max)
-        const dataUrl = await compressImage(file, 800, 0.35)
+        const dataUrl = await compressImage(file, 600, 0.3)
         const thumbnail = await createThumbnail(dataUrl)
         const newPage: CapturedPage = {
           id: generatePageId(),
@@ -591,7 +593,7 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
       console.log(`[scan-case-plan] Sending ${images.length} images, total payload: ${(totalSize / 1024 / 1024).toFixed(2)}MB`)
 
       // Check payload size before sending — if too large, warn the user
-      if (totalSize > 10 * 1024 * 1024) {
+      if (totalSize > 5 * 1024 * 1024) {
         setPhase('capture')
         toast.error('Photos are too large even after compression. Please retake photos from further away or use fewer pages.')
         return
@@ -1113,16 +1115,15 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
       <input
         ref={cameraInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/*"
+        accept="image/*"
         capture="environment"
-        multiple
         className="hidden"
         onChange={(e) => handleFilesSelected(e.target.files, true)}
       />
       <input
         ref={galleryInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/*"
+        accept="image/*"
         multiple
         className="hidden"
         onChange={(e) => handleFilesSelected(e.target.files, false)}

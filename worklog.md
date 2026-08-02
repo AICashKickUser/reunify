@@ -184,3 +184,51 @@ Stage Summary:
 - 7-day free trial, cancel anytime
 - App works fully without Stripe keys (graceful degradation)
 - Pro features are ADDITIVE — they make users look better to judges/social workers, not restrictive
+
+---
+Task ID: 1
+Agent: main
+Task: Fix 5th drug testing button bug
+
+Work Log:
+- Identified root cause: testByDateRef initialized before testByDate useMemo, causing ref to always be undefined
+- Moved testByDateRef initialization after testByDate useMemo to ensure correct value capture
+
+Stage Summary:
+- Fixed the TDZ/initialization order bug in drug-testing-view.tsx
+- testByDateRef.current now correctly captures the computed testByDate Map
+
+---
+Task ID: 3-4
+Agent: main
+Task: Fix scan case plan and photo upload bugs
+
+Work Log:
+- Removed `multiple` from camera input to fix mobile capture issues
+- Simplified `accept` attributes to `image/*` for better device compatibility
+- Reduced image compression dimensions from 800px to 600px for mobile safety
+- Reduced quality from 0.35 to 0.3 for better mobile performance
+- Reduced payload size limit from 10MB to 5MB for better mobile compatibility
+
+Stage Summary:
+- Fixed photo upload from device by simplifying file input attributes
+- Fixed photo distortion by reducing compression dimensions
+- Fixed scan case plan errors by reducing payload size
+---
+Task ID: 2
+Agent: main
+Task: Fix family orientation button
+
+Work Log:
+- Checked ParentingClass type requirements in types.ts
+- Reviewed createItemByEndpoint and createItem flow in client-db.ts
+- Identified that missing activeCaseId guard caused mutation to create entries without a case ID, which would then be invisible in the UI (filtered out by useParentingClasses which queries by caseId)
+- Added activeCaseId guard to toggleOrientation function with toast error message
+- Added activeCaseId guard to toggleClassCompletion and toggleOrientationCertificate for consistency
+- Added safety timeout (10s) to toggleOrientation to prevent the button from getting permanently stuck in disabled state if mutation never settles
+- Wrapped onDone callback to clear the safety timer on success/error
+
+Stage Summary:
+- Fixed orientation button by adding guard for missing activeCaseId - the root cause was that when activeCaseId is null/undefined, the mutation would silently create an entry without a case ID, which would then be invisible in the UI (since useParentingClasses filters by caseId)
+- Added safety timeout to prevent permanent disabled state
+- Added consistent guards across all toggle functions

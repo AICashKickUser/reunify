@@ -260,6 +260,12 @@ export function ParentingClassesView() {
     // Prevent double-clicking
     if (mutatingClassesRef.current.has(classNumber)) return
 
+    // Guard: must have an active case
+    if (!activeCaseId) {
+      toast.error('No active case selected. Please select a case first.')
+      return
+    }
+
     const existing = getClassForDate(date)
 
     mutatingClassesRef.current = new Set([...mutatingClassesRef.current, classNumber])
@@ -302,6 +308,12 @@ export function ParentingClassesView() {
     // Prevent double-clicking — use ref to avoid stale closure
     if (mutatingOrientationsRef.current.has(orientationNumber)) return
 
+    // Guard: must have an active case to create/update orientation entries
+    if (!activeCaseId) {
+      toast.error('No active case selected. Please select a case first.')
+      return
+    }
+
     const existing = getOrientationByNumber(orientationNumber)
 
     mutatingOrientationsRef.current = new Set([...mutatingOrientationsRef.current, orientationNumber])
@@ -313,12 +325,25 @@ export function ParentingClassesView() {
       setMutatingOrientationsVersion(v => v + 1)
     }
 
+    // Safety timeout: clear the mutating ref after 10s in case the mutation never settles
+    const safetyTimer = setTimeout(() => {
+      if (mutatingOrientationsRef.current.has(orientationNumber)) {
+        onDone()
+        toast.error('Orientation update timed out. Please try again.')
+      }
+    }, 10000)
+
+    const wrappedOnDone = () => {
+      clearTimeout(safetyTimer)
+      onDone()
+    }
+
     if (existing) {
       updateMutation.mutate(
         { id: existing.id, isCompleted: !existing.isCompleted },
         {
-          onSuccess: () => { onDone(); toast.success(existing.isCompleted ? `Orientation ${orientationNumber} marked incomplete` : `Orientation ${orientationNumber} completed!`) },
-          onError: () => { onDone(); toast.error('Failed to update orientation. Please try again.') },
+          onSuccess: () => { wrappedOnDone(); toast.success(existing.isCompleted ? `Orientation ${orientationNumber} marked incomplete` : `Orientation ${orientationNumber} completed!`) },
+          onError: () => { wrappedOnDone(); toast.error('Failed to update orientation. Please try again.') },
         }
       )
     } else {
@@ -331,8 +356,8 @@ export function ParentingClassesView() {
           hasCertificate: false,
         },
         {
-          onSuccess: () => { onDone(); toast.success(`Orientation ${orientationNumber} completed!`) },
-          onError: () => { onDone(); toast.error('Failed to mark orientation. Please try again.') },
+          onSuccess: () => { wrappedOnDone(); toast.success(`Orientation ${orientationNumber} completed!`) },
+          onError: () => { wrappedOnDone(); toast.error('Failed to mark orientation. Please try again.') },
         }
       )
     }
@@ -346,6 +371,12 @@ export function ParentingClassesView() {
       return
     }
     if (mutatingOrientationsRef.current.has(orientationNumber)) return
+
+    // Guard: must have an active case
+    if (!activeCaseId) {
+      toast.error('No active case selected. Please select a case first.')
+      return
+    }
 
     mutatingOrientationsRef.current = new Set([...mutatingOrientationsRef.current, orientationNumber])
     setMutatingOrientationsVersion(v => v + 1)
