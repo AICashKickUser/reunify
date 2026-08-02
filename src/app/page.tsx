@@ -6,10 +6,8 @@ import { AppSidebar } from '@/components/app-sidebar'
 import { AppHeader } from '@/components/app-header'
 import { useAppStore, type ViewType } from '@/lib/store'
 import { Loader2 } from 'lucide-react'
-import { UpgradeDialog } from '@/components/upgrade-dialog'
 import { OnboardingDialog } from '@/components/onboarding-dialog'
 import { OnboardingWizard } from '@/components/onboarding-wizard'
-import { useSubscriptionStore } from '@/lib/subscription'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { toast } from 'sonner'
 import { useNavigationHistory } from '@/hooks/use-navigation-history'
@@ -50,7 +48,6 @@ const CourtDatesView = lazy(() => import('@/components/views/court-dates-view'))
 const ParentingClassesView = lazy(() => import('@/components/views/parenting-classes-view'))
 const ProgressView = lazy(() => import('@/components/views/progress-view'))
 const DailyCheckinsView = lazy(() => import('@/components/views/daily-checkins-view'))
-const GoProView = lazy(() => import('@/components/views/go-pro-view'))
 const BackupView = lazy(() => import('@/components/views/backup-view'))
 
 const VIEW_MAP: Record<ViewType, React.ComponentType> = {
@@ -68,7 +65,6 @@ const VIEW_MAP: Record<ViewType, React.ComponentType> = {
   'daily-checkins': DailyCheckinsView,
   'progress': ProgressView,
   'backup': BackupView,
-  'go-pro': GoProView,
 }
 
 function ViewLoader() {
@@ -104,7 +100,6 @@ function ActiveView() {
 
 export default function Home() {
   const { activeCaseId, activeView } = useAppStore()
-  const { setTier, setSubscriptionData } = useSubscriptionStore()
   const { isUnlocked, handleUnlock, mounted } = useAppLock()
 
   // Enable browser history management for Android back button support
@@ -115,55 +110,6 @@ export default function Home() {
 
   // Auto-select existing case so the app doesn't show onboarding when data exists
   useAutoSelectCase()
-
-  // Handle Stripe checkout return
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const checkoutStatus = params.get('checkout')
-    const sessionId = params.get('session_id')
-
-    if (checkoutStatus === 'success' && sessionId) {
-      // Verify the session with our backend
-      fetch('/api/stripe/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId }),
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.status === 'active' && data.subscription) {
-            setSubscriptionData({
-              tier: 'pro',
-              stripeSessionId: sessionId,
-              subscriptionStatus: data.subscription.status,
-              trialEnd: data.subscription.trialEnd,
-              currentPeriodEnd: data.subscription.currentPeriodEnd,
-              cancelAtPeriodEnd: data.subscription.cancelAtPeriodEnd,
-            })
-            toast.success('Welcome to Reunify Pro! 🎉', {
-              description: 'Your 7-day free trial has started. Enjoy all Pro features!',
-            })
-          } else {
-            toast.info('Subscription is being processed', {
-              description: 'Your payment is being verified. Pro features will unlock shortly!',
-            })
-          }
-        })
-        .catch(() => {
-          toast.info('Subscription is being processed', {
-            description: 'Your payment is being verified. Pro features will unlock shortly!',
-          })
-        })
-
-      // Clean up URL but preserve history state
-      window.history.replaceState({ view: 'dashboard', timestamp: Date.now() }, '', '/#dashboard')
-    } else if (checkoutStatus === 'cancel') {
-      toast.info('Checkout canceled', {
-        description: 'No worries — you can upgrade anytime!',
-      })
-      window.history.replaceState({ view: 'go-pro', timestamp: Date.now() }, '', '/#go-pro')
-    }
-  }, [setTier, setSubscriptionData])
 
   // Show lock screen if app lock is enabled and not yet unlocked
   if (mounted && !isUnlocked) {
@@ -178,9 +124,7 @@ export default function Home() {
           <AppHeader />
           <main className="flex-1 overflow-hidden">
             <div className="p-3 md:p-6 h-full overflow-y-auto overflow-x-hidden">
-              {activeView === 'go-pro' || activeView === 'backup' ? (
-                <ActiveView />
-              ) : activeCaseId ? (
+              {activeCaseId ? (
                 <ActiveView />
               ) : (
                 <OnboardingWizard />
@@ -201,7 +145,6 @@ export default function Home() {
           </footer>
         </div>
       </SidebarInset>
-      <UpgradeDialog />
       <OnboardingDialog />
       <CelebrationOverlay />
     </SidebarProvider>

@@ -100,9 +100,30 @@ EXTRACTION RULES:
 - NA or AA meetings are under na-meetings category. NA 12-step work is under na-steps category.
 - Extract EVERYTHING you can find - even if you are not sure about the category, put it in requirements with other category and add a note`
 
+// Route segment config for large payloads
+export const maxDuration = 60
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    // Try to parse the body - if it's too large, this will fail
+    let body
+    try {
+      body = await request.json()
+    } catch (parseError) {
+      console.error('[scan-case-plan] Failed to parse request body:', parseError)
+      const errMsg = parseError instanceof Error ? parseError.message : 'Unknown parse error'
+      if (errMsg.includes('too large') || errMsg.includes('exceeded') || errMsg.includes('limit') || errMsg.includes('size')) {
+        return NextResponse.json(
+          { error: 'Photos are too large. Please try with fewer or smaller photos. You can also take photos from further away for smaller file sizes.' },
+          { status: 413 }
+        )
+      }
+      return NextResponse.json(
+        { error: 'Could not read the uploaded photos. Please try again.' },
+        { status: 400 }
+      )
+    }
+
     const { images } = body as { images: string[] }
 
     if (!images || !Array.isArray(images) || images.length === 0) {

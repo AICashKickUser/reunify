@@ -29,7 +29,6 @@ import {
   Calendar,
   CheckCircle2,
   Target,
-  Crown,
 } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import {
@@ -37,9 +36,7 @@ import {
   useCreateItem,
   useUpdateItem,
   useDeleteItem,
-  useFreeTierCheck,
 } from '@/lib/data-hooks'
-import { UpgradePromptDialog } from '@/components/upgrade-prompt-dialog'
 import type { ParentingClass } from '@/lib/types'
 import { toast } from 'sonner'
 import { getLocalDateString } from '@/lib/utils'
@@ -190,16 +187,11 @@ export function ParentingClassesView() {
   const { data: classes, isLoading } = useParentingClasses(activeCaseId)
   const createMutation = useCreateItem('parenting-classes')
   const updateMutation = useUpdateItem('parenting-classes')
-  const freeTier = useFreeTierCheck('parenting-classes', classes?.length ?? 0)
   const [editClass, setEditClass] = useState<ParentingClass | null>(null)
-  const [upgradePromptOpen, setUpgradePromptOpen] = useState(false)
   const prevTriggerRef = useRef(addDialogTrigger)
 
   if (addDialogTrigger !== prevTriggerRef.current && addDialogTrigger > 0) {
     prevTriggerRef.current = addDialogTrigger
-    if (freeTier.atLimit) {
-      setUpgradePromptOpen(true)
-    }
   }
 
   if (isLoading) {
@@ -246,10 +238,6 @@ export function ParentingClassesView() {
 
   // Toggle completion for a class by date
   function toggleClassCompletion(classNumber: number, date: Date) {
-    if (freeTier.atLimit) {
-      setUpgradePromptOpen(true)
-      return
-    }
     const existing = getClassForDate(date)
     
     if (existing) {
@@ -280,10 +268,6 @@ export function ParentingClassesView() {
 
   // Handle orientation toggle for a specific orientation class
   function toggleOrientation(orientationNumber: number) {
-    if (freeTier.atLimit) {
-      setUpgradePromptOpen(true)
-      return
-    }
     const existing = orientationClasses[orientationNumber - 1]
     if (existing) {
       updateMutation.mutate(
@@ -300,6 +284,7 @@ export function ParentingClassesView() {
           date: getLocalDateString(),
           className: `Parenting Orientation ${orientationNumber}`,
           isCompleted: true,
+          hasCertificate: false,
         },
         {
           onSuccess: () => toast.success(`Orientation ${orientationNumber} completed!`),
@@ -307,6 +292,22 @@ export function ParentingClassesView() {
         }
       )
     }
+  }
+
+  // Toggle certificate for an orientation class
+  function toggleOrientationCertificate(orientationNumber: number) {
+    const existing = orientationClasses[orientationNumber - 1]
+    if (!existing) {
+      toast.error('Complete the orientation first, then add the certificate')
+      return
+    }
+    updateMutation.mutate(
+      { id: existing.id, hasCertificate: !existing.hasCertificate },
+      {
+        onSuccess: () => toast.success(existing.hasCertificate ? 'Certificate removed' : 'Certificate added!'),
+        onError: () => toast.error('Failed to update certificate'),
+      }
+    )
   }
 
   return (
@@ -360,7 +361,7 @@ export function ParentingClassesView() {
               </div>
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground">Certificates</p>
-                <p className="text-lg sm:text-2xl font-bold text-amber-600">{weeklyClasses.filter((c) => c.hasCertificate).length}</p>
+                <p className="text-lg sm:text-2xl font-bold text-amber-600">{allClasses.filter((c) => c.hasCertificate).length}</p>
               </div>
             </div>
           </CardContent>
@@ -447,11 +448,28 @@ export function ParentingClassesView() {
                       </Badge>
                     )}
                   </div>
-                  {oc && (
-                    <Button variant="ghost" size="sm" onClick={() => setEditClass(oc)}>
-                      <Pencil className="size-4" />
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {oc && isCompleted && (
+                      <button
+                        type="button"
+                        className={`flex size-7 items-center justify-center rounded-full transition-all ${
+                          hasCertificate
+                            ? 'bg-amber-500 text-white shadow-sm'
+                            : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 hover:bg-amber-200 dark:hover:bg-amber-900/50'
+                        }`}
+                        onClick={() => toggleOrientationCertificate(num)}
+                        aria-label={hasCertificate ? 'Remove certificate' : 'Add certificate'}
+                        title={hasCertificate ? 'Certificate earned' : 'Mark certificate earned'}
+                      >
+                        <Award className="size-3.5" />
+                      </button>
+                    )}
+                    {oc && (
+                      <Button variant="ghost" size="sm" onClick={() => setEditClass(oc)}>
+                        <Pencil className="size-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )
             })}
@@ -562,12 +580,6 @@ export function ParentingClassesView() {
         />
       )}
 
-      {/* Free Tier Upgrade Prompt */}
-      <UpgradePromptDialog
-        open={upgradePromptOpen}
-        onOpenChange={setUpgradePromptOpen}
-        category="parenting-classes"
-      />
     </div>
   )
 }

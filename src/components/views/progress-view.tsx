@@ -25,14 +25,11 @@ import {
   Download,
   Shield,
   Loader2,
-  Lock,
+  FileText,
 } from 'lucide-react'
-import { FileText } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import { useCase } from '@/lib/data-hooks'
-import { useSubscriptionStore } from '@/lib/subscription'
 import { exportAllData } from '@/lib/client-db'
-import { ProBadge } from '@/components/pro-badge'
 import { ChartContainer } from '@/components/ui/chart'
 import {
   RadarChart,
@@ -327,9 +324,6 @@ function SummaryDialog({ open, onOpenChange, caseData, categories }: {
   caseData: any
   categories: CategoryProgress[]
 }) {
-  const { tier, setUpgradeDialogOpen } = useSubscriptionStore()
-  const isPro = tier === 'pro'
-
   const requirements = (caseData.requirements || []) as Array<Record<string, unknown>>
   const completedReqs = requirements.filter((r) => r.isCompleted)
   const incompleteReqs = requirements.filter((r) => !r.isCompleted)
@@ -433,8 +427,7 @@ Visits: ${completedVisits.length} completed
 Classes: ${completedClasses.length} completed`
 
   function handleCopySummary() {
-    const textToCopy = isPro ? proSummaryText : basicSummaryText
-    navigator.clipboard.writeText(textToCopy).then(() => {
+    navigator.clipboard.writeText(proSummaryText).then(() => {
       toast.success('Summary copied to clipboard!')
     }).catch(() => {
       toast.error('Failed to copy summary')
@@ -450,15 +443,12 @@ Classes: ${completedClasses.length} completed`
             Case Summary Report
           </DialogTitle>
           <DialogDescription>
-            {isPro
-              ? 'Professional compliance summary for your judge, attorney, or caseworker'
-              : 'Basic case overview — upgrade to Pro for the full professional report'}
+            Professional compliance summary for your judge, attorney, or caseworker
           </DialogDescription>
         </DialogHeader>
 
-        {isPro ? (
-          /* ===== PRO FULL SUMMARY ===== */
-          <div className="space-y-4">
+        {/* ===== FULL SUMMARY ===== */}
+        <div className="space-y-4">
             {/* Quick Stats */}
             <div className="grid grid-cols-3 gap-3">
               <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 p-3 text-center">
@@ -479,63 +469,6 @@ Classes: ${completedClasses.length} completed`
               {proSummaryText}
             </pre>
           </div>
-        ) : (
-          /* ===== FREE BASIC SUMMARY + PRO PREVIEW ===== */
-          <div className="space-y-4">
-            {/* Quick Stats */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 p-3 text-center">
-                <p className="text-2xl font-bold text-emerald-700">{completedReqs.length}</p>
-                <p className="text-xs text-emerald-600">Completed</p>
-              </div>
-              <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 p-3 text-center">
-                <p className="text-2xl font-bold text-amber-700">{needsAttentionCategories.length + behindCategories.length}</p>
-                <p className="text-xs text-amber-600">Needs Work</p>
-              </div>
-              <div className="rounded-lg bg-sky-50 dark:bg-sky-950/20 p-3 text-center">
-                <p className="text-2xl font-bold text-sky-700">{overallProgress}%</p>
-                <p className="text-xs text-sky-600">Overall</p>
-              </div>
-            </div>
-
-            {/* Basic summary */}
-            <div>
-              <p className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Basic Overview</p>
-              <pre className="whitespace-pre-wrap text-xs font-mono bg-muted/50 rounded-lg p-4 max-h-32 overflow-y-auto border">
-                {basicSummaryText}
-              </pre>
-            </div>
-
-            {/* Pro preview - blurred with CTA */}
-            <div className="relative">
-              <div className="absolute inset-0 z-10 bg-background/70 backdrop-blur-md rounded-lg flex flex-col items-center justify-center gap-3 p-6">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="size-5 text-amber-500" />
-                  <span className="font-bold text-foreground">Pro Report Preview</span>
-                </div>
-                <p className="text-xs text-muted-foreground text-center max-w-sm">
-                  The Pro report includes achievements, compliance details, areas on track vs. needing attention, remaining requirements, and professional formatting for court.
-                </p>
-                <Button
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
-                  onClick={() => {
-                    onOpenChange(false)
-                    setUpgradeDialogOpen(true)
-                  }}
-                >
-                  <Sparkles className="size-4" />
-                  Upgrade to Pro — $4.99/mo
-                </Button>
-              </div>
-              <div className="pointer-events-none select-none">
-                <p className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Pro Report Includes:</p>
-                <pre className="whitespace-pre-wrap text-xs font-mono bg-muted/50 rounded-lg p-4 max-h-40 overflow-hidden border">
-                  {proSummaryText.slice(0, 600)}...
-                </pre>
-              </div>
-            </div>
-          </div>
-        )}
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button variant="outline" onClick={handleCopySummary} className="gap-2">
@@ -1022,9 +955,6 @@ export function ProgressView() {
   const { data: caseData, isLoading } = useCase(activeCaseId)
   const [exporting, setExporting] = useState(false)
   const [summaryOpen, setSummaryOpen] = useState(false)
-  const { tier, setUpgradeDialogOpen } = useSubscriptionStore()
-  const isPro = tier === 'pro'
-
   async function handleExport() {
     if (!activeCaseId) return
     try {
@@ -1371,16 +1301,13 @@ export function ProgressView() {
                   variant="outline"
                   className="gap-2"
                   onClick={() => {
-                    if (!isPro) {
-                      setUpgradeDialogOpen(true)
-                    } else if (caseData) {
+                    if (caseData) {
                       generatePDFReport(caseData as unknown as Record<string, unknown>, categories)
                     }
                   }}
                 >
                   <FileText className="size-4" />
                   PDF Report
-                  {!isPro && <ProBadge />}
                 </Button>
               </div>
               <div className="mt-4 flex items-center gap-4 justify-center sm:justify-start">
@@ -1444,24 +1371,9 @@ export function ProgressView() {
         </div>
       </div>
 
-      {/* Charts — Pro Feature */}
-      <div className="relative">
-        {!isPro && (
-          <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center gap-3 p-6">
-            <Lock className="size-8 text-muted-foreground" />
-            <p className="text-sm font-medium text-foreground">Detailed Charts</p>
-            <p className="text-xs text-muted-foreground text-center">Upgrade to Pro to see radar and comparison charts</p>
-            <Button
-              size="sm"
-              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
-              onClick={() => setUpgradeDialogOpen(true)}
-            >
-              <Sparkles className="size-3.5" />
-              Upgrade to Pro
-            </Button>
-          </div>
-        )}
-        <div className={`grid gap-4 sm:gap-6 lg:grid-cols-2 ${!isPro ? 'pointer-events-none' : ''}`}>
+      {/* Charts */}
+      <div>
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Progress Radar</CardTitle>
@@ -1559,14 +1471,8 @@ export function ProgressView() {
             </Button>
             <Button
               className="gap-2"
-              onClick={() => {
-                if (!isPro) {
-                  setUpgradeDialogOpen(true)
-                } else {
-                  handleExport()
-                }
-              }}
-              disabled={exporting && isPro}
+              onClick={handleExport}
+              disabled={exporting}
             >
               {exporting ? (
                 <Loader2 className="size-4 animate-spin" />
@@ -1574,22 +1480,18 @@ export function ProgressView() {
                 <Download className="size-4" />
               )}
               {exporting ? 'Exporting...' : 'Export Case Data'}
-              {!isPro && <ProBadge />}
             </Button>
             <Button
               variant="outline"
               className="gap-2"
               onClick={() => {
-                if (!isPro) {
-                  setUpgradeDialogOpen(true)
-                } else if (caseData) {
+                if (caseData) {
                   generatePDFReport(caseData as unknown as Record<string, unknown>, categories)
                 }
               }}
             >
               <FileText className="size-4" />
               PDF Report
-              {!isPro && <ProBadge />}
             </Button>
             <Button
               variant="outline"

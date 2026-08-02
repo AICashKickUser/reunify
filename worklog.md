@@ -1,231 +1,77 @@
 ---
 Task ID: 1
-Agent: Main
-Task: Fix Reunify app - data not showing, case creation broken, backup restore broken
-
-Work Log:
-- Verified data exists in SQLite database (1 case with 17 requirements, 14 daily checkins, 13 drug tests, etc.)
-- Identified root cause: `activeCaseId` in Zustand store was not persisted to localStorage, so every page reload showed the OnboardingWizard instead of the actual case data
-- Fixed store.ts to persist `activeCaseId` to localStorage under key `reunify-active-case-id`
-- Added `useAutoSelectCase()` hook in page.tsx that auto-selects the first case from the API when no activeCaseId is set
-- Fixed backup export API (export/route.ts) to use correct field names matching API POST endpoints (e.g., `counselorName` instead of `counselor`, `sessionType` instead of `type`, `isCompleted` instead of `completed`)
-- Fixed backup restore function (backup-view.tsx) to:
-  - Use correct API endpoint names (e.g., `counseling` instead of `counseling-sessions`)
-  - Create a new case from backup data if no activeCaseId exists
-  - Include requirements in the restore process
-  - Add error counting and partial success reporting
-  - Invalidate React Query cache after restore
-  - Added `useQueryClient` import for cache invalidation
-- Updated ExportData interface with explicit field names for better type safety
-- All lint checks pass, no TypeScript errors
-- Verified with Agent Browser that the app loads correctly, shows dashboard with data, case plan view works, drug testing view works, backup view works
-
-Stage Summary:
-- App now auto-selects existing case on load (no more showing onboarding wizard when data exists)
-- `activeCaseId` persists across page reloads via localStorage
-- Backup export now uses field names that match API POST endpoints
-- Backup restore now works even without an active case (creates one from backup data)
-- All API endpoints verified to accept the correct field names from the export format
-
----
-Task ID: 2-a
-Agent: Main
-Task: Create client-side IndexedDB database layer to replace server-side SQLite storage for privacy
-
-Work Log:
-- Read all reference files: data-hooks.ts, types.ts, schema.prisma, seed/route.ts, store.ts, streaks.ts, free-tier.ts, subscription.ts
-- Created `/home/z/my-project/src/lib/client-db.ts` — Full IndexedDB database layer with:
-  - Database schema (`reunify-db` v1) with 11 object stores: cases, requirements, counselingSessions, drugTests, naSteps, naMeetings, supervisedVisits, courtDates, parentingClasses, milestones, dailyCheckIns
-  - Each child store has `id` as primary key and `caseId` as an index
-  - CRUD operations for each entity type (create, read, update, delete, list by caseId)
-  - Generic endpoint-based CRUD operations (`createItemByEndpoint`, `updateItemByEndpoint`, `deleteItemByEndpoint`)
-  - `seedDemoData()` function that creates the exact same demo data as the server-side seed route
-  - `clearAllData()` function
-  - `exportAllData()` and `importAllData()` functions for backup/restore
-  - Custom event-based query invalidation system (`invalidateQueries`, `onInvalidate`)
-  - `resetCaseData()` function for resetting a case's related data
-  - `getCaseWithRelated()` function for fetching a case with all related data
-- Rewrote `/home/z/my-project/src/lib/data-hooks.ts` — Replaced ALL server API calls with client-db calls:
-  - `useCases()` → reads from IndexedDB via `getAllCases()`
-  - `useCase(id)` → reads from IndexedDB via `getCaseWithRelated()`
-  - `useRequirements(caseId)` → reads from IndexedDB via `getRequirements()`
-  - `useCounselingSessions(caseId)` → reads from IndexedDB via `getCounselingSessions()`
-  - `useDrugTests(caseId)` → reads from IndexedDB via `getDrugTests()`
-  - `useNASteps(caseId)` → reads from IndexedDB via `getNASteps()`
-  - `useNAMeetings(caseId)` → reads from IndexedDB via `getNAMeetings()`
-  - `useSupervisedVisits(caseId)` → reads from IndexedDB via `getSupervisedVisits()`
-  - `useCourtDates(caseId)` → reads from IndexedDB via `getCourtDates()`
-  - `useParentingClasses(caseId)` → reads from IndexedDB via `getParentingClasses()`
-  - `useMilestones(caseId)` → reads from IndexedDB via `getMilestones()`
-  - `useDailyCheckIns(caseId)` → reads from IndexedDB via `getDailyCheckIns()`
-  - `useCreateItem(endpoint)` → creates in IndexedDB via `createItemByEndpoint()`
-  - `useUpdateItem(endpoint)` → updates in IndexedDB via `updateItemByEndpoint()`
-  - `useDeleteItem(endpoint)` → deletes from IndexedDB via `deleteItemByEndpoint()`
-  - `useCreateCase()` → creates in IndexedDB via `dbCreateCase()`
-  - `useDeleteCase()` → deletes from IndexedDB via `dbDeleteCase()`
-  - `useSeedDatabase()` → seeds demo data in IndexedDB via `seedDemoData()`
-  - `useResetCase()` → resets case data in IndexedDB via `resetCaseData()`
-  - `useFreeTierCheck()` → unchanged (uses subscription store, not data)
-  - Streak tracking and celebration logic preserved
-  - Free tier check logic preserved
-  - Query invalidation pattern preserved (both React Query + custom event dispatch)
-- Updated backup-view.tsx to use client-db export/import instead of server API:
-  - `handleExportJSON()` → uses `exportAllData()` from client-db
-  - `handleRestore()` → uses `dbCreateCase()`, `dbUpdateCase()`, `createItemByEndpoint()` from client-db
-  - Cloud restore section → uses `dbUpdateCase()`, `createItemByEndpoint()` from client-db
-  - Email backup filename → uses `exportAllData()` instead of `/api/export`
-- Updated progress-view.tsx to use client-db export instead of server API:
-  - `handleExport()` → uses `exportAllData()` from client-db
-- All lint checks pass, no TypeScript errors
-- Dev server compiles successfully
-
-Stage Summary:
-- All user data is now stored exclusively in the browser's IndexedDB, never on the server
-- Each user's data is completely private in their own browser
-- The hook interface is preserved so no view components need to change (except backup-view and progress-view which used direct API calls)
-- The seed function generates the same demo data structure as the server-side seed route
-- Export/import functions are available for backup/restore
-- Custom event-based query invalidation system works alongside React Query's invalidation
-
----
-Task ID: 2-a
-Agent: Main
-Task: Move all data storage from shared server database to client-side IndexedDB for privacy
-
-Work Log:
-- Installed `idb` package (v8.0.3) for IndexedDB support
-- Created `/home/z/my-project/src/lib/client-db.ts` — complete IndexedDB database layer with 11 object stores, CRUD operations, seed/demo data, export/import, and query invalidation
-- Rewrote `/home/z/my-project/src/lib/data-hooks.ts` — all 18 hooks now use IndexedDB instead of server API calls
-- Updated `/home/z/my-project/src/components/views/backup-view.tsx` — JSON export and restore now use client-db functions
-- Updated `/home/z/my-project/src/components/views/progress-view.tsx` — export now uses client-db instead of server API
-- Cleaned the server database — all case data deleted for privacy protection
-- Verified with Agent Browser that the app works correctly with IndexedDB
-- Tested case creation with N26660 — works correctly
-- Tested demo data generation — works correctly
-- No browser errors or TypeScript errors
-
-Stage Summary:
-- All user data is now stored exclusively in the browser's IndexedDB
-- Each user's data is completely private — no shared server database
-- The server database is now empty and only used for Pro features (Stripe, cloud backup)
-- The app works exactly the same as before, but with full privacy isolation
-- Case creation, demo data generation, and all views work correctly
-
----
-Task ID: 1
 Agent: main
-Task: Fix backup/restore system, dashboard auto-hide, past-date entry, and data protection
+Task: Remove all paywall/restriction mechanics from the app
 
 Work Log:
-- Rewrote handleRestore in backup-view.tsx to use importAllData() for bulk restore instead of slow item-by-item createItemByEndpoint
-- Added comprehensive query invalidation after restore (all 12 query keys + resetQueries)
-- Rewrote cloud restore handler with same improvements
-- Fixed importAllData in client-db.ts to generate IDs for items missing them (IndexedDB keyPath requirement)
-- Added sidebar auto-collapse on tablet/small desktop (< 1280px) after navigation
-- Created DateInputField component with helper text, past/future date visual indicators
-- Updated counseling, supervised visits, NA meetings, parenting classes, NA steps, daily check-ins, and court dates views to use DateInputField
-- Added local auto-backup to localStorage (safety net for ALL users, not just Pro)
-- Added data recovery prompt in onboarding wizard when local auto-backup exists
-- The auto-backup hook now saves to localStorage on every data change (debounced, 1 min interval)
+- Deleted paywall infrastructure files: free-tier.ts, subscription.ts, stripe.ts, upgrade-dialog.tsx, upgrade-prompt-dialog.tsx, pro-badge.tsx, go-pro-view.tsx
+- Deleted Stripe API routes: checkout, portal, status, config, webhook
+- Deleted activation API route
+- Removed paywall imports and checks from all view files: counseling, drug-testing, court-dates, na-meetings, supervised-visits, parenting-classes, backup, progress, dashboard
+- Removed go-pro from ViewType, VIEW_LABELS, and navigation history
+- Removed UpgradeDialog, subscription store, and Stripe checkout handling from page.tsx
+- Removed ProBadge, upgrade buttons, and pro branding from sidebar and header
+- Removed useFreeTierCheck hook and free-tier-item-created event from data-hooks.ts
+- All features are now fully free and unlimited
 
 Stage Summary:
-- Backup/restore now uses bulk importAllData() which is faster and more reliable
-- All query keys are invalidated after restore, so dashboard refreshes correctly
-- Sidebar auto-collapses on tablet/small desktop after navigation
-- Date inputs now have clear labels, helper text, and visual indicators for past/future dates
-- Local auto-backup to localStorage provides a safety net against data loss
-- Data recovery prompt appears in onboarding wizard if auto-backup exists
-
----
-Task ID: 1
-Agent: main
-Task: Fix scan-case-plan "Item {id} not found in cases" error
-
-Work Log:
-- Identified the bug: `updateCase()` in client-db.ts calls `updateItem()` which throws `Item ${id} not found in ${storeName}` when the case doesn't exist in IndexedDB
-- This happens when localStorage has a stale `activeCaseId` but IndexedDB was cleared (e.g. browser data cleared, different browser context)
-- Fixed `updateCase()` to use upsert pattern: if case doesn't exist, create it instead of throwing
-- Also wrapped the `updateCase` call in scan-case-plan.tsx `handleApply` in try-catch so it doesn't crash the whole apply flow
-- Verified with agent browser that the scan feature works correctly
-
-Stage Summary:
-- Root cause: `updateItem()` threw when case ID from localStorage didn't exist in IndexedDB
-- Fix: `updateCase()` now upserts (creates case if missing) instead of throwing
-- Secondary fix: `handleApply` now catches errors per-section instead of crashing the whole flow
-- Files modified: `src/lib/client-db.ts`, `src/components/scan-case-plan.tsx`
-
----
-Task ID: 1
-Agent: main
-Task: Fix drug testing 5th button bug (timezone issue)
-
-Work Log:
-- Identified root cause: `testByDate` map used `new Date(test.date)` which parses YYYY-MM-DD strings as UTC midnight, shifting to the previous day in timezones behind UTC (e.g. PST)
-- Added `safeDateKey()` function that extracts the date portion directly from YYYY-MM-DD strings without timezone shifting
-- Updated `testByDate` map to use `safeDateKey()` instead of `formatDateKey(new Date(test.date))`
-- Also fixed `parenting-classes-view.tsx` to use `date.slice(0, 10).localeCompare()` for sorting instead of `new Date().getTime()`
-
-Stage Summary:
-- Drug testing 5th button (Friday) now works correctly
-- The timezone bug affected all date parsing in the drug testing view
-- Files modified: `src/components/views/drug-testing-view.tsx`, `src/components/views/parenting-classes-view.tsx`
+- App has zero paywall/restriction code remaining
+- All features (cloud backup, PDF export, email, progress charts) are available to everyone
+- No "Go Pro", "Upgrade", or paywall prompts anywhere in the app
+- Sidebar no longer shows "Upgrade to Pro" button
 
 ---
 Task ID: 2
 Agent: main
-Task: Fix family orientation button - can't mark as completed + support 2 classes
+Task: Fix 5th drug testing button bug (off-by-one error)
 
 Work Log:
-- Found that the orientation card had NO clickable button to mark completion - the `toggleOrientation()` function existed but was never called
-- Changed from single orientation to support multiple orientations (2 by default)
-- Added clickable circle buttons for each orientation (like the weekly class buttons)
-- Updated stats card to show "0/2" format instead of "Done/Pending"
-- Added certificate badge display for orientations
-- Updated `toggleOrientation()` to accept orientation number parameter
+- Fixed safeDateKey() function to parse through Date object for local-time date key
+- Plain "YYYY-MM-DD" strings (no time component) are returned as-is
+- Full ISO strings with time components are parsed through Date to get correct local date
+- This prevents UTC vs local timezone mismatch that caused the 5th button to affect the 4th
 
 Stage Summary:
-- Orientation section now has 2 clickable items (Orientation 1, Orientation 2)
-- Each has a green circle button that toggles completion
-- Certificate badges are shown for orientations with certificates
-- Files modified: `src/components/views/parenting-classes-view.tsx`
+- Drug testing 5th button now works independently
+- Browser test confirmed: clicking "Called & Tested" on Friday works correctly and shows result options
 
 ---
 Task ID: 3
 Agent: main
-Task: Fix scan case plan - EXIF orientation, large image handling, upload from gallery
+Task: Fix family orientation button and certificate support
 
 Work Log:
-- Added EXIF orientation parsing (`getExifOrientation()`) to read JPEG EXIF data
-- Added `applyExifOrientation()` to apply correct rotation/flip transforms to canvas
-- Updated `compressImage()` to:
-  - Read EXIF orientation before processing
-  - Apply correct rotation/flip transforms
-  - Use smaller max dimensions (1600px) for mobile performance
-  - Use lower quality (0.75) to reduce payload size
-  - Ensure even dimensions for encoder compatibility
-- Added file size validation (max 20MB)
-- Better error messages with specific failure reasons
-- Added try/catch around canvas operations
-- Improved API route with better error handling and logging for VLM API errors
+- Removed freeTier.atLimit check that was blocking the orientation toggle
+- Added hasCertificate: false to new orientation entries
+- Added toggleOrientationCertificate() function for certificate toggle
+- Added certificate button (Award icon) next to each completed orientation
+- Changed Certificates stat card to count all classes (including orientations), not just weekly
 
 Stage Summary:
-- Photos from mobile cameras will no longer appear distorted (EXIF orientation handled)
-- Large images are properly scaled down for mobile performance
-- Better error messages when image processing fails
-- Files modified: `src/components/scan-case-plan.tsx`, `src/app/api/scan-case-plan/route.ts`
+- Orientation buttons now work and can be toggled
+- Each completed orientation has a certificate toggle button
+- Certificate count now includes orientation certificates
+- Browser test confirmed: orientation 1 marked complete, certificate added successfully
 
 ---
 Task ID: 4
 Agent: main
-Task: Increase free tier limits for practical use
+Task: Fix scan case plan (body size limit, EXIF orientation, photo upload)
 
 Work Log:
-- Free tier limits were too restrictive (3 items per category)
-- Drug testing needs 5/week (Mon-Fri), so 3 was completely unusable
-- Parenting classes needs 16+ entries, so 3 was unusable
-- Increased limits: drug-tests: 15, parenting-classes: 20, na-steps: 12, requirements: 10
-- Other categories increased to 5-7 items
+- Fixed EXIF orientation double-resize bug in compressImage()
+- Reduced image max width from 1600px to 1200px and quality from 0.75 to 0.6
+- Added body size limit config in next.config.ts (10mb server actions)
+- Added maxDuration = 60 in scan-case-plan API route
+- Added 413 error handling for large payloads
+- Changed file input accept to specific MIME types for better Android compatibility
+- Added input value reset before triggering click for proper re-selection
+- Added drag-and-drop zone as fallback for photo upload
+- Added isDragging state and drag/drop handlers
 
 Stage Summary:
-- Free tier limits now allow practical use of the app
-- Files modified: `src/lib/free-tier.ts`, `src/components/upgrade-prompt-dialog.tsx`
+- EXIF orientation photos no longer distorted
+- Multi-page scans should no longer hit Error 209
+- Gallery/file picker works with specific MIME types
+- Drag-and-drop fallback available for desktop users
+- Browser test confirmed: scan dialog opens with "Take Photo" and "From Gallery" buttons

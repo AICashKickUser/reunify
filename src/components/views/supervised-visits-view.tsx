@@ -37,16 +37,13 @@ import {
   Timer,
   FileText,
   Eye,
-  Crown,
 } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import {
   useSupervisedVisits,
   useCreateItem,
   useUpdateItem,
-  useFreeTierCheck,
 } from '@/lib/data-hooks'
-import { UpgradePromptDialog } from '@/components/upgrade-prompt-dialog'
 import type { SupervisedVisit } from '@/lib/types'
 import { toast } from 'sonner'
 import { getLocalDateString } from '@/lib/utils'
@@ -644,19 +641,14 @@ function VisitCard({
 export function SupervisedVisitsView() {
   const { activeCaseId, addDialogTrigger } = useAppStore()
   const { data: visits, isLoading } = useSupervisedVisits(activeCaseId)
-  const freeTier = useFreeTierCheck('supervised-visits', visits?.length ?? 0)
   const [addOpen, setAddOpen] = useState(false)
+
   const [editVisit, setEditVisit] = useState<SupervisedVisit | null>(null)
-  const [upgradePromptOpen, setUpgradePromptOpen] = useState(false)
   const prevTriggerRef = useRef(addDialogTrigger)
 
   if (addDialogTrigger !== prevTriggerRef.current && addDialogTrigger > 0) {
     prevTriggerRef.current = addDialogTrigger
-    if (freeTier.atLimit) {
-      setUpgradePromptOpen(true)
-    } else {
-      setAddOpen(true)
-    }
+    setAddOpen(true)
   }
 
   if (isLoading) {
@@ -755,16 +747,10 @@ export function SupervisedVisitsView() {
         <h2 className="text-lg font-semibold text-foreground">Visit Log</h2>
         <Button
           className="bg-sky-600 hover:bg-sky-700 text-white"
-          onClick={() => {
-            if (freeTier.atLimit) {
-              setUpgradePromptOpen(true)
-            } else {
-              setAddOpen(true)
-            }
-          }}
+          onClick={() => setAddOpen(true)}
         >
-          {freeTier.atLimit ? <Crown className="size-4" /> : <Plus className="size-4" />}
-          {freeTier.atLimit ? 'Upgrade for More' : 'Schedule Visit'}
+          <Plus className="size-4" />
+          Schedule Visit
         </Button>
       </div>
 
@@ -834,12 +820,6 @@ export function SupervisedVisitsView() {
         />
       )}
 
-      {/* Free Tier Upgrade Prompt */}
-      <UpgradePromptDialog
-        open={upgradePromptOpen}
-        onOpenChange={setUpgradePromptOpen}
-        category="supervised-visits"
-      />
     </div>
   )
 }

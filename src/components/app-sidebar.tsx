@@ -22,7 +22,7 @@ import {
   FolderHeart,
   CalendarCheck,
   Trash2,
-  Sparkles,
+
   HardDriveDownload,
   Lock,
   Unlock,
@@ -52,8 +52,7 @@ import {
 } from '@/components/ui/select'
 import { useAppStore, type ViewType } from '@/lib/store'
 import { useCases, useDeleteCase } from '@/lib/data-hooks'
-import { useSubscriptionStore } from '@/lib/subscription'
-import { ProBadge } from '@/components/pro-badge'
+
 import { StreakBadge } from '@/components/streak-display'
 import {
   AlertDialog,
@@ -121,7 +120,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { view: 'progress', label: 'Progress Report', icon: BarChart3 },
       { view: 'backup', label: 'Backup & Restore', icon: HardDriveDownload },
-      { view: 'go-pro', label: 'Upgrade to Pro', icon: Sparkles },
     ],
   },
 ]
@@ -130,8 +128,6 @@ export function AppSidebar() {
   const { activeView, setActiveView, activeCaseId, setActiveCaseId } = useAppStore()
   const { data: cases } = useCases()
   const deleteMutation = useDeleteCase()
-  const { tier } = useSubscriptionStore()
-  const isPro = tier === 'pro'
   const { isMobile, setOpenMobile, toggleSidebar, state: sidebarState } = useSidebar()
   // Use useSyncExternalStore for SSR-safe lock state reading
   const isClient = useSyncExternalStore(emptySubscribe, returnTrue, returnFalse)
@@ -241,9 +237,8 @@ export function AppSidebar() {
                 <FolderHeart className="size-4" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-                  {isPro ? 'Reunify Pro' : 'Reunify'}
-                  {isPro && <ProBadge />}
+                <span className="truncate font-bold text-emerald-700 dark:text-emerald-400">
+                  Reunify
                 </span>
                 <span className="truncate text-xs text-muted-foreground">Progress Tracker</span>
               </div>
@@ -286,9 +281,7 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {group.items
-                  .filter((item) => item.view !== 'go-pro' || !isPro)
-                  .map((item) => (
+                {group.items.map((item) => (
                   <SidebarMenuItem key={item.view}>
                     <SidebarMenuButton
                       isActive={activeView === item.view}
@@ -458,20 +451,7 @@ export function AppSidebar() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        {!isPro && (
-          <div className="group-data-[collapsible=icon]:hidden mt-2">
-            <Button
-              className="w-full gap-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white border-0 h-9"
-              size="sm"
-              onClick={() => {
-                handleNavClick('go-pro')
-              }}
-            >
-              <Sparkles className="size-4" />
-              Upgrade to Pro
-            </Button>
-          </div>
-        )}
+
         {activeCaseId && (
           <div className="group-data-[collapsible=icon]:hidden mt-2">
             <AlertDialog>

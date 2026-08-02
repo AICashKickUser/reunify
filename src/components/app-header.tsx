@@ -1,14 +1,13 @@
 'use client'
 
-import { Plus, Sparkles, ArrowLeft } from 'lucide-react'
+import { Plus, ArrowLeft } from 'lucide-react'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { useAppStore, VIEW_LABELS, type ViewType } from '@/lib/store'
 import { useCase } from '@/lib/data-hooks'
-import { useSubscriptionStore } from '@/lib/subscription'
-import { ProBadge } from '@/components/pro-badge'
+
 
 const VIEW_ADD_LABELS: Partial<Record<ViewType, string>> = {
   'counseling': 'Add Session',
@@ -27,8 +26,6 @@ export function AppHeader() {
   const title = VIEW_LABELS[activeView]
   const { data: caseData } = useCase(activeCaseId)
   const addLabel = VIEW_ADD_LABELS[activeView]
-  const { tier, setUpgradeDialogOpen } = useSubscriptionStore()
-  const isPro = tier === 'pro'
   const canGoBack = viewHistory.length > 0
 
   // Calculate overall progress from requirements
@@ -72,19 +69,6 @@ export function AppHeader() {
             {overallProgress}%
           </span>
         </div>
-      )}
-
-      {isPro ? (
-        <ProBadge />
-      ) : (
-        <Button 
-          size="sm" 
-          className="gap-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white border-0 shadow-sm"
-          onClick={() => setActiveView('go-pro')}
-        >
-          <Sparkles className="size-3.5" />
-          <span className="hidden xs:inline sm:inline">Go Pro</span>
-        </Button>
       )}
 
       {activeCaseId && addLabel && (

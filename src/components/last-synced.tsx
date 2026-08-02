@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Cloud, CloudOff, RefreshCw, Check } from 'lucide-react'
 import { forceBackup, getBackupStatus, type BackupStatus } from '@/lib/cloud-backup'
-import { useSubscriptionStore } from '@/lib/subscription'
 import { toast } from 'sonner'
 
 interface LastSyncedProps {
@@ -12,8 +11,6 @@ interface LastSyncedProps {
 }
 
 export function LastSynced({ caseId, compact = false }: LastSyncedProps) {
-  const { tier } = useSubscriptionStore()
-  const isPro = tier === 'pro'
   const [status, setStatus] = useState<BackupStatus | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [justSynced, setJustSynced] = useState(false)
@@ -36,7 +33,7 @@ export function LastSynced({ caseId, compact = false }: LastSyncedProps) {
   }, [refreshStatus])
 
   const handleForceSync = useCallback(async () => {
-    if (!caseId || !isPro || syncing) return
+    if (!caseId || syncing) return
 
     setSyncing(true)
     setJustSynced(false)
@@ -60,10 +57,10 @@ export function LastSynced({ caseId, compact = false }: LastSyncedProps) {
     } finally {
       setSyncing(false)
     }
-  }, [caseId, isPro, syncing, refreshStatus])
+  }, [caseId, syncing, refreshStatus])
 
-  // Don't show for non-pro users or no case
-  if (!isPro || !caseId) return null
+  // Don't show without a case
+  if (!caseId) return null
 
   // Determine dot color
   const dotColor = status?.hasNeverSynced

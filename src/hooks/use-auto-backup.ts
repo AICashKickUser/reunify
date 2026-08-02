@@ -3,7 +3,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { autoBackup } from '@/lib/cloud-backup'
-import { useSubscriptionStore } from '@/lib/subscription'
 import { useAppStore } from '@/lib/store'
 import { exportAllData } from '@/lib/client-db'
 import { toast } from 'sonner'
@@ -66,14 +65,12 @@ export function getLocalAutoBackup(): { data: unknown; timestamp: number } | nul
  */
 export function useAutoBackup() {
   const queryClient = useQueryClient()
-  const { tier } = useSubscriptionStore()
   const { activeCaseId } = useAppStore()
-  const isPro = tier === 'pro'
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isBackingUpRef = useRef(false)
 
   const triggerAutoBackup = useCallback(async (caseId: string) => {
-    if (!isPro || isBackingUpRef.current) return
+    if (isBackingUpRef.current) return
     if (typeof navigator !== 'undefined' && !navigator.onLine) return
 
     isBackingUpRef.current = true
@@ -90,7 +87,7 @@ export function useAutoBackup() {
     } finally {
       isBackingUpRef.current = false
     }
-  }, [isPro])
+  }, [])
 
   useEffect(() => {
     // Always save a local backup on mount (app open)
@@ -120,8 +117,8 @@ export function useAutoBackup() {
         debounceTimerRef.current = setTimeout(() => {
           // Always save local backup (safety net for ALL users)
           saveLocalBackup()
-          // Also trigger cloud backup for Pro users
-          if (isPro && activeCaseId) {
+          // Also trigger cloud backup
+          if (activeCaseId) {
             triggerAutoBackup(activeCaseId)
           }
         }, 2000)
@@ -132,8 +129,8 @@ export function useAutoBackup() {
     const handleOnline = () => {
       // Save local backup first
       saveLocalBackup()
-      // Then trigger cloud backup for Pro users
-      if (isPro && activeCaseId) {
+      // Then trigger cloud backup
+      if (activeCaseId) {
         triggerAutoBackup(activeCaseId)
       }
     }
@@ -146,5 +143,5 @@ export function useAutoBackup() {
         clearTimeout(debounceTimerRef.current)
       }
     }
-  }, [isPro, activeCaseId, queryClient, triggerAutoBackup])
+  }, [triggerAutoBackup])
 }

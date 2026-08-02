@@ -373,9 +373,11 @@ export async function deleteCounselingSession(id: string): Promise<void> {
 // ============================================================
 
 export async function createDrugTest(data: Partial<DrugTest> & { caseId: string }): Promise<DrugTest> {
+  // Normalize date to plain YYYY-MM-DD to avoid timezone issues
+  const normalizedDate = normalizeDateToYMD(data.date)
   return createItem('drugTests', {
     caseId: data.caseId,
-    date: data.date || new Date().toISOString(),
+    date: normalizedDate,
     testType: data.testType ?? null,
     isRandom: data.isRandom ?? false,
     result: data.result ?? null,
@@ -687,15 +689,39 @@ export async function clearAllData(): Promise<void> {
 function daysAgo(days: number): string {
   const d = new Date()
   d.setDate(d.getDate() - days)
-  d.setHours(10, 0, 0, 0)
-  return d.toISOString()
+  return formatYMD(d)
 }
 
 function daysFromNow(days: number): string {
   const d = new Date()
   d.setDate(d.getDate() + days)
-  d.setHours(10, 0, 0, 0)
-  return d.toISOString()
+  return formatYMD(d)
+}
+
+/** Format a Date as YYYY-MM-DD in local time */
+function formatYMD(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+/**
+ * Normalize a date value to a plain YYYY-MM-DD string in local time.
+ * Accepts: YYYY-MM-DD, full ISO strings, or null/undefined.
+ */
+function normalizeDateToYMD(date: unknown): string {
+  if (!date) return formatYMD(new Date())
+  if (typeof date === 'string') {
+    // Already a plain YYYY-MM-DD?
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date
+    // Full ISO string → parse and convert to local YMD
+    const d = new Date(date)
+    if (!isNaN(d.getTime())) return formatYMD(d)
+    // Fallback: extract first 10 chars
+    if (/^\d{4}-\d{2}-\d{2}/.test(date)) return date.slice(0, 10)
+  }
+  return formatYMD(new Date())
 }
 
 export async function seedDemoData(): Promise<{ caseId: string; stats: Record<string, number> }> {

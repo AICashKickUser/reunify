@@ -6,9 +6,7 @@ import {
   useDrugTests,
   useCreateItem,
   useUpdateItem,
-  useFreeTierCheck,
 } from '@/lib/data-hooks'
-import { UpgradePromptDialog } from '@/components/upgrade-prompt-dialog'
 import { CATEGORY_COLORS } from '@/lib/types'
 import type { DrugTest } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -30,7 +28,6 @@ import {
   ChevronUp,
   PhoneOff,
   Loader2,
-  Crown,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -81,16 +78,30 @@ function formatDateKey(date: Date): string {
 
 /**
  * Safely extract a YYYY-MM-DD date key from a stored date string.
- * IMPORTANT: `new Date("2025-03-07")` parses as UTC midnight, which shifts
- * to the previous day in timezones behind UTC (e.g. PST → March 6th).
- * To avoid this, we extract the date portion directly from the string.
+ *
+ * Two cases:
+ * 1. Plain "YYYY-MM-DD" strings (no time component) — these are already in
+ *    local time (produced by formatDateKey), so return as-is.
+ * 2. Full ISO strings with time components (e.g. "2025-03-07T04:00:00.000Z") —
+ *    slicing the first 10 chars gives the UTC date, which can differ from the
+ *    local date in timezones behind UTC. Parse through a Date object to get
+ *    the correct local-time date key.
  */
 function safeDateKey(dateStr: string): string {
-  if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
-    return dateStr.slice(0, 10)
+  // Plain YYYY-MM-DD with no time component → already local, return as-is
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return dateStr
   }
-  // Fallback for non-standard formats
-  return formatDateKey(new Date(dateStr))
+  // ISO string with time component → parse through Date to get local date
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) {
+    // Fallback: try to extract YYYY-MM-DD directly
+    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+      return dateStr.slice(0, 10)
+    }
+    return dateStr
+  }
+  return formatDateKey(d)
 }
 
 /** Format date for display: "Mon Jul 21" */
@@ -129,11 +140,9 @@ export function DrugTestingView() {
   const { data: drugTests, isLoading } = useDrugTests(activeCaseId)
   const createMutation = useCreateItem('drug-tests')
   const updateMutation = useUpdateItem('drug-tests')
-  const freeTier = useFreeTierCheck('drug-tests', drugTests?.length ?? 0)
 
   const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set())
   const [previousWeeksExpanded, setPreviousWeeksExpanded] = useState(true)
-  const [upgradePromptOpen, setUpgradePromptOpen] = useState(false)
 
   // ─── Current Week ────────────────────────────────────────────────────────
 
@@ -308,11 +317,7 @@ export function DrugTestingView() {
           }
         )
       } else {
-        // Create new entry — check free tier limit first
-        if (freeTier.atLimit) {
-          setUpgradePromptOpen(true)
-          return
-        }
+        // Create new entry
         createMutation.mutate(
           {
             caseId: activeCaseId,
@@ -329,7 +334,7 @@ export function DrugTestingView() {
         )
       }
     },
-    [activeCaseId, testByDate, createMutation, updateMutation, currentWeekDates, freeTier.atLimit]
+    [activeCaseId, testByDate, createMutation, updateMutation, currentWeekDates]
   )
 
   // ─── Handler: Update test result ─────────────────────────────────────────
@@ -860,12 +865,6 @@ export function DrugTestingView() {
         </CardContent>
       </Card>
 
-      {/* Free Tier Upgrade Prompt */}
-      <UpgradePromptDialog
-        open={upgradePromptOpen}
-        onOpenChange={setUpgradePromptOpen}
-        category="drug-tests"
-      />
     </div>
   )
 }

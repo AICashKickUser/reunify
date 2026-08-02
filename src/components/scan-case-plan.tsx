@@ -252,7 +252,7 @@ function applyExifOrientation(
  * - Very large images (12-20MP) that exceed canvas limits
  * - Memory constraints on mobile devices
  */
-function compressImage(file: File, maxWidth = 1600, quality = 0.75): Promise<string> {
+function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promise<string> {
   return new Promise(async (resolve, reject) => {
     try {
       // Step 1: Read EXIF orientation
@@ -264,16 +264,12 @@ function compressImage(file: File, maxWidth = 1600, quality = 0.75): Promise<str
         const img = document.createElement('img')
         img.onload = () => {
           try {
-            let { width, height } = img
-
-            // Apply EXIF orientation to get correct dimensions
-            if (orientation >= 5 && orientation <= 8) {
-              // Swap width/height for 90°/270° rotations
-              ;[width, height] = [height, width]
-            }
+            // Get original pixel dimensions (NOT swapped)
+            let width = img.naturalWidth || img.width
+            let height = img.naturalHeight || img.height
 
             // Scale down if needed — use smaller max for mobile performance
-            const maxDim = Math.min(maxWidth, 1600)
+            const maxDim = Math.min(maxWidth, 1200)
             if (width > maxDim) {
               height = Math.round((height * maxDim) / width)
               width = maxDim
@@ -287,9 +283,15 @@ function compressImage(file: File, maxWidth = 1600, quality = 0.75): Promise<str
             width = Math.round(width / 2) * 2
             height = Math.round(height / 2) * 2
 
+            // For orientations 5-8, the display dimensions are swapped (90°/270° rotation)
+            // Set canvas to the DISPLAY dimensions, but keep original for transform calc
+            const needsSwap = orientation >= 5 && orientation <= 8
+            const canvasWidth = needsSwap ? height : width
+            const canvasHeight = needsSwap ? width : height
+
             const canvas = document.createElement('canvas')
-            canvas.width = width
-            canvas.height = height
+            canvas.width = canvasWidth
+            canvas.height = canvasHeight
 
             const ctx = canvas.getContext('2d')
             if (!ctx) {
@@ -297,14 +299,14 @@ function compressImage(file: File, maxWidth = 1600, quality = 0.75): Promise<str
               return
             }
 
-            // Apply EXIF orientation correction
-            const corrected = applyExifOrientation(ctx, orientation, width, height)
-            if (corrected.width !== width || corrected.height !== height) {
-              canvas.width = corrected.width
-              canvas.height = corrected.height
-            }
+            // Apply EXIF orientation correction BEFORE drawing
+            // Pass ORIGINAL (non-swapped) dimensions for correct transform calculation
+            applyExifOrientation(ctx, orientation, width, height)
 
-            ctx.drawImage(img, 0, 0, corrected.width, corrected.height)
+            // Draw the image with ORIGINAL (non-swapped) dimensions
+            // The transform will map it correctly onto the canvas
+            ctx.drawImage(img, 0, 0, width, height)
+
             const dataUrl = canvas.toDataURL('image/jpeg', quality)
             resolve(dataUrl)
           } catch (err) {
@@ -393,6 +395,7 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
   // Phase 1: Capture state
   const [pages, setPages] = useState<CapturedPage[]>([])
   const [analyzeProgress, setAnalyzeProgress] = useState('')
+  const [isDragging, setIsDragging] = useState(false)
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
 
@@ -468,12 +471,42 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
   }, [])
 
   const handleCameraClick = useCallback(() => {
+    // Reset the input to ensure the same file can be selected again
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = ''
+    }
     cameraInputRef.current?.click()
   }, [])
 
   const handleGalleryClick = useCallback(() => {
+    // Reset the input to ensure the same file can be selected again
+    if (galleryInputRef.current) {
+      galleryInputRef.current.value = ''
+    }
     galleryInputRef.current?.click()
   }, [])
+
+  // Drag-and-drop handlers for fallback photo upload
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFilesSelected(e.dataTransfer.files, false)
+    }
+  }, [handleFilesSelected])
 
   // ============================================================
   // Phase 1 → Phase 2: Analyze
@@ -510,7 +543,11 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || `Server error: ${response.status}`)
+        const errorMsg = errorData.error || `Server error: ${response.status}`
+        if (response.status === 413) {
+          throw new Error('Photos are too large for the server. Please retake photos from further away, or use fewer pages.')
+        }
+        throw new Error(errorMsg)
       }
 
       const result = await response.json()
@@ -980,20 +1017,18 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
       <input
         ref={cameraInputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
         capture="environment"
         className="hidden"
         onChange={(e) => handleFilesSelected(e.target.files, true)}
-        onClick={(e) => { (e.target as HTMLInputElement).value = '' }}
       />
       <input
         ref={galleryInputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
         multiple
         className="hidden"
         onChange={(e) => handleFilesSelected(e.target.files, false)}
-        onClick={(e) => { (e.target as HTMLInputElement).value = '' }}
       />
 
       {/* Instructions */}
@@ -1028,6 +1063,26 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
           <span className="text-sm font-medium">From Gallery</span>
           <span className="text-xs opacity-80">Upload existing</span>
         </Button>
+      </div>
+
+      {/* Drag-and-drop fallback zone */}
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
+          isDragging
+            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30'
+            : 'border-muted-foreground/25 hover:border-muted-foreground/40'
+        }`}
+      >
+        <ImageIcon className="size-8 mx-auto text-muted-foreground/50 mb-2" />
+        <p className="text-sm text-muted-foreground">
+          Or drag &amp; drop photos here
+        </p>
+        <p className="text-xs text-muted-foreground/70 mt-1">
+          JPG, PNG, WebP, HEIC — up to 5 pages
+        </p>
       </div>
 
       {/* Page thumbnails */}

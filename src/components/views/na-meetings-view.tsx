@@ -7,9 +7,7 @@ import {
   useCreateItem,
   useUpdateItem,
   useDeleteItem,
-  useFreeTierCheck,
 } from '@/lib/data-hooks'
-import { UpgradePromptDialog } from '@/components/upgrade-prompt-dialog'
 import { CATEGORY_COLORS } from '@/lib/types'
 import type { NAMeeting } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -50,7 +48,6 @@ import {
   CheckCircle2,
   Target,
   Trophy,
-  Crown,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getLocalDateString } from '@/lib/utils'
@@ -223,14 +220,12 @@ export function NAMeetingsView() {
   const createMutation = useCreateItem('na-meetings')
   const updateMutation = useUpdateItem('na-meetings')
   const deleteMutation = useDeleteItem('na-meetings')
-  const freeTier = useFreeTierCheck('na-meetings', meetings?.length ?? 0)
 
   const [addOpen, setAddOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [editingMeeting, setEditingMeeting] = useState<NAMeeting | null>(null)
   const [form, setForm] = useState<MeetingFormData>(emptyForm)
   const [quickAddExpanded, setQuickAddExpanded] = useState(false)
-  const [upgradePromptOpen, setUpgradePromptOpen] = useState(false)
   const prevTriggerRef = useRef(addDialogTrigger)
 
   // Respond to global add dialog trigger
@@ -303,13 +298,9 @@ export function NAMeetingsView() {
   }, [activeCaseId, createMutation])
 
   const handleOpenAddDialog = useCallback(() => {
-    if (freeTier.atLimit) {
-      setUpgradePromptOpen(true)
-      return
-    }
     setForm({ ...emptyForm, date: getLocalDateString() })
     setAddOpen(true)
-  }, [freeTier.atLimit])
+  }, [])
 
   const handleEdit = useCallback((meeting: NAMeeting) => {
     setEditingMeeting(meeting)
@@ -427,9 +418,9 @@ export function NAMeetingsView() {
           </div>
         </div>
         <Button onClick={handleOpenAddDialog} size="sm" className="bg-violet-600 hover:bg-violet-700 text-white shrink-0 h-8 sm:h-9">
-          {freeTier.atLimit ? <Crown className="size-3 sm:size-4" /> : <Plus className="size-3 sm:size-4" />}
-          <span className="hidden sm:inline">{freeTier.atLimit ? 'Upgrade for More' : 'Add Meeting'}</span>
-          <span className="sm:hidden">{freeTier.atLimit ? 'Upgrade' : 'Add'}</span>
+          <Plus className="size-3 sm:size-4" />
+          <span className="hidden sm:inline">Add Meeting</span>
+          <span className="sm:hidden">Add</span>
         </Button>
       </div>
 
@@ -1096,12 +1087,6 @@ export function NAMeetingsView() {
         </DialogContent>
       </Dialog>
 
-      {/* Free Tier Upgrade Prompt */}
-      <UpgradePromptDialog
-        open={upgradePromptOpen}
-        onOpenChange={setUpgradePromptOpen}
-        category="na-meetings"
-      />
     </div>
   )
 }

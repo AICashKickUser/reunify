@@ -3,7 +3,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAppStore } from '@/lib/store'
-import { useSubscriptionStore, useProFeature } from '@/lib/subscription'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -26,7 +25,6 @@ import {
   Cloud,
   CloudOff,
   Check,
-  Lock,
 } from 'lucide-react'
 
 interface ExportData {
@@ -68,9 +66,6 @@ interface ExportData {
 export function BackupView() {
   const { activeCaseId, setActiveCaseId } = useAppStore()
   const queryClient = useQueryClient()
-  const { tier } = useSubscriptionStore()
-  const proFeature = useProFeature('data_export')
-  const isPro = tier === 'pro'
 
   const [exporting, setExporting] = useState<string | null>(null) // 'json', 'pdf', 'email', 'cloud'
   const [lastBackupDate, setLastBackupDate] = useState<string | null>(null)
@@ -93,12 +88,12 @@ export function BackupView() {
 
   // Load cloud backup status
   const refreshCloudStatus = useCallback(async () => {
-    if (!activeCaseId || !isPro) return
+    if (!activeCaseId) return
     try {
       const status = await getServerBackupStatus(activeCaseId)
       setCloudStatus(status)
     } catch { /* ignore */ }
-  }, [activeCaseId, isPro])
+  }, [activeCaseId])
 
   useEffect(() => {
     refreshCloudStatus()
@@ -106,7 +101,6 @@ export function BackupView() {
 
   // Cloud backup handler
   const handleCloudBackup = async () => {
-    if (!isPro) { proFeature.showUpgrade(); return }
     if (!activeCaseId) { toast.error('No active case to backup'); return }
 
     setExporting('cloud')
@@ -210,7 +204,6 @@ export function BackupView() {
 
   // Print court report (opens server-generated HTML in new tab)
   const handleExportPDF = async () => {
-    if (!isPro) { proFeature.showUpgrade(); return }
     if (!activeCaseId) { toast.error('No active case to backup'); return }
 
     setExporting('pdf')
@@ -237,7 +230,6 @@ export function BackupView() {
 
   // Email backup - generates PDF report and shares via native share sheet (with PDF file attachment)
   const handleEmailBackup = async () => {
-    if (!isPro) { proFeature.showUpgrade(); return }
     if (!activeCaseId) { toast.error('No active case to backup'); return }
 
     setExporting('email')
@@ -488,271 +480,7 @@ export function BackupView() {
     }
   }
 
-  // Free user view — JSON export/restore available, Pro features locked
-  if (!isPro) {
-    return (
-      <div className="space-y-6 max-w-2xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
-            <HardDriveDownload className="size-5 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-foreground">Backup & Restore</h2>
-            <p className="text-sm text-muted-foreground">Save your progress and restore from a backup file.</p>
-          </div>
-        </div>
-
-        {/* Last Backup Info */}
-        {lastBackupDate && (
-          <Card className="border-emerald-200 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/20">
-            <CardContent className="p-4 flex items-center gap-3">
-              <Clock className="size-5 text-emerald-600" />
-              <div>
-                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Last backup saved</p>
-                <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80">
-                  {new Date(lastBackupDate).toLocaleDateString('en-US', {
-                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
-                  })}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Export Options */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <Archive className="size-4" />
-            Save Your Data
-          </h3>
-
-          {/* JSON Download — Free */}
-          <Card className="hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors cursor-pointer" onClick={exporting ? undefined : handleExportJSON}>
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className="flex size-12 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30 shrink-0">
-                {exporting === 'json' ? <Loader2 className="size-6 animate-spin text-emerald-600" /> : <Download className="size-6 text-emerald-600 dark:text-emerald-400" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground">Download Backup File</p>
-                <p className="text-xs text-muted-foreground">
-                  Save all your case data as a file on your phone. You can restore it later if you switch devices.
-                </p>
-              </div>
-              <Button size="sm" variant="outline" className="gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-950/30" disabled={exporting === 'json'}>
-                <Download className="size-4" />
-                Save
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Email to Caseworker — Pro */}
-          <Card className="opacity-60 cursor-pointer" onClick={() => proFeature.showUpgrade()}>
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className="flex size-12 items-center justify-center rounded-xl bg-sky-100 dark:bg-sky-900/30 shrink-0">
-                <Mail className="size-6 text-sky-600 dark:text-sky-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-foreground">Email to Caseworker</p>
-                  <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-[10px]">Pro</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Share your professional progress report as a PDF email attachment.
-                </p>
-              </div>
-              <Lock className="size-4 text-muted-foreground" />
-            </CardContent>
-          </Card>
-
-          {/* Print Court Report — Pro */}
-          <Card className="opacity-60 cursor-pointer" onClick={() => proFeature.showUpgrade()}>
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className="flex size-12 items-center justify-center rounded-xl bg-rose-100 dark:bg-rose-900/30 shrink-0">
-                <FileText className="size-6 text-rose-600 dark:text-rose-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-foreground">Print Court Report</p>
-                  <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-[10px]">Pro</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Generate a professional progress report you can print and bring to court.
-                </p>
-              </div>
-              <Lock className="size-4 text-muted-foreground" />
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Restore Section */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <RefreshCw className="size-4" />
-            Restore from Backup
-          </h3>
-
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <Upload className="size-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">Import a previous backup</p>
-                  <p className="text-xs text-muted-foreground">
-                    Select a Reunify backup JSON file to restore your saved data.
-                  </p>
-                </div>
-              </div>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileSelect}
-                accept=".json"
-                suppressHydrationWarning
-                className="hidden"
-              />
-              <Button
-                variant="outline"
-                className="w-full gap-2"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={restoring}
-              >
-                {restoring ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-                {restoring ? 'Restoring...' : 'Choose Backup File'}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Restore Preview / Confirmation */}
-          {confirmRestore && restorePreview && (
-            <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <AlertTriangle className="size-5 text-amber-600" />
-                  Confirm Data Restore
-                </CardTitle>
-                <CardDescription>
-                  This will add the backed-up data to your current case. Existing data will not be removed.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="size-4 text-emerald-600" />
-                    <span className="text-muted-foreground">Case: <strong>{restorePreview.case.caseNumber || 'Unknown'}</strong></span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="size-4 text-emerald-600" />
-                    <span className="text-muted-foreground">Exported: <strong>{new Date(restorePreview.exportDate).toLocaleDateString()}</strong></span>
-                  </div>
-                  {restorePreview.counselingSessions?.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-emerald-600" />
-                      <span className="text-muted-foreground">Counseling: <strong>{restorePreview.counselingSessions.length} sessions</strong></span>
-                    </div>
-                  )}
-                  {restorePreview.drugTests?.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-emerald-600" />
-                      <span className="text-muted-foreground">Drug Tests: <strong>{restorePreview.drugTests.length} tests</strong></span>
-                    </div>
-                  )}
-                  {restorePreview.naMeetings?.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-emerald-600" />
-                      <span className="text-muted-foreground">NA Meetings: <strong>{restorePreview.naMeetings.length} meetings</strong></span>
-                    </div>
-                  )}
-                  {restorePreview.parentingClasses?.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-emerald-600" />
-                      <span className="text-muted-foreground">Classes: <strong>{restorePreview.parentingClasses.length} classes</strong></span>
-                    </div>
-                  )}
-                  {restorePreview.supervisedVisits?.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-emerald-600" />
-                      <span className="text-muted-foreground">Visits: <strong>{restorePreview.supervisedVisits.length} visits</strong></span>
-                    </div>
-                  )}
-                  {restorePreview.courtDates?.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-emerald-600" />
-                      <span className="text-muted-foreground">Court Dates: <strong>{restorePreview.courtDates.length} dates</strong></span>
-                    </div>
-                  )}
-                  {restorePreview.milestones?.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-emerald-600" />
-                      <span className="text-muted-foreground">Milestones: <strong>{restorePreview.milestones.length} milestones</strong></span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    className="flex-1 gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-                    onClick={handleRestore}
-                    disabled={restoring}
-                  >
-                    {restoring ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-                    {restoring ? 'Restoring...' : 'Restore Data'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => { setConfirmRestore(false); setRestorePreview(null) }}
-                    disabled={restoring}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Pro Upgrade Card */}
-        <Card className="border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 dark:border-amber-800 dark:from-amber-950/20 dark:to-yellow-950/20">
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="size-5 text-amber-600" />
-              <div>
-                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Upgrade to Pro</p>
-                <p className="text-xs text-amber-700/80 dark:text-amber-400/80">
-                  Unlock cloud backup, email export, court-ready PDF reports, and more
-                </p>
-              </div>
-            </div>
-            <Button
-              className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white border-0"
-              onClick={() => proFeature.showUpgrade()}
-            >
-              <ShieldCheck className="size-4" />
-              See Pro Features
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Tips */}
-        <Card className="border-dashed">
-          <CardContent className="p-4 space-y-2">
-            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <ShieldCheck className="size-4 text-emerald-600" />
-              Backup Tips
-            </h4>
-            <ul className="text-xs text-muted-foreground space-y-1.5 list-disc list-inside">
-              <li>Save a backup at least once a week so you never lose your progress</li>
-              <li>Keep your backup JSON file in a safe place (Google Drive, email, etc.)</li>
-              <li>If you get a new phone, use &quot;Restore from Backup&quot; to import your saved data</li>
-              <li>Upgrade to Pro for email export, court-ready PDF reports, and cloud backup</li>
-            </ul>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  // Main backup view (Pro user)
+  // Main backup view (all features available)
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
       {/* Header */}
