@@ -256,18 +256,24 @@ function applyExifOrientation(
  */
 async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promise<string> {
   // Mobile-safe: cap dimensions to avoid canvas memory issues
-  // Use 1200px max (was 1000px which was too aggressive and caused blurry/distorted images on some devices)
   const safeMaxWidth = Math.min(maxWidth, 1200)
+
   // Try createImageBitmap with imageOrientation first (handles EXIF automatically)
+  // Only use this path if the browser supports imageOrientation — otherwise
+  // the bitmap will NOT have EXIF applied and will look distorted on mobile.
   try {
     if (typeof createImageBitmap === 'function') {
       // Try with imageOrientation option first (modern browsers)
       let bitmap: ImageBitmap
+      let usedImageOrientation = false
       try {
         bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+        usedImageOrientation = true
       } catch {
-        // imageOrientation option not supported on this device, try without it
-        bitmap = await createImageBitmap(file)
+        // imageOrientation option not supported on this device
+        // Don't use createImageBitmap without it — it will ignore EXIF
+        // and cause distorted images. Fall through to manual method instead.
+        throw new Error('imageOrientation not supported, using manual EXIF fallback')
       }
       try {
         let width = bitmap.width
@@ -290,7 +296,6 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promis
 
         // Safety check: skip canvas if dimensions are too large for mobile devices
         if (width * height > 4000000) {
-          // Downscale further to avoid canvas memory issues
           const scale = Math.sqrt(4000000 / (width * height))
           width = Math.round((width * scale) / 2) * 2
           height = Math.round((height * scale) / 2) * 2
@@ -311,7 +316,8 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promis
       }
     }
   } catch {
-    // createImageBitmap not supported or failed, fall through to manual method
+    // createImageBitmap not supported or imageOrientation not available
+    // Fall through to manual method which handles EXIF correctly
   }
 
   // Fallback: manual EXIF orientation correction
@@ -532,28 +538,25 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
         let dataUrl: string
         try {
           // Compress for server upload — balanced quality (0.6) and size (1200px max)
-          // Was 0.5 quality/1000px which was too blurry for the AI to read text accurately
           dataUrl = await compressImage(file, 1200, 0.6)
         } catch (compressErr) {
           // Compression failed — try using the original file as a data URL if it's small enough
           const msg = compressErr instanceof Error ? compressErr.message : 'Unknown error'
           console.warn('[scan-case-plan] Compression failed, trying raw data URL:', msg, 'File:', file.name, 'Size:', file.size)
-          if (file.size <= 2 * 1024 * 1024) {
-            // Small file — try reading as data URL directly
-            try {
-              dataUrl = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader()
-                reader.onload = () => resolve(reader.result as string)
-                reader.onerror = () => reject(new Error('Failed to read file'))
-                reader.readAsDataURL(file)
-              })
-            } catch {
-              toast.error('Could not process this image. Try a different photo or format (JPG recommended).')
+          try {
+            dataUrl = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader()
+              reader.onload = () => resolve(reader.result as string)
+              reader.onerror = () => reject(new Error('Failed to read file'))
+              reader.readAsDataURL(file)
+            })
+            // If the raw data URL is too large (>5MB), we can't use it
+            if (dataUrl.length > 5 * 1024 * 1024) {
+              toast.error('Image is too large for upload. Try taking a photo from further away or use a lower resolution.')
               continue
             }
-          } else {
-            // Large file — can't use raw data URL, show error
-            toast.error(`Image processing failed: ${msg}. Try a smaller photo or use JPG format.`)
+          } catch {
+            toast.error('Could not process this image. Try a different photo or format (JPG recommended).')
             continue
           }
         }
@@ -645,8 +648,8 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
       console.log(`[scan-case-plan] Sending ${images.length} images, total payload: ${(totalSize / 1024 / 1024).toFixed(2)}MB`)
 
       // Check payload size before sending — if too large, warn the user
-      // Increased limit to 8MB (was 5MB) to allow better quality images for AI reading
-      if (totalSize > 8 * 1024 * 1024) {
+      // Increased limit to 12MB (was 8MB) to allow better quality images for AI reading
+      if (totalSize > 12 * 1024 * 1024) {
         setPhase('capture')
         toast.error('Photos are too large even after compression. Please retake photos from further away or use fewer pages.')
         return
@@ -1215,13 +1218,13 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
 
   const renderCapture = () => (
     <div className="space-y-6">
-      {/* Hidden file inputs */}
+      {/* Hidden file inputs — use sr-only instead of hidden for better mobile compatibility */}
       <input
         ref={cameraInputRef}
         type="file"
         accept="image/*"
         capture="environment"
-        className="hidden"
+        className="sr-only"
         onChange={(e) => handleFilesSelected(e.target.files, true)}
       />
       <input
@@ -1229,7 +1232,7 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
         type="file"
         accept="image/*"
         multiple
-        className="hidden"
+        className="sr-only"
         onChange={(e) => handleFilesSelected(e.target.files, false)}
       />
 

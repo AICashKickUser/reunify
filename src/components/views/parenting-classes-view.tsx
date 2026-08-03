@@ -197,6 +197,13 @@ export function ParentingClassesView() {
   // Read version states to ensure re-renders when refs change
   void mutatingOrientationsVersion
   void mutatingClassesVersion
+  // Keep refs for stable access in callbacks
+  const activeCaseIdRef = useRef(activeCaseId)
+  activeCaseIdRef.current = activeCaseId
+  const createMutateRef = useRef(createMutation.mutate)
+  createMutateRef.current = createMutation.mutate
+  const updateMutateRef = useRef(updateMutation.mutate)
+  updateMutateRef.current = updateMutation.mutate
   const prevTriggerRef = useRef(addDialogTrigger)
 
   if (addDialogTrigger !== prevTriggerRef.current && addDialogTrigger > 0) {
@@ -309,7 +316,8 @@ export function ParentingClassesView() {
     if (mutatingOrientationsRef.current.has(orientationNumber)) return
 
     // Guard: must have an active case to create/update orientation entries
-    if (!activeCaseId) {
+    const caseId = activeCaseIdRef.current
+    if (!caseId) {
       toast.error('No active case selected. Please select a case first.')
       return
     }
@@ -341,7 +349,7 @@ export function ParentingClassesView() {
     if (existing) {
       // Try to update — if the item was deleted from IndexedDB (e.g., data cleared),
       // fall back to creating a new entry instead of showing an error
-      updateMutation.mutate(
+      updateMutateRef.current(
         { id: existing.id, isCompleted: !existing.isCompleted },
         {
           onSuccess: () => { wrappedOnDone(); toast.success(existing.isCompleted ? `Orientation ${orientationNumber} marked incomplete` : `Orientation ${orientationNumber} completed!`) },
@@ -349,9 +357,9 @@ export function ParentingClassesView() {
             // Update failed — likely "Item not found" because IndexedDB was cleared.
             // Fall back to creating a new entry with the desired state.
             console.warn('[ParentingClasses] Update failed for orientation', orientationNumber, '— creating new entry as fallback')
-            createMutation.mutate(
+            createMutateRef.current(
               {
-                caseId: activeCaseId!,
+                caseId,
                 date: getLocalDateString(),
                 className: `Parenting Orientation ${orientationNumber}`,
                 provider: null,
@@ -369,9 +377,9 @@ export function ParentingClassesView() {
         }
       )
     } else {
-      createMutation.mutate(
+      createMutateRef.current(
         {
-          caseId: activeCaseId,
+          caseId,
           date: getLocalDateString(),
           className: `Parenting Orientation ${orientationNumber}`,
           provider: null,
@@ -398,7 +406,7 @@ export function ParentingClassesView() {
     if (mutatingOrientationsRef.current.has(orientationNumber)) return
 
     // Guard: must have an active case
-    if (!activeCaseId) {
+    if (!activeCaseIdRef.current) {
       toast.error('No active case selected. Please select a case first.')
       return
     }
@@ -412,7 +420,7 @@ export function ParentingClassesView() {
       setMutatingOrientationsVersion(v => v + 1)
     }
 
-    updateMutation.mutate(
+    updateMutateRef.current(
       { id: existing.id, hasCertificate: !existing.hasCertificate },
       {
         onSuccess: () => { onDone(); toast.success(existing.hasCertificate ? 'Certificate removed' : 'Certificate added!') },

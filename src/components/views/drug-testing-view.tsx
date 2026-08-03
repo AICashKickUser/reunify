@@ -176,6 +176,19 @@ export function DrugTestingView() {
   const testByDateRef = useRef(testByDate)
   testByDateRef.current = testByDate
 
+  // Keep refs to mutation mutate functions so callbacks never go stale.
+  // useMutation returns a new object every render (status, data, etc. change),
+  // but the mutate function itself is stable.  Storing it in a ref lets us
+  // remove createMutation / updateMutation from useCallback deps entirely.
+  const createMutateRef = useRef(createMutation.mutate)
+  createMutateRef.current = createMutation.mutate
+  const updateMutateRef = useRef(updateMutation.mutate)
+  updateMutateRef.current = updateMutation.mutate
+
+  // Keep a ref for activeCaseId so callbacks never go stale
+  const activeCaseIdRef = useRef(activeCaseId)
+  activeCaseIdRef.current = activeCaseId
+
   // ─── Previous Weeks ──────────────────────────────────────────────────────
 
   const previousWeeks = useMemo(() => {
@@ -272,7 +285,9 @@ export function DrugTestingView() {
 
   const handleStatusChange = useCallback(
     (date: Date, newStatus: CallStatus) => {
-      if (!activeCaseId) return
+      // Always read from ref to avoid stale closure
+      const currentCaseId = activeCaseIdRef.current
+      if (!currentCaseId) return
 
       // Compute the date key fresh from the date parameter — never from the
       // testByDate map. This guarantees the correct key for every day,
@@ -354,9 +369,12 @@ export function DrugTestingView() {
       const dayLabel = DAY_NAMES[dayIndex !== -1 ? dayIndex : 4] // fallback to Fri if index not found
 
       if (existing) {
-        // Update existing entry
-        updateMutation.mutate(
-          { id: existing.id, ...payload },
+        // Update existing entry — always include `date` in the payload so that
+        // even if a stale ref caused us to grab the wrong entry, the date gets
+        // corrected to the intended day. This is the key fix for the
+        // "5th button changes 4th" bug.
+        updateMutateRef.current(
+          { id: existing.id, date: key, ...payload },
           {
             onSuccess: () => {
               onDone()
@@ -368,9 +386,9 @@ export function DrugTestingView() {
         )
       } else {
         // Create new entry
-        createMutation.mutate(
+        createMutateRef.current(
           {
-            caseId: activeCaseId,
+            caseId: currentCaseId,
             date: key,
             ...payload,
           },
@@ -385,14 +403,14 @@ export function DrugTestingView() {
         )
       }
     },
-    [activeCaseId, createMutation, updateMutation, currentWeekDates]
+    [] // All dependencies read from refs to avoid stale closures
   )
 
   // ─── Handler: Update test result ─────────────────────────────────────────
 
   const handleResultChange = useCallback(
     (date: Date, result: string) => {
-      if (!activeCaseId) return
+      if (!activeCaseIdRef.current) return
 
       const key = formatDateKey(date)
       // Always read the latest testByDate from the ref to avoid stale closures
@@ -407,8 +425,10 @@ export function DrugTestingView() {
           mutatingDatesRef.current = next
           setMutatingDatesVersion(v => v + 1)
         }
-        updateMutation.mutate(
-          { id: existing.id, result },
+        // Include `date` in the update payload so the entry always reflects
+        // the correct day, even if a stale ref caused us to grab the wrong one.
+        updateMutateRef.current(
+          { id: existing.id, date: key, result },
           {
             onSuccess: () => {
               onDone()
@@ -420,7 +440,7 @@ export function DrugTestingView() {
         )
       }
     },
-    [activeCaseId, updateMutation]
+    [] // All dependencies read from refs
   )
 
   // ─── Toggle result expansion ─────────────────────────────────────────────

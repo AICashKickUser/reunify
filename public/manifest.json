@@ -2,13 +2,13 @@
   "name": "Reunify - CPS Reunification Progress Tracker",
   "short_name": "Reunify",
   "description": "Track your CPS reunification case plan progress. Stay organized, stay focused, bring your kids home.",
-  "version": "1.9.0",
-  "version_name": "1.9.0 - Bug Fixes & Improved Scan",
+  "version": "1.10.0",
+  "version_name": "1.10.0 - Android 16 API & Large Screen Support",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#059669",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "scope": "/",
   "icons": [
     {
