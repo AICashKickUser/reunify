@@ -195,8 +195,21 @@ export async function POST(request: NextRequest) {
     } catch (vlmError) {
       console.error('[scan-case-plan] VLM API error:', vlmError)
       const errMsg = vlmError instanceof Error ? vlmError.message : 'Unknown VLM error'
+      // Provide more user-friendly error messages based on common VLM errors
+      let userMessage: string
+      if (errMsg.includes('rate') || errMsg.includes('limit') || errMsg.includes('429')) {
+        userMessage = 'The AI service is busy right now. Please wait a moment and try again.'
+      } else if (errMsg.includes('timeout') || errMsg.includes('timed out')) {
+        userMessage = 'The AI service took too long to respond. Please try again with fewer or smaller photos.'
+      } else if (errMsg.includes('quota') || errMsg.includes('billing')) {
+        userMessage = 'The AI service is currently unavailable. Please try again later.'
+      } else if (errMsg.includes('content') || errMsg.includes('safety') || errMsg.includes('policy')) {
+        userMessage = 'The AI could not process this image. Please make sure the photo is clear and shows a document.'
+      } else {
+        userMessage = `AI analysis failed. Please try again with clearer photos taken from a well-lit area.`
+      }
       return NextResponse.json(
-        { error: `AI analysis failed: ${errMsg}. Please try again with clearer, smaller photos.` },
+        { error: userMessage },
         { status: 502 }
       )
     }

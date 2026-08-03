@@ -256,8 +256,8 @@ function applyExifOrientation(
  */
 async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promise<string> {
   // Mobile-safe: cap dimensions to avoid canvas memory issues
-  // Use 1000px max (was 600px which was too aggressive and caused blurry/distorted images)
-  const safeMaxWidth = Math.min(maxWidth, 1000)
+  // Use 1200px max (was 1000px which was too aggressive and caused blurry/distorted images on some devices)
+  const safeMaxWidth = Math.min(maxWidth, 1200)
   // Try createImageBitmap with imageOrientation first (handles EXIF automatically)
   try {
     if (typeof createImageBitmap === 'function') {
@@ -274,7 +274,7 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promis
         let height = bitmap.height
 
         // Scale down if needed — use mobile-safe dimensions
-        const maxDim = Math.min(safeMaxWidth, 1000)
+        const maxDim = Math.min(safeMaxWidth, 1200)
         if (width > maxDim) {
           height = Math.round((height * maxDim) / width)
           width = maxDim
@@ -329,7 +329,7 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promis
             let height = img.naturalHeight || img.height
 
             // Scale down if needed — use mobile-safe dimensions
-            const maxDim = Math.min(safeMaxWidth, 1000)
+            const maxDim = Math.min(safeMaxWidth, 1200)
             if (width > maxDim) {
               height = Math.round((height * maxDim) / width)
               width = maxDim
@@ -508,11 +508,10 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
 
     for (const file of filesToProcess) {
       try {
-        // Validate file type — accept common image formats
-        const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+        // Validate file type — accept any image type the browser can handle
         // Some browsers report HEIC as application/octet-stream or empty type, so also check extension
         const isHeic = file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')
-        if (!validTypes.includes(file.type) && !file.type.startsWith('image/') && !isHeic) {
+        if (!file.type.startsWith('image/') && !isHeic) {
           toast.error(`Unsupported file type: ${file.type || 'unknown'}. Please use JPG, PNG, or WebP images.`)
           continue
         }
@@ -530,9 +529,34 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
           continue
         }
 
-        // Compress for server upload — balanced quality (0.5) and size (1000px max)
-        // Was 0.3 quality which was too blurry for the AI to read text accurately
-        const dataUrl = await compressImage(file, 1000, 0.5)
+        let dataUrl: string
+        try {
+          // Compress for server upload — balanced quality (0.6) and size (1200px max)
+          // Was 0.5 quality/1000px which was too blurry for the AI to read text accurately
+          dataUrl = await compressImage(file, 1200, 0.6)
+        } catch (compressErr) {
+          // Compression failed — try using the original file as a data URL if it's small enough
+          const msg = compressErr instanceof Error ? compressErr.message : 'Unknown error'
+          console.warn('[scan-case-plan] Compression failed, trying raw data URL:', msg, 'File:', file.name, 'Size:', file.size)
+          if (file.size <= 2 * 1024 * 1024) {
+            // Small file — try reading as data URL directly
+            try {
+              dataUrl = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader()
+                reader.onload = () => resolve(reader.result as string)
+                reader.onerror = () => reject(new Error('Failed to read file'))
+                reader.readAsDataURL(file)
+              })
+            } catch {
+              toast.error('Could not process this image. Try a different photo or format (JPG recommended).')
+              continue
+            }
+          } else {
+            // Large file — can't use raw data URL, show error
+            toast.error(`Image processing failed: ${msg}. Try a smaller photo or use JPG format.`)
+            continue
+          }
+        }
         const thumbnail = await createThumbnail(dataUrl)
         const newPage: CapturedPage = {
           id: generatePageId(),
@@ -549,6 +573,8 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
           toast.error('Your browser cannot process this image. Try using the camera instead of uploading.')
         } else if (msg.includes('Failed to load image') || msg.includes('corrupted')) {
           toast.error('Could not read this image file. Try a different photo.')
+        } else if (msg.includes('HEIC') || msg.includes('heic')) {
+          toast.error('HEIC format is not supported by your browser. Please convert to JPG first.')
         } else {
           toast.error(`Failed to process image: ${msg}. Try a different photo or take it from further away.`)
         }
@@ -639,43 +665,88 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 90000)
 
-      let response: Response
-      try {
-        response = await fetch('/api/scan-case-plan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ images }),
-          signal: controller.signal,
-        })
-      } catch (fetchError) {
-        clearTimeout(timeoutId)
-        if (progressInterval) clearInterval(progressInterval)
-        if (fetchError instanceof DOMException && fetchError.name === 'AbortError') {
-          throw new Error('Analysis timed out. Please try again with fewer or smaller photos.')
-        }
-        throw new Error('Network error. Please check your connection and try again.')
-      }
-      clearTimeout(timeoutId)
+      const MAX_RETRIES = 2
+      let response: Response | null = null
+      let lastError: Error | null = null
 
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          // Create a new AbortController for each attempt (previous one may be aborted)
+          const attemptController = new AbortController()
+          const attemptTimeoutId = setTimeout(() => attemptController.abort(), 90000)
+
+          response = await fetch('/api/scan-case-plan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ images }),
+            signal: attemptController.signal,
+          })
+
+          clearTimeout(attemptTimeoutId)
+
+          // If response is OK, break out of retry loop
+          if (response.ok) break
+
+          // Check if this is a transient error worth retrying
+          const isTransient = response.status === 209 || response.status === 502 || response.status === 503 || response.status === 504
+          if (isTransient && attempt < MAX_RETRIES) {
+            // Wait before retrying (1s, then 2s)
+            const delay = (attempt + 1) * 1000
+            setAnalyzeProgress(`Retrying analysis (attempt ${attempt + 2} of ${MAX_RETRIES + 1})...`)
+            await new Promise(resolve => setTimeout(resolve, delay))
+            response = null
+            continue
+          }
+
+          // Non-transient error or max retries reached — break to handle below
+          break
+        } catch (fetchError) {
+          if (fetchError instanceof DOMException && fetchError.name === 'AbortError') {
+            lastError = new Error('Analysis timed out. Please try again with fewer or smaller photos.')
+            break
+          }
+          // Network error — retry if we have attempts left
+          if (attempt < MAX_RETRIES) {
+            const delay = (attempt + 1) * 1000
+            setAnalyzeProgress(`Connection lost. Retrying (attempt ${attempt + 2} of ${MAX_RETRIES + 1})...`)
+            await new Promise(resolve => setTimeout(resolve, delay))
+            continue
+          }
+          lastError = new Error('Network error. Please check your connection and try again.')
+          break
+        }
+      }
+
+      clearTimeout(timeoutId)
       if (progressInterval) clearInterval(progressInterval)
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        const errorMsg = errorData.error || `Server error: ${response.status}`
-        if (response.status === 413) {
+      // Handle network-level errors
+      if (lastError) {
+        throw lastError
+      }
+
+      // Handle HTTP-level errors (non-OK responses)
+      if (!response || !response.ok) {
+        const status = response?.status ?? 0
+        const errorData = response ? await response.json().catch(() => ({})) : {}
+        const errorMsg = errorData.error || `Server error: ${status}`
+        if (status === 413) {
           throw new Error('Photos are too large for the server. Please retake photos from further away, or use fewer pages.')
         }
-        if (response.status === 502) {
+        if (status === 209) {
+          throw new Error('The AI service returned a partial response. Please try again — this usually works on the second attempt.')
+        }
+        if (status === 502) {
           throw new Error('The AI service is temporarily unavailable. Please try again in a moment.')
         }
-        if (response.status === 504) {
+        if (status === 504) {
           throw new Error('Analysis timed out on the server. Please try with fewer or smaller photos.')
         }
-        if (response.status === 500) {
+        if (status === 500) {
           throw new Error('Server error — this may be temporary. Please try again, or use fewer pages.')
         }
-        if (response.status >= 500) {
-          throw new Error(`Server error (${response.status}). Please try again in a moment.`)
+        if (status >= 500) {
+          throw new Error(`Server error (${status}). Please try again in a moment.`)
         }
         throw new Error(errorMsg)
       }
@@ -1148,7 +1219,7 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
       <input
         ref={cameraInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+        accept="image/*"
         capture="environment"
         className="hidden"
         onChange={(e) => handleFilesSelected(e.target.files, true)}
@@ -1156,7 +1227,7 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
       <input
         ref={galleryInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+        accept="image/*"
         multiple
         className="hidden"
         onChange={(e) => handleFilesSelected(e.target.files, false)}
