@@ -134,7 +134,12 @@ async function main() {
     // to comply with Android 16 large screen requirements.
     // Google Play requires apps to support all orientations on large screens.
     orientation: 'default',
-    fingerprints: [],
+    fingerprints: [
+      {
+        value: '4F:87:6C:A7:EF:9A:86:D5:72:E8:B7:5B:52:30:0C:17:59:D9:22:1C:E0:0D:AD:79:8F:02:70:09:6B:21:9E:90',
+        name: 'upload_key',
+      },
+    ],
     additionalTrustedOrigins: [],
     retainedBundles: [],
   }

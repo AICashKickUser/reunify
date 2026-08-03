@@ -48,3 +48,21 @@ Stage Summary:
 - Scan case plan photo distortion fixed by properly falling through to EXIF correction
 - Photo upload improved with sr-only class and larger fallback limits
 - App running successfully on localhost:3000 with no errors
+
+---
+Task ID: 2
+Agent: Main
+Task: Update assetlinks.json and build script with Google Play upload key fingerprints
+
+Work Log:
+- Verified upload key fingerprints match existing keystore (reunify-key.jks)
+- SHA-1: 6C:EA:F6:28:8E:53:A4:02:E5:A6:8F:09:80:AC:DA:A9:26:2B:54:10 ✅
+- SHA-256: 4F:87:6C:A7:EF:9A:86:D5:72:E8:B7:5B:52:30:0C:17:59:D9:22:1C:E0:0D:AD:79:8F:02:70:09:6B:21:9E:90 ✅
+- Updated assetlinks.json to include upload key SHA-256 fingerprint alongside existing app signing key
+- Updated build-twa.js fingerprints array with upload key SHA-256
+- Verified AAB (reunify-1.11.0.aab) is signed with correct upload key
+
+Stage Summary:
+- assetlinks.json now has both upload key and app signing key fingerprints
+- Build script updated with upload key fingerprint
+- AAB is ready for upload to Google Play Console
