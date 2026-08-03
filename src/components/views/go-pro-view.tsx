@@ -2,19 +2,24 @@
 
 import { useState, useEffect } from 'react'
 import { useAppStore } from '@/lib/store'
-import { isProActive, useSubscriptionStore, PRO_FEATURES } from '@/lib/subscription'
+import { isProActive, useSubscriptionStore, PRO_FEATURES, FREE_FEATURES } from '@/lib/subscription'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Crown, Check, Sparkles, Loader2, Shield, FileText, Cloud, Mail, BarChart3 } from 'lucide-react'
+import { Crown, Check, Sparkles, Loader2, Shield, FileText, Cloud, Mail, BarChart3, Target, ClipboardList, Camera, BarChart2, Save } from 'lucide-react'
 import { toast } from 'sonner'
 
 const FEATURE_ICONS: Record<string, React.ElementType> = {
-  'court-reports': FileText,
-  'auto-backup': Cloud,
+  'auto-cloud-backup': Cloud,
   'email-reports': Mail,
   'enhanced-charts': BarChart3,
   'verified-badge': Shield,
+  'priority-support': Target,
+  'case-tracking': ClipboardList,
+  'pdf-reports': FileText,
+  'scan-case-plan': Camera,
+  'progress-charts': BarChart2,
+  'data-export': Save,
 }
 
 export function GoProView() {
@@ -140,30 +145,49 @@ export function GoProView() {
         </Card>
       )}
 
-      {/* Free Tier Reassurance */}
+      {/* Free Tier - Always Fully Functional */}
       <Card className="border-emerald-200 dark:border-emerald-800">
-        <CardContent className="p-4">
-          <div className="flex items-start gap-2.5">
-            <Shield className="size-4 text-emerald-600 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
-                Your free app is always fully functional
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                All case tracking, drug testing logs, progress, and scan features work for free — forever. 
-                Pro adds features that make you look great to the court.
-              </p>
-            </div>
+        <CardHeader className="pb-3 px-4 sm:px-6">
+          <div className="flex items-center gap-2">
+            <Shield className="size-4 text-emerald-600" />
+            <CardTitle className="text-sm sm:text-base font-semibold text-emerald-800 dark:text-emerald-300">
+              Free Forever — Fully Functional
+            </CardTitle>
           </div>
+        </CardHeader>
+        <CardContent className="space-y-2.5 px-4 sm:px-6">
+          <p className="text-xs text-muted-foreground mb-3">
+            All core features work for free, always. No limits, no paywalls on essential tools.
+          </p>
+          {FREE_FEATURES.map((feature) => {
+            const Icon = FEATURE_ICONS[feature.id] || Check
+            return (
+              <div key={feature.id} className="flex items-start gap-3 p-2 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/10">
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                  <Icon className="size-3.5 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{feature.title}</p>
+                  <p className="text-xs text-muted-foreground">{feature.description}</p>
+                </div>
+              </div>
+            )
+          })}
         </CardContent>
       </Card>
 
       {/* Pro Features */}
-      <Card>
+      <Card className="border-amber-200 dark:border-amber-800">
         <CardHeader className="pb-3 px-4 sm:px-6">
-          <CardTitle className="text-sm sm:text-base font-semibold">Pro Features</CardTitle>
+          <div className="flex items-center gap-2">
+            <Crown className="size-4 text-amber-600" />
+            <CardTitle className="text-sm sm:text-base font-semibold">Pro — Premium Extras</CardTitle>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-3 px-4 sm:px-6">
+        <CardContent className="space-y-2.5 px-4 sm:px-6">
+          <p className="text-xs text-muted-foreground mb-3">
+            Pro adds premium features on top of the free app. The free app is always fully usable.
+          </p>
           {PRO_FEATURES.map((feature) => {
             const Icon = FEATURE_ICONS[feature.id] || Check
             return (
@@ -229,7 +253,7 @@ export function GoProView() {
             </Button>
 
             <p className="text-[11px] text-center text-muted-foreground">
-              7-day free trial, then {billing === 'monthly' ? `$${monthlyPrice}/month` : `$${annualPrice}/year`}. Cancel anytime. No restrictions on the free tier.
+              7-day free trial, then {billing === 'monthly' ? `$${monthlyPrice}/month` : `$${annualPrice}/year`}. Cancel anytime. Your free app always works.
             </p>
           </CardContent>
         </Card>
@@ -241,7 +265,8 @@ export function GoProView() {
           <p className="text-xs text-muted-foreground text-center leading-relaxed">
             <strong className="text-foreground">Why Pro?</strong> When you walk into court with a professional progress report 
             showing your compliance, clean drug tests, and completed classes — judges and social workers take notice. 
-            Pro helps you present your best self. Your basic app is always free and fully functional.
+            Pro adds cloud backup, email reports, and a verified badge to make your case even stronger. 
+            But the free app is always fully functional — no limits, no paywalls on essentials.
           </p>
         </CardContent>
       </Card>

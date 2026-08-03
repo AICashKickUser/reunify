@@ -958,7 +958,7 @@ export function ProgressView() {
   const { data: caseData, isLoading } = useCase(activeCaseId)
   const [exporting, setExporting] = useState(false)
   const [summaryOpen, setSummaryOpen] = useState(false)
-  const { isPro: isProUser, showUpgrade: showUpgradeDialog } = useProFeature('Court Ready Reports')
+  const { isPro: isProUser } = useProFeature('court-reports')
   async function handleExport() {
     if (!activeCaseId) return
     try {
@@ -1466,22 +1466,18 @@ export function ProgressView() {
             with your caseworker, attorney, or judge.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
-            {/* Court Ready Report - Pro Feature */}
+            {/* Court Ready Report - Works for everyone, Pro adds verified badge */}
             <Button
               className="bg-amber-600 hover:bg-amber-700 text-white gap-2"
               onClick={() => {
-                if (isProUser) {
-                  if (caseData) {
-                    generatePDFReport(caseData as unknown as Record<string, unknown>, categories)
-                  }
-                } else {
-                  showUpgradeDialog()
+                if (caseData) {
+                  generatePDFReport(caseData as unknown as Record<string, unknown>, categories)
                 }
               }}
             >
               <Crown className="size-4" />
               Court Ready
-              {!isProUser && <ProBadge size="sm" className="ml-1" />}
+              {isProUser && <ProBadge size="sm" className="ml-1" />}
             </Button>
             <Button
               className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"

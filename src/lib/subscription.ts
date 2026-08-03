@@ -4,18 +4,48 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 // ─── Pro Feature Definitions ────────────────────────────────────────────────
+// Pro features are ADDITIVE — the free app is fully functional for all
+// core tracking, reporting, and case management. Pro adds premium extras
+// that make you look even better to the court.
 
-export const PRO_FEATURES = [
+export const FREE_FEATURES = [
   {
-    id: 'court-reports',
-    title: 'Court-Ready PDF Reports',
-    description: 'Professional progress reports formatted for judges & social workers',
+    id: 'case-tracking',
+    title: 'Full Case Tracking',
+    description: 'Track all requirements, drug tests, visits, classes, and milestones',
+    icon: '📋',
+  },
+  {
+    id: 'pdf-reports',
+    title: 'Court Ready PDF Reports',
+    description: 'Generate professional progress reports for judges and social workers',
     icon: '📄',
   },
   {
-    id: 'auto-backup',
+    id: 'scan-case-plan',
+    title: 'Scan Case Plan',
+    description: 'Photograph your case plan to auto-populate requirements',
+    icon: '📸',
+  },
+  {
+    id: 'progress-charts',
+    title: 'Progress Charts',
+    description: 'Visual charts showing your compliance over time',
+    icon: '📊',
+  },
+  {
+    id: 'data-export',
+    title: 'Data Export & Backup',
+    description: 'Export all your data and automatic local backups',
+    icon: '💾',
+  },
+] as const
+
+export const PRO_FEATURES = [
+  {
+    id: 'auto-cloud-backup',
     title: 'Auto Cloud Backup',
-    description: 'Automatic backups so you never lose your progress data',
+    description: 'Automatic encrypted cloud backups so you never lose data',
     icon: '☁️',
   },
   {
@@ -27,14 +57,20 @@ export const PRO_FEATURES = [
   {
     id: 'enhanced-charts',
     title: 'Enhanced Progress Charts',
-    description: 'Advanced visualizations that show your compliance clearly',
-    icon: '📊',
+    description: 'Advanced visualizations with detailed trend analysis',
+    icon: '📈',
   },
   {
     id: 'verified-badge',
     title: 'Verified by Reunify Pro',
-    description: 'Badge on reports showing verified, court-ready documentation',
+    description: 'Verified badge on reports showing court-ready documentation',
     icon: '✅',
+  },
+  {
+    id: 'priority-support',
+    title: 'Priority Support',
+    description: 'Get help faster when you need it most',
+    icon: '🎯',
   },
 ] as const
 

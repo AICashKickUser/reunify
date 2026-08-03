@@ -40,7 +40,6 @@ export function UpgradeDialog({ open, onOpenChange, feature }: UpgradeDialogProp
   useEffect(() => {
     const handler = (e: Event) => {
       const customEvent = e as CustomEvent
-      // Could use featureId from the event
       console.log('[upgrade-dialog] Show upgrade for:', customEvent.detail?.featureId)
     }
     window.addEventListener('show-upgrade-dialog', handler)
@@ -129,16 +128,27 @@ export function UpgradeDialog({ open, onOpenChange, feature }: UpgradeDialogProp
           <DialogDescription>
             {isPro
               ? 'You have access to all Pro features. Manage your subscription below.'
-              : 'Make your progress look its best for judges and social workers. 7-day free trial, cancel anytime.'}
+              : 'Your free app is fully functional. Pro adds premium extras to make your case even stronger.'}
           </DialogDescription>
         </DialogHeader>
 
-        {/* Feature List */}
+        {/* Free app reassurance */}
+        {!isPro && (
+          <div className="flex items-start gap-2.5 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800">
+            <Check className="size-4 text-emerald-600 mt-0.5 shrink-0" />
+            <p className="text-xs text-emerald-800 dark:text-emerald-300">
+              All case tracking, drug test logs, progress, PDF reports, and scan features work for free — forever. No limits.
+            </p>
+          </div>
+        )}
+
+        {/* Pro Feature List */}
         <div className="space-y-2.5 my-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pro adds:</p>
           {PRO_FEATURES.map((feature) => (
             <div key={feature.id} className="flex items-start gap-2.5">
-              <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 mt-0.5">
-                <Check className="size-3 text-emerald-600" />
+              <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 mt-0.5">
+                <Check className="size-3 text-amber-600" />
               </div>
               <div>
                 <p className="text-sm font-medium">{feature.title}</p>
