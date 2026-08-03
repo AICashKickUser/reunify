@@ -39,14 +39,14 @@ export async function POST(request: NextRequest) {
           app: 'reunify',
         },
       },
-      success_url: `${origin}/?checkout=success`,
+      success_url: `${origin}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/?checkout=cancel`,
       metadata: {
         plan,
       },
     })
 
-    return NextResponse.json({ url: session.url })
+    return NextResponse.json({ url: session.url, sessionId: session.id })
   } catch (error) {
     console.error('[stripe/checkout] Error:', error)
     const errMsg = error instanceof Error ? error.message : 'Unknown error'

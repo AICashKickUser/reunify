@@ -16,6 +16,7 @@ import { CelebrationOverlay } from '@/components/celebration-overlay'
 import { useAutoBackup } from '@/hooks/use-auto-backup'
 import { useCases } from '@/lib/data-hooks'
 import { UpgradeDialog } from '@/components/upgrade-dialog'
+import { useSubscriptionStore, isProActive } from '@/lib/subscription'
 
 /**
  * Auto-detects existing cases and sets the activeCaseId if none is set.
@@ -122,6 +123,75 @@ function useUpgradeDialog() {
   return { upgradeOpen, setUpgradeOpen, upgradeFeature }
 }
 
+/**
+ * Hook that handles Stripe checkout success and subscription sync.
+ * After a successful checkout, verifies the subscription with Stripe
+ * and updates the local subscription state.
+ */
+function useCheckoutSuccess() {
+  const subscription = useSubscriptionStore()
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const checkoutStatus = params.get('checkout')
+
+    if (checkoutStatus === 'success') {
+      // Clean up URL
+      const url = new URL(window.location.href)
+      url.searchParams.delete('checkout')
+      url.searchParams.delete('session_id')
+      window.history.replaceState({}, '', url.toString())
+
+      // Verify subscription with Stripe after a short delay
+      // (Stripe needs a moment to process the checkout)
+      const verifyTimer = setTimeout(async () => {
+        try {
+          // If we have a customer ID, verify with Stripe
+          if (subscription.stripeCustomerId) {
+            const res = await fetch(`/api/stripe/status?customerId=${subscription.stripeCustomerId}`)
+            const data = await res.json()
+
+            if (data.tier === 'pro') {
+              subscription.activatePro({
+                periodEnd: data.currentPeriodEnd,
+                trialEnd: data.trialEnd,
+                customerId: data.customerId,
+                subscriptionId: data.subscriptionId,
+              })
+              toast.success('Welcome to Reunify Pro! 🎉', {
+                description: 'Your 7-day free trial has started. Cancel anytime.',
+                duration: 5000,
+              })
+            }
+          } else {
+            // No customer ID yet — just show success message
+            toast.success('Payment successful! 🎉', {
+              description: 'Your Pro features will be activated shortly.',
+              duration: 5000,
+            })
+          }
+        } catch {
+          toast.success('Payment received!', {
+            description: 'Your Pro subscription is being processed.',
+            duration: 5000,
+          })
+        }
+      }, 2000)
+
+      return () => clearTimeout(verifyTimer)
+    } else if (checkoutStatus === 'cancel') {
+      // Clean up URL
+      const url = new URL(window.location.href)
+      url.searchParams.delete('checkout')
+      window.history.replaceState({}, '', url.toString())
+
+      toast.info('Checkout cancelled', {
+        description: 'Your free app still works perfectly!',
+      })
+    }
+  }, [])
+}
+
 export default function Home() {
   const { activeCaseId, activeView } = useAppStore()
   const { isUnlocked, handleUnlock, mounted } = useAppLock()
@@ -132,6 +202,9 @@ export default function Home() {
 
   // Enable auto-backup for Pro users
   useAutoBackup()
+
+  // Handle Stripe checkout success/cancel redirects
+  useCheckoutSuccess()
 
   // Auto-select existing case so the app doesn't show onboarding when data exists
   useAutoSelectCase()
@@ -159,7 +232,7 @@ export default function Home() {
           <footer className="border-t bg-background py-2 sm:py-3 px-3 sm:px-4 mt-auto">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-1 max-w-5xl mx-auto">
               <p className="text-xs text-muted-foreground">
-                Reunify v1.9.0 — Every step brings you closer to your kids
+                Reunify v1.11.0 — Every step brings you closer to your kids
               </p>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a>

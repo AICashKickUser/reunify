@@ -37,21 +37,28 @@ export async function POST(request: NextRequest) {
     // Handle the event
     switch (event.type) {
       case 'checkout.session.completed': {
-        const session = event.data.object
-        console.log('[stripe/webhook] Checkout completed:', session.id)
-        // The client will update its subscription state via the status API
+        const session = event.data.object as Record<string, unknown>
+        console.log('[stripe/webhook] Checkout completed:', session.id, 'customer:', session.customer)
+        // The client will poll the status API after checkout success redirect
+        // The status API reads live from Stripe, so no server-side state needed
         break
       }
 
       case 'customer.subscription.updated': {
-        const subscription = event.data.object
-        console.log('[stripe/webhook] Subscription updated:', subscription.id, subscription.status)
+        const subscription = event.data.object as Record<string, unknown>
+        console.log('[stripe/webhook] Subscription updated:', subscription.id, 'status:', subscription.status)
         break
       }
 
       case 'customer.subscription.deleted': {
-        const subscription = event.data.object
+        const subscription = event.data.object as Record<string, unknown>
         console.log('[stripe/webhook] Subscription deleted:', subscription.id)
+        break
+      }
+
+      case 'customer.subscription.created': {
+        const subscription = event.data.object as Record<string, unknown>
+        console.log('[stripe/webhook] Subscription created:', subscription.id, 'status:', subscription.status)
         break
       }
 
