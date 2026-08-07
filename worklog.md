@@ -138,3 +138,22 @@ Stage Summary:
 - Clean streak is CPS-safe (only negative counts)
 - Upgrade dialog works from all Pro feature gates
 - XSS no longer possible in PDF reports
+
+---
+Task ID: 6
+Agent: Main
+Task: Add promo code system and fix checkout UX
+
+Work Log:
+- Created /api/stripe/promo route with 3 default promo codes
+- Added promo code input to upgrade dialog (ticket icon + "Have a promo code?")
+- Promo codes activate Pro for 1 year without Stripe payment
+- Improved checkout error message to suggest promo code fallback
+- Added server-side logging for missing Stripe env vars
+- Handle promo-activated Pro in manage subscription (no billing portal needed)
+- Committed and pushed to GitHub
+
+Stage Summary:
+- 3 promo codes available: reunify-pro-2025, reunify-review, reunify-founder
+- Users can bypass payment entirely with a valid promo code
+- Checkout route now logs which env vars are missing for debugging
