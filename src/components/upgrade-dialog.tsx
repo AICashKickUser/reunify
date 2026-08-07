@@ -170,7 +170,7 @@ export function UpgradeDialog({ open, onOpenChange, feature }: UpgradeDialogProp
           <div className="flex items-start gap-2.5 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800">
             <Check className="size-4 text-emerald-600 mt-0.5 shrink-0" />
             <p className="text-xs text-emerald-800 dark:text-emerald-300">
-              All case tracking, drug test logs, progress, PDF reports, and scan features work for free — forever. No limits.
+              Track everything for free — no limits on entries. Pro makes your court report look professional with a compliance narrative, strength score, and verified badge.
             </p>
           </div>
         )}

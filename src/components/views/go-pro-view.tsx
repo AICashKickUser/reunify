@@ -11,13 +11,13 @@ import { Crown, Check, Sparkles, Loader2, Shield, FileText, Cloud, Mail, BarChar
 import { toast } from 'sonner'
 
 const FEATURE_ICONS: Record<string, React.ElementType> = {
+  'court-ready-pdf': Shield,
   'auto-cloud-backup': Cloud,
   'email-reports': Mail,
-  'enhanced-charts': BarChart3,
-  'verified-badge': Shield,
+  'verified-badge': Check,
   'priority-support': Target,
   'case-tracking': ClipboardList,
-  'pdf-reports': FileText,
+  'basic-pdf': FileText,
   'scan-case-plan': Camera,
   'progress-charts': BarChart2,
   'data-export': Save,
@@ -357,10 +357,10 @@ export function GoProView() {
       <Card className="border-dashed">
         <CardContent className="p-4">
           <p className="text-xs text-muted-foreground text-center leading-relaxed">
-            <strong className="text-foreground">Why Pro?</strong> When you walk into court with a professional progress report 
-            showing your compliance, clean drug tests, and completed classes — judges and social workers take notice. 
-            Pro adds cloud backup, email reports, and a verified badge to make your case even stronger. 
-            But the free app is always fully functional — no limits, no paywalls on essentials.
+            <strong className="text-foreground">Why Pro?</strong> You track everything for free — no limits. But when you walk into court, 
+            the <strong className="text-foreground">Court-Ready Report</strong> makes all the difference. It includes a professional compliance narrative, 
+            case strength score, drug test timeline, visit progression, and a verified badge — formatted like it came from a law firm. 
+            Judges and social workers take notice. The basic report works, but the Pro report <em>impresses</em>.
           </p>
         </CardContent>
       </Card>

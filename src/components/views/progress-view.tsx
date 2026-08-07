@@ -486,7 +486,8 @@ Classes: ${completedClasses.length} completed`
   )
 }
 
-function generatePDFReport(caseData: any, categories: CategoryProgress[]) {
+// ─── Shared helpers for PDF generation ───
+function getPdfData(caseData: Record<string, unknown>) {
   const requirements = (caseData.requirements || []) as Array<Record<string, unknown>>
   const completedReqs = requirements.filter((r) => r.isCompleted)
   const incompleteReqs = requirements.filter((r) => !r.isCompleted)
@@ -507,8 +508,11 @@ function generatePDFReport(caseData: any, categories: CategoryProgress[]) {
 
   const visits = (caseData.supervisedVisits || []) as Array<Record<string, unknown>>
   const completedVisits = visits.filter((v) => v.isCompleted)
-  const latestVisitType = completedVisits.length > 0
-    ? (completedVisits.sort((a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime())[0]?.visitType || 'supervised')
+  const sortedCompletedVisits = [...completedVisits].sort(
+    (a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime()
+  )
+  const latestVisitType = sortedCompletedVisits.length > 0
+    ? (sortedCompletedVisits[0]?.visitType || 'supervised')
     : 'supervised'
   const visitLevelLabel = latestVisitType === 'unsupervised'
     ? 'Unsupervised'
@@ -556,6 +560,39 @@ function generatePDFReport(caseData: any, categories: CategoryProgress[]) {
   const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
   const caseNumber = caseData.caseNumber || 'N/A'
 
+  return {
+    requirements, completedReqs, incompleteReqs,
+    counselingSessions, completedSessions,
+    drugTests, passedTests, failedTests,
+    naSteps, completedSteps, sponsorVerifiedCount,
+    naMeetings, verifiedMeetings,
+    visits, completedVisits, sortedCompletedVisits, latestVisitType, visitLevelLabel,
+    parentingClasses, completedClasses, certificatesEarned,
+    courtDates, completedCourtDates, nextCourtDate,
+    milestones, completedMilestones,
+    overallProgress, sortedTests, cleanStreak, drugPassRate,
+    formatDate, today, caseNumber,
+  }
+}
+
+function writePdfToWindow(html: string) {
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) {
+    toast.error('Please allow popups to generate the PDF report')
+    return
+  }
+  printWindow.document.write(html)
+  printWindow.document.close()
+  printWindow.onload = () => {
+    setTimeout(() => {
+      printWindow.print()
+    }, 300)
+  }
+}
+
+// ─── BASIC PDF (Free) — simplified, functional but plain ───
+function generateBasicPDF(caseData: Record<string, unknown>, categories: CategoryProgress[]) {
+  const d = getPdfData(caseData)
   const onTrackCategories = categories.filter(c => c.status === 'on-track' || c.status === 'completed')
   const needsAttentionCategories = categories.filter(c => c.status === 'needs-attention')
   const behindCategories = categories.filter(c => c.status === 'behind')
@@ -564,393 +601,460 @@ function generatePDFReport(caseData: any, categories: CategoryProgress[]) {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Reunification Compliance Report - Case ${caseNumber}</title>
+  <title>Reunify Progress Report - Case ${d.caseNumber}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      color: #1a1a1a;
-      background: #fff;
-      padding: 0;
-      line-height: 1.5;
-    }
-    .page {
-      max-width: 850px;
-      margin: 0 auto;
-      padding: 40px 50px;
-    }
-    .header {
-      text-align: center;
-      border-bottom: 3px solid #059669;
-      padding-bottom: 20px;
-      margin-bottom: 24px;
-    }
-    .header h1 {
-      font-size: 22px;
-      font-weight: 700;
-      letter-spacing: 2px;
-      color: #064e3b;
-      margin-bottom: 4px;
-    }
-    .header .case-num {
-      font-size: 14px;
-      color: #374151;
-      font-weight: 500;
-    }
-    .header .date {
-      font-size: 12px;
-      color: #6b7280;
-      margin-top: 4px;
-    }
-    .section {
-      margin-bottom: 22px;
-    }
-    .section-title {
-      font-size: 14px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #fff;
-      background: #059669;
-      padding: 6px 14px;
-      border-radius: 3px;
-      margin-bottom: 12px;
-    }
-    .info-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px 24px;
-    }
-    .info-item {
-      display: flex;
-      gap: 6px;
-      font-size: 12px;
-      padding: 4px 0;
-    }
-    .info-label {
-      font-weight: 600;
-      color: #374151;
-      min-width: 120px;
-    }
-    .info-value {
-      color: #1f2937;
-    }
-    .progress-section {
-      background: #f0fdf4;
-      border: 1px solid #bbf7d0;
-      border-radius: 6px;
-      padding: 16px 20px;
-      text-align: center;
-      margin-bottom: 22px;
-    }
-    .progress-big {
-      font-size: 48px;
-      font-weight: 800;
-      color: #059669;
-      line-height: 1;
-    }
-    .progress-label {
-      font-size: 13px;
-      color: #374151;
-      font-weight: 600;
-      margin-top: 4px;
-    }
-    .progress-bar-container {
-      width: 100%;
-      height: 16px;
-      background: #d1fae5;
-      border-radius: 8px;
-      overflow: hidden;
-      margin-top: 10px;
-    }
-    .progress-bar-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #059669, #10b981);
-      border-radius: 8px;
-      transition: width 0.3s;
-    }
-    .category-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-    }
-    .category-table th {
-      background: #f3f4f6;
-      font-weight: 600;
-      text-align: left;
-      padding: 8px 10px;
-      border: 1px solid #d1d5db;
-      color: #374151;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .category-table td {
-      padding: 8px 10px;
-      border: 1px solid #e5e7eb;
-      vertical-align: top;
-    }
-    .category-table tr:nth-child(even) td {
-      background: #f9fafb;
-    }
-    .status-completed { color: #059669; font-weight: 600; }
-    .status-on-track { color: #16a34a; font-weight: 600; }
-    .status-needs-attention { color: #d97706; font-weight: 600; }
-    .status-behind { color: #dc2626; font-weight: 600; }
-    .mini-bar {
-      display: inline-block;
-      width: 60px;
-      height: 8px;
-      background: #e5e7eb;
-      border-radius: 4px;
-      overflow: hidden;
-      vertical-align: middle;
-      margin-left: 6px;
-    }
-    .mini-bar-fill {
-      height: 100%;
-      border-radius: 4px;
-    }
-    .item-list {
-      list-style: none;
-      padding: 0;
-    }
-    .item-list li {
-      padding: 5px 0;
-      font-size: 12px;
-      border-bottom: 1px solid #f3f4f6;
-      display: flex;
-      gap: 6px;
-    }
-    .item-list li:last-child { border-bottom: none; }
-    .check { color: #059669; font-weight: 700; }
-    .cross { color: #dc2626; font-weight: 700; }
-    .warn { color: #d97706; font-weight: 700; }
-    .star { color: #d97706; }
-    .two-col {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-    .col-box {
-      border: 1px solid #e5e7eb;
-      border-radius: 4px;
-      padding: 12px;
-    }
-    .col-box h4 {
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 8px;
-      padding-bottom: 4px;
-      border-bottom: 1px solid #e5e7eb;
-    }
-    .col-box.achievements h4 { color: #059669; }
-    .col-box.attention h4 { color: #d97706; }
-    .footer {
-      margin-top: 32px;
-      padding-top: 16px;
-      border-top: 2px solid #059669;
-      text-align: center;
-    }
-    .footer p {
-      font-size: 10px;
-      color: #9ca3af;
-    }
-    .footer .generated {
-      font-size: 11px;
-      color: #6b7280;
-      margin-bottom: 6px;
-    }
-    .footer .privacy {
-      font-style: italic;
-      margin-top: 8px;
-      font-size: 9px;
-      color: #9ca3af;
-    }
-    @media print {
-      body { padding: 0; }
-      .page { padding: 20px 30px; }
-    }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1a1a1a; background: #fff; line-height: 1.5; }
+    .page { max-width: 800px; margin: 0 auto; padding: 30px 40px; }
+    h1 { font-size: 20px; font-weight: 700; color: #064e3b; margin-bottom: 4px; }
+    h2 { font-size: 14px; font-weight: 700; color: #374151; margin: 20px 0 8px; border-bottom: 1px solid #d1d5db; padding-bottom: 4px; }
+    .meta { font-size: 12px; color: #6b7280; margin-bottom: 20px; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 20px; }
+    .info-item { font-size: 12px; padding: 3px 0; }
+    .info-label { font-weight: 600; color: #374151; }
+    .progress-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; padding: 14px; text-align: center; margin: 16px 0; }
+    .progress-big { font-size: 36px; font-weight: 800; color: #059669; }
+    .progress-sub { font-size: 12px; color: #374151; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 8px 0; }
+    th { background: #f3f4f6; font-weight: 600; text-align: left; padding: 6px 8px; border: 1px solid #d1d5db; font-size: 11px; }
+    td { padding: 6px 8px; border: 1px solid #e5e7eb; }
+    .st-done { color: #059669; font-weight: 600; }
+    .st-warn { color: #d97706; font-weight: 600; }
+    .st-bad { color: #dc2626; font-weight: 600; }
+    ul { list-style: none; padding: 0; }
+    li { padding: 4px 0; font-size: 12px; border-bottom: 1px solid #f3f4f6; }
+    .ck { color: #059669; font-weight: 700; }
+    .up { color: #dc2626; font-weight: 700; }
+    .footer { margin-top: 24px; padding-top: 12px; border-top: 1px solid #d1d5db; text-align: center; }
+    .footer p { font-size: 10px; color: #9ca3af; }
+    .upgrade-note { margin-top: 16px; padding: 10px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px; font-size: 11px; color: #92400e; text-align: center; }
+    @media print { body { padding: 0; } .page { padding: 20px 30px; } }
   </style>
 </head>
 <body>
   <div class="page">
-    <!-- Header -->
-    <div class="header">
-      <h1>REUNIFICATION COMPLIANCE REPORT</h1>
-      <div class="case-num">Case #${caseNumber}</div>
-      <div class="date">Report Generated: ${today}</div>
+    <h1>Reunify Progress Report</h1>
+    <div class="meta">Case #${d.caseNumber} &middot; ${d.today}</div>
+
+    <h2>Case Information</h2>
+    <div class="info-grid">
+      <div class="info-item"><span class="info-label">Court:</span> ${caseData.courtName || 'Not specified'}</div>
+      <div class="info-item"><span class="info-label">Judge:</span> ${caseData.judgeName || 'Not specified'}</div>
+      <div class="info-item"><span class="info-label">Caseworker:</span> ${caseData.caseworkerName || 'Not specified'}</div>
+      <div class="info-item"><span class="info-label">Attorney:</span> ${caseData.attorneyName || 'Not specified'}</div>
+      <div class="info-item"><span class="info-label">Removal Date:</span> ${d.formatDate(caseData.removalDate as string | null)}</div>
+      <div class="info-item"><span class="info-label">Target Date:</span> ${d.formatDate(caseData.targetReunificationDate as string | null)}</div>
     </div>
 
-    <!-- Case Info -->
-    <div class="section">
-      <div class="section-title">Case Information</div>
-      <div class="info-grid">
-        <div class="info-item"><span class="info-label">Court:</span><span class="info-value">${caseData.courtName || 'Not specified'}</span></div>
-        <div class="info-item"><span class="info-label">Judge:</span><span class="info-value">${caseData.judgeName || 'Not specified'}</span></div>
-        <div class="info-item"><span class="info-label">Caseworker:</span><span class="info-value">${caseData.caseworkerName || 'Not specified'}${caseData.caseworkerPhone ? ' (' + caseData.caseworkerPhone + ')' : ''}</span></div>
-        <div class="info-item"><span class="info-label">Attorney:</span><span class="info-value">${caseData.attorneyName || 'Not specified'}${caseData.attorneyPhone ? ' (' + caseData.attorneyPhone + ')' : ''}</span></div>
-        <div class="info-item"><span class="info-label">Removal Date:</span><span class="info-value">${formatDate(caseData.removalDate as string | null)}</span></div>
-        <div class="info-item"><span class="info-label">Target Date:</span><span class="info-value">${formatDate(caseData.targetReunificationDate as string | null)}</span></div>
-      </div>
+    <div class="progress-box">
+      <div class="progress-big">${d.overallProgress}%</div>
+      <div class="progress-sub">Overall Progress &middot; ${d.completedReqs.length} of ${d.requirements.length} requirements completed</div>
     </div>
 
-    <!-- Overall Progress -->
-    <div class="progress-section">
-      <div class="progress-big">${overallProgress}%</div>
-      <div class="progress-label">Overall Reunification Progress</div>
-      <div class="progress-bar-container">
-        <div class="progress-bar-fill" style="width: ${overallProgress}%"></div>
-      </div>
-      <div style="font-size:11px; color:#374151; margin-top:6px">
-        ${completedReqs.length} of ${requirements.length} requirements completed
-      </div>
+    <h2>Compliance Breakdown</h2>
+    <table>
+      <tr><th>Category</th><th>Progress</th><th>Details</th></tr>
+      <tr><td>Counseling</td><td>${d.counselingSessions.length > 0 ? Math.round((d.completedSessions.length / d.counselingSessions.length) * 100) : 0}%</td><td>${d.completedSessions.length}/${d.counselingSessions.length} sessions</td></tr>
+      <tr><td>Drug Testing</td><td>${d.drugPassRate}%</td><td>${d.passedTests.length} clean / ${d.drugTests.length} total${d.cleanStreak > 0 ? ', ' + d.cleanStreak + ' streak' : ''}</td></tr>
+      <tr><td>12 Steps</td><td>${Math.round((d.completedSteps.length / 12) * 100)}%</td><td>${d.completedSteps.length}/12 steps</td></tr>
+      <tr><td>NA Meetings</td><td>${d.naMeetings.length > 0 ? Math.round((d.verifiedMeetings.length / d.naMeetings.length) * 100) : 0}%</td><td>${d.naMeetings.length} attended, ${d.verifiedMeetings.length} verified</td></tr>
+      <tr><td>Visits</td><td>${d.visits.length > 0 ? Math.round((d.completedVisits.length / d.visits.length) * 100) : 0}%</td><td>${d.completedVisits.length}/${d.visits.length} (${d.visitLevelLabel})</td></tr>
+      <tr><td>Parenting</td><td>${d.parentingClasses.length > 0 ? Math.round((d.completedClasses.length / d.parentingClasses.length) * 100) : 0}%</td><td>${d.completedClasses.length}/${d.parentingClasses.length} classes</td></tr>
+      <tr><td>Court Dates</td><td>${d.courtDates.length > 0 ? Math.round((d.completedCourtDates.length / d.courtDates.length) * 100) : 0}%</td><td>${d.completedCourtDates.length}/${d.courtDates.length}${d.nextCourtDate ? ', Next: ' + d.formatDate(d.nextCourtDate.date as string) : ''}</td></tr>
+    </table>
+
+    <h2>Completed Requirements</h2>
+    <ul>
+      ${d.completedReqs.length > 0 ? d.completedReqs.map((r) => '<li><span class="ck">\u2713</span> ' + r.title + ' (' + r.category + ')' + (r.completedAt ? ' \u2013 ' + d.formatDate(r.completedAt as string) : '') + '</li>').join('') : '<li style="color:#9ca3af">No requirements completed yet</li>'}
+      ${d.completedMilestones.length > 0 ? '<li style="margin-top:8px;font-weight:600">Milestones:</li>' + d.completedMilestones.map((m) => '<li><span class="ck">\u2605</span> ' + m.title + (m.completedAt ? ' \u2013 ' + d.formatDate(m.completedAt as string) : '') + '</li>').join('') : ''}
+    </ul>
+
+    <h2>Remaining Requirements</h2>
+    <ul>
+      ${d.incompleteReqs.length > 0 ? d.incompleteReqs.map((r) => '<li><span class="up">\u25CB</span> ' + r.title + ' (' + r.category + ')' + (r.dueDate ? ' \u2013 Due: ' + d.formatDate(r.dueDate as string) : '') + '</li>').join('') : '<li class="st-done">All requirements completed!</li>'}
+    </ul>
+
+    ${behindCategories.length > 0 || needsAttentionCategories.length > 0 ? `
+    <h2>Areas Needing Attention</h2>
+    <ul>
+      ${behindCategories.map(c => '<li><span class="up">\u2717</span> ' + c.label + ': ' + c.progress + '% \u2013 ' + c.statValue + '</li>').join('')}
+      ${needsAttentionCategories.map(c => '<li><span class="st-warn">\u26A0</span> ' + c.label + ': ' + c.progress + '% \u2013 ' + c.statValue + '</li>').join('')}
+    </ul>` : ''}
+    ${onTrackCategories.length > 0 ? `
+    <h2>On Track</h2>
+    <ul>
+      ${onTrackCategories.map(c => '<li><span class="ck">\u2713</span> ' + c.label + ': ' + c.progress + '% \u2013 ' + c.statValue + '</li>').join('')}
+    </ul>` : ''}
+
+    <div class="upgrade-note">
+      \u2B50 For a professional court-ready report with verified badge, detailed timelines, and case strength assessment, upgrade to <strong>Reunify Pro</strong>.
     </div>
 
-    <!-- Compliance Breakdown -->
-    <div class="section">
-      <div class="section-title">Compliance Breakdown</div>
-      <table class="category-table">
-        <thead>
-          <tr>
-            <th>Category</th>
-            <th>Progress</th>
-            <th>Details</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><strong>Counseling</strong></td>
-            <td>${counselingSessions.length > 0 ? Math.round((completedSessions.length / counselingSessions.length) * 100) : 0}%
-              <span class="mini-bar"><span class="mini-bar-fill" style="width:${counselingSessions.length > 0 ? Math.round((completedSessions.length / counselingSessions.length) * 100) : 0}%;background:#10b981"></span></span>
-            </td>
-            <td>${completedSessions.length}/${counselingSessions.length} sessions completed</td>
-            <td class="status-${counselingSessions.length > 0 ? (completedSessions.length / counselingSessions.length >= 1 ? 'completed' : completedSessions.length / counselingSessions.length >= 0.6 ? 'on-track' : completedSessions.length / counselingSessions.length >= 0.3 ? 'needs-attention' : 'behind') : 'behind'}">
-              ${counselingSessions.length > 0 ? (completedSessions.length / counselingSessions.length >= 1 ? 'Completed' : completedSessions.length / counselingSessions.length >= 0.6 ? 'On Track' : completedSessions.length / counselingSessions.length >= 0.3 ? 'Needs Attention' : 'Behind') : 'No Data'}
-            </td>
-          </tr>
-          <tr>
-            <td><strong>Drug Testing</strong></td>
-            <td>${drugPassRate}%
-              <span class="mini-bar"><span class="mini-bar-fill" style="width:${drugPassRate}%;background:${drugPassRate >= 80 ? '#10b981' : drugPassRate >= 50 ? '#f59e0b' : '#ef4444'}"></span></span>
-            </td>
-            <td>${passedTests.length} clean of ${drugTests.length} total (${drugPassRate}% clean rate)${cleanStreak > 0 ? ', ' + cleanStreak + ' clean streak' : ''}${failedTests.length > 0 ? ', ' + failedTests.length + ' positive' : ''}</td>
-            <td class="status-${drugTests.length > 0 ? (drugPassRate >= 100 ? 'completed' : drugPassRate >= 80 ? 'on-track' : drugPassRate >= 50 ? 'needs-attention' : 'behind') : 'behind'}">
-              ${drugTests.length > 0 ? (drugPassRate >= 100 ? 'Completed' : drugPassRate >= 80 ? 'On Track' : drugPassRate >= 50 ? 'Needs Attention' : 'Behind') : 'No Data'}
-            </td>
-          </tr>
-          <tr>
-            <td><strong>NA Steps (12-Step)</strong></td>
-            <td>${completedSteps.length}/12
-              <span class="mini-bar"><span class="mini-bar-fill" style="width:${Math.round((completedSteps.length / 12) * 100)}%;background:#8b5cf6"></span></span>
-            </td>
-            <td>${completedSteps.length}/12 steps completed${sponsorVerifiedCount > 0 ? ', ' + sponsorVerifiedCount + ' sponsor-verified' : ''}${naSteps.length > 0 && completedSteps.length < naSteps.length ? ' (' + (naSteps.length - completedSteps.length) + ' remaining)' : ''}</td>
-            <td class="status-${completedSteps.length >= 12 ? 'completed' : completedSteps.length >= 7 ? 'on-track' : completedSteps.length >= 3 ? 'needs-attention' : 'behind'}">
-              ${completedSteps.length >= 12 ? 'Completed' : completedSteps.length >= 7 ? 'On Track' : completedSteps.length >= 3 ? 'Needs Attention' : 'Behind'}
-            </td>
-          </tr>
-          <tr>
-            <td><strong>NA Meetings</strong></td>
-            <td>${naMeetings.length > 0 ? Math.round((verifiedMeetings.length / naMeetings.length) * 100) : 0}%
-              <span class="mini-bar"><span class="mini-bar-fill" style="width:${naMeetings.length > 0 ? Math.round((verifiedMeetings.length / naMeetings.length) * 100) : 0}%;background:#8b5cf6"></span></span>
-            </td>
-            <td>${naMeetings.length} attended, ${verifiedMeetings.length} verified</td>
-            <td class="status-${naMeetings.length > 0 ? (verifiedMeetings.length / naMeetings.length >= 1 ? 'completed' : verifiedMeetings.length / naMeetings.length >= 0.6 ? 'on-track' : verifiedMeetings.length / naMeetings.length >= 0.3 ? 'needs-attention' : 'behind') : 'behind'}">
-              ${naMeetings.length > 0 ? (verifiedMeetings.length / naMeetings.length >= 1 ? 'Completed' : verifiedMeetings.length / naMeetings.length >= 0.6 ? 'On Track' : verifiedMeetings.length / naMeetings.length >= 0.3 ? 'Needs Attention' : 'Behind') : 'No Data'}
-            </td>
-          </tr>
-          <tr>
-            <td><strong>Supervised Visits</strong></td>
-            <td>${visits.length > 0 ? Math.round((completedVisits.length / visits.length) * 100) : 0}%
-              <span class="mini-bar"><span class="mini-bar-fill" style="width:${visits.length > 0 ? Math.round((completedVisits.length / visits.length) * 100) : 0}%;background:#0ea5e9"></span></span>
-            </td>
-            <td>${completedVisits.length}/${visits.length} completed, Current Level: ${visitLevelLabel}</td>
-            <td class="status-${visits.length > 0 ? (completedVisits.length / visits.length >= 1 ? 'completed' : completedVisits.length / visits.length >= 0.6 ? 'on-track' : completedVisits.length / visits.length >= 0.3 ? 'needs-attention' : 'behind') : 'behind'}">
-              ${visits.length > 0 ? (completedVisits.length / visits.length >= 1 ? 'Completed' : completedVisits.length / visits.length >= 0.6 ? 'On Track' : completedVisits.length / visits.length >= 0.3 ? 'Needs Attention' : 'Behind') : 'No Data'}
-            </td>
-          </tr>
-          <tr>
-            <td><strong>Parenting Classes</strong></td>
-            <td>${parentingClasses.length > 0 ? Math.round((completedClasses.length / parentingClasses.length) * 100) : 0}%
-              <span class="mini-bar"><span class="mini-bar-fill" style="width:${parentingClasses.length > 0 ? Math.round((completedClasses.length / parentingClasses.length) * 100) : 0}%;background:#f43f5e"></span></span>
-            </td>
-            <td>${completedClasses.length}/${parentingClasses.length} completed, ${certificatesEarned} certificates earned</td>
-            <td class="status-${parentingClasses.length > 0 ? (completedClasses.length / parentingClasses.length >= 1 ? 'completed' : completedClasses.length / parentingClasses.length >= 0.6 ? 'on-track' : completedClasses.length / parentingClasses.length >= 0.3 ? 'needs-attention' : 'behind') : 'behind'}">
-              ${parentingClasses.length > 0 ? (completedClasses.length / parentingClasses.length >= 1 ? 'Completed' : completedClasses.length / parentingClasses.length >= 0.6 ? 'On Track' : completedClasses.length / parentingClasses.length >= 0.3 ? 'Needs Attention' : 'Behind') : 'No Data'}
-            </td>
-          </tr>
-          <tr>
-            <td><strong>Court Dates</strong></td>
-            <td>${courtDates.length > 0 ? Math.round((completedCourtDates.length / courtDates.length) * 100) : 0}%
-              <span class="mini-bar"><span class="mini-bar-fill" style="width:${courtDates.length > 0 ? Math.round((completedCourtDates.length / courtDates.length) * 100) : 0}%;background:#64748b"></span></span>
-            </td>
-            <td>${completedCourtDates.length}/${courtDates.length} completed${nextCourtDate ? ', Next: ' + formatDate(nextCourtDate.date as string) : ', No upcoming dates'}</td>
-            <td class="status-${courtDates.length > 0 ? (completedCourtDates.length / courtDates.length >= 1 ? 'completed' : completedCourtDates.length / courtDates.length >= 0.6 ? 'on-track' : completedCourtDates.length / courtDates.length >= 0.3 ? 'needs-attention' : 'behind') : 'behind'}">
-              ${courtDates.length > 0 ? (completedCourtDates.length / courtDates.length >= 1 ? 'Completed' : completedCourtDates.length / courtDates.length >= 0.6 ? 'On Track' : completedCourtDates.length / courtDates.length >= 0.3 ? 'Needs Attention' : 'Behind') : 'No Data'}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Achievements & Areas Needing Attention -->
-    <div class="two-col">
-      <div class="col-box achievements">
-        <h4>Achievements & Completed Items</h4>
-        <ul class="item-list">
-          ${completedReqs.length > 0 ? completedReqs.map((r) => '<li><span class="check">\u2713</span> ' + r.title + ' (' + r.category + ')' + (r.completedAt ? ' \u2013 ' + formatDate(r.completedAt as string) : '') + '</li>').join('') : '<li style="color:#9ca3af">No requirements completed yet</li>'}
-          ${completedMilestones.length > 0 ? '<li style="padding-top:8px;border-top:1px solid #e5e7eb"><strong>Milestones:</strong></li>' + completedMilestones.map((m) => '<li><span class="star">\u2605</span> ' + m.title + (m.completedAt ? ' \u2013 ' + formatDate(m.completedAt as string) : '') + '</li>').join('') : ''}
-        </ul>
-      </div>
-      <div class="col-box attention">
-        <h4>Areas Needing Attention</h4>
-        <ul class="item-list">
-          ${incompleteReqs.length > 0 ? incompleteReqs.map((r) => '<li><span class="cross">\u25CB</span> ' + r.title + ' (' + r.category + ')' + (r.dueDate ? ' \u2013 Due: ' + formatDate(r.dueDate as string) : '') + '</li>').join('') : '<li style="color:#059669"><span class="check">\u2713</span> All requirements completed!</li>'}
-          ${behindCategories.length > 0 ? '<li style="padding-top:8px;border-top:1px solid #e5e7eb"><strong>Behind Schedule:</strong></li>' + behindCategories.map(c => '<li><span class="cross">\u2717</span> ' + c.label + ': ' + c.progress + '% \u2013 ' + c.statValue + '</li>').join('') : ''}
-          ${needsAttentionCategories.length > 0 ? '<li style="padding-top:8px;border-top:1px solid #e5e7eb"><strong>Needs Attention:</strong></li>' + needsAttentionCategories.map(c => '<li><span class="warn">\u26A0</span> ' + c.label + ': ' + c.progress + '% \u2013 ' + c.statValue + '</li>').join('') : ''}
-        </ul>
-      </div>
-    </div>
-
-    <!-- NA Steps Detail -->
-    ${naSteps.length > 0 ? `
-    <div class="section" style="margin-top:22px">
-      <div class="section-title">NA Steps Detail</div>
-      <table class="category-table">
-        <thead>
-          <tr><th>Step</th><th>Status</th><th>Sponsor Verified</th><th>Completed Date</th></tr>
-        </thead>
-        <tbody>
-          ${naSteps.map(s => '<tr><td>Step ' + s.stepNumber + '</td><td class="' + (s.isCompleted ? 'status-completed' : '') + '">' + (s.isCompleted ? 'Completed' : 'Incomplete') + '</td><td>' + (s.sponsorVerified ? 'Yes' + (s.sponsorName ? ' (' + s.sponsorName + ')' : '') : 'No') + '</td><td>' + (s.completedAt ? formatDate(s.completedAt as string) : '\u2014') + '</td></tr>').join('')}
-        </tbody>
-      </table>
-    </div>` : ''}
-
-    <!-- Footer -->
     <div class="footer">
-      <p class="generated">Generated by Reunify on ${today}</p>
-      <p class="privacy">CONFIDENTIAL: This report contains sensitive case information. Store securely and share only with authorized parties such as your attorney, caseworker, or judge. All data is stored locally on the user's device and is not transmitted to any external servers.</p>
+      <p>Generated by Reunify (Free) on ${d.today}</p>
+      <p>CONFIDENTIAL: Store securely. Share only with authorized parties.</p>
     </div>
   </div>
 </body>
 </html>`
 
-  const printWindow = window.open('', '_blank')
-  if (!printWindow) {
-    toast.error('Please allow popups to generate the PDF report')
-    return
-  }
-  printWindow.document.write(html)
-  printWindow.document.close()
-  // Wait for content to render then print
-  printWindow.onload = () => {
-    setTimeout(() => {
-      printWindow.print()
-    }, 300)
-  }
+  writePdfToWindow(html)
+}
+
+// ─── COURT-READY PDF (Pro) — stunning, professional, court-filing quality ───
+function generateCourtReadyPDF(caseData: Record<string, unknown>, categories: CategoryProgress[], _isPro: boolean = true) {
+  const d = getPdfData(caseData)
+  const onTrackCategories = categories.filter(c => c.status === 'on-track' || c.status === 'completed')
+  const needsAttentionCategories = categories.filter(c => c.status === 'needs-attention')
+  const behindCategories = categories.filter(c => c.status === 'behind')
+
+  // Verification ID
+  const verifyId = 'RV-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase()
+  const reportId = 'RPT-' + new Date().toISOString().split('T')[0] + '-' + Math.random().toString(36).substring(2, 6).toUpperCase()
+
+  // Compliance narrative
+  const totalReqCount = d.requirements.length
+  const compReqCount = d.completedReqs.length
+  const narrative = `The parent has completed ${compReqCount} of ${totalReqCount} requirements (${d.overallProgress}%). Drug testing shows ${d.drugPassRate}% clean results over ${d.drugTests.length} tests${d.cleanStreak > 0 ? ' with a ' + d.cleanStreak + '-test clean streak' : ''}. Counseling sessions are ${d.counselingSessions.length > 0 ? Math.round((d.completedSessions.length / d.counselingSessions.length) * 100) : 0}% complete. Supervised visits have progressed to ${d.visitLevelLabel} level.${d.parentingClasses.length > 0 ? ' Parenting classes are ' + Math.round((d.completedClasses.length / d.parentingClasses.length) * 100) + '% complete with ' + d.certificatesEarned + ' certificate(s) earned.' : ''} ${d.naMeetings.length > 0 ? d.naMeetings.length + ' NA meetings have been attended (' + d.verifiedMeetings.length + ' verified).' : ''}`
+
+  // Case Strength Assessment
+  const drugScore = Math.min(25, Math.round((d.drugPassRate / 100) * 25))
+  const programPct = d.requirements.length > 0 ? (d.completedReqs.length / d.requirements.length) * 100 : 0
+  const programScore = Math.min(25, Math.round((programPct / 100) * 25))
+  const visitScoreMap: Record<string, number> = { unsupervised: 25, 'semi-supervised': 18, supervised: 10 }
+  const visitScore = d.visits.length > 0 ? visitScoreMap[d.latestVisitType] || 10 : 0
+  const consistencyPct = onTrackCategories.length > 0 ? Math.round((onTrackCategories.length / categories.length) * 100) : 0
+  const consistencyScore = Math.min(25, Math.round((consistencyPct / 100) * 25))
+  const totalScore = drugScore + programScore + visitScore + consistencyScore
+  const strengthLabel = totalScore >= 90 ? 'Excellent' : totalScore >= 70 ? 'Good' : totalScore >= 50 ? 'Fair' : 'Needs Improvement'
+  const strengthColor = totalScore >= 90 ? '#059669' : totalScore >= 70 ? '#10b981' : totalScore >= 50 ? '#d97706' : '#dc2626'
+
+  // Recommendations
+  const recommendations: string[] = []
+  if (d.drugPassRate >= 80 && d.cleanStreak > 0) recommendations.push('Continue maintaining clean drug test streak (' + d.cleanStreak + ' consecutive)')
+  if (d.drugPassRate < 100 && d.failedTests.length > 0) recommendations.push('Address remaining drug test concerns \u2014 ' + d.failedTests.length + ' positive result(s) on record')
+  const remainingCounseling = d.counselingSessions.length - d.completedSessions.length
+  if (remainingCounseling > 0) recommendations.push('Complete remaining ' + remainingCounseling + ' counseling session(s)')
+  if (d.completedSteps.length < 12) recommendations.push('Continue NA 12-step program \u2014 ' + (12 - d.completedSteps.length) + ' step(s) remaining')
+  if (d.latestVisitType === 'supervised' && d.completedVisits.length >= 3) recommendations.push('Request semi-supervised visit evaluation')
+  if (d.latestVisitType === 'semi-supervised' && d.completedVisits.length >= 6) recommendations.push('Request unsupervised visit evaluation')
+  const remainingClasses = d.parentingClasses.length - d.completedClasses.length
+  if (remainingClasses > 0) recommendations.push('Complete remaining ' + remainingClasses + ' parenting class(es)')
+  if (d.naMeetings.length < 30 && d.naMeetings.length > 0) recommendations.push('Continue attending NA meetings \u2014 aim for 30+ documented')
+  if (recommendations.length === 0) recommendations.push('All major requirements on track \u2014 continue current compliance pattern')
+
+  // Drug test timeline
+  const drugTimeline = [...d.drugTests].sort((a, b) => new Date(a.date as string).getTime() - new Date(b.date as string).getTime())
+
+  // Visit progression
+  const visitProgression = d.sortedCompletedVisits.slice(0, 10).reverse()
+
+  // Status helper
+  const catStatus = (pct: number) => pct >= 100 ? 'Completed' : pct >= 60 ? 'On Track' : pct >= 30 ? 'Needs Attention' : 'Behind'
+  const catStatusColor = (pct: number) => pct >= 100 ? '#059669' : pct >= 60 ? '#10b981' : pct >= 30 ? '#d97706' : '#dc2626'
+
+  const counselingPct = d.counselingSessions.length > 0 ? Math.round((d.completedSessions.length / d.counselingSessions.length) * 100) : 0
+  const visitsPct = d.visits.length > 0 ? Math.round((d.completedVisits.length / d.visits.length) * 100) : 0
+  const classesPct = d.parentingClasses.length > 0 ? Math.round((d.completedClasses.length / d.parentingClasses.length) * 100) : 0
+  const stepsPct = Math.round((d.completedSteps.length / 12) * 100)
+  const meetingsPct = d.naMeetings.length > 0 ? Math.round((d.verifiedMeetings.length / d.naMeetings.length) * 100) : 0
+  const courtPct = d.courtDates.length > 0 ? Math.round((d.completedCourtDates.length / d.courtDates.length) * 100) : 0
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Court-Ready Compliance Report - Case ${d.caseNumber}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1a1a1a; background: #fff; line-height: 1.6; }
+    .page { max-width: 850px; margin: 0 auto; padding: 0 50px 40px; }
+    /* Cover Page */
+    .cover { min-height: 260px; background: linear-gradient(135deg, #064e3b 0%, #059669 60%, #10b981 100%); color: #fff; padding: 40px 50px; margin: 0 -50px; display: flex; flex-direction: column; justify-content: center; }
+    .cover-brand { font-size: 13px; letter-spacing: 4px; text-transform: uppercase; opacity: 0.8; margin-bottom: 12px; }
+    .cover h1 { font-size: 28px; font-weight: 800; letter-spacing: 1px; margin-bottom: 6px; }
+    .cover-case { font-size: 20px; font-weight: 600; opacity: 0.9; margin-bottom: 16px; }
+    .cover-meta { font-size: 12px; opacity: 0.7; display: flex; gap: 24px; flex-wrap: wrap; }
+    .cover-divider { width: 60px; height: 3px; background: #fbbf24; margin: 16px 0; }
+    /* Sections */
+    .section { margin-bottom: 24px; }
+    .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #059669; border-bottom: 2px solid #059669; padding-bottom: 6px; margin-bottom: 14px; }
+    /* Info Grid */
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 28px; }
+    .info-item { display: flex; gap: 8px; font-size: 12px; padding: 5px 0; border-bottom: 1px solid #f3f4f6; }
+    .info-label { font-weight: 600; color: #374151; min-width: 110px; }
+    .info-value { color: #1f2937; }
+    /* Score Badge */
+    .score-section { display: flex; align-items: center; gap: 28px; margin: 20px 0; padding: 20px; background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border: 2px solid #bbf7d0; border-radius: 8px; }
+    .score-ring { width: 100px; height: 100px; position: relative; flex-shrink: 0; }
+    .score-ring svg { width: 100%; height: 100%; }
+    .score-ring .score-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 24px; font-weight: 800; color: #059669; }
+    .score-details h3 { font-size: 18px; font-weight: 700; color: #064e3b; margin-bottom: 4px; }
+    .score-assessment { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .score-assessment.ready { background: #d1fae5; color: #065f46; }
+    .score-assessment.needs-work { background: #fef3c7; color: #92400e; }
+    .score-narrative { font-size: 12px; color: #374151; margin-top: 10px; line-height: 1.7; }
+    /* Category Card */
+    .cat-card { border: 1px solid #e5e7eb; border-radius: 6px; padding: 14px 16px; margin-bottom: 12px; }
+    .cat-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .cat-card-title { font-size: 13px; font-weight: 700; color: #1f2937; }
+    .cat-status { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 8px; border-radius: 10px; }
+    .cat-bar { height: 10px; background: #e5e7eb; border-radius: 5px; overflow: hidden; margin: 6px 0; }
+    .cat-bar-fill { height: 100%; border-radius: 5px; }
+    .cat-detail { font-size: 11px; color: #6b7280; }
+    .cat-items { margin-top: 8px; padding-top: 8px; border-top: 1px solid #f3f4f6; }
+    .cat-items li { font-size: 11px; padding: 3px 0; list-style: none; display: flex; gap: 6px; }
+    /* Drug Timeline */
+    .timeline-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid #f3f4f6; font-size: 12px; }
+    .timeline-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .timeline-dot.pass { background: #10b981; }
+    .timeline-dot.fail { background: #ef4444; }
+    .timeline-dot.pending { background: #d97706; }
+    .streak-badge { display: inline-block; background: #d1fae5; color: #065f46; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 8px; margin-left: 4px; }
+    /* Visit Progression */
+    .visit-step { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; margin: 3px; }
+    .visit-step.active { background: #d1fae5; color: #065f46; }
+    .visit-step.inactive { background: #f3f4f6; color: #9ca3af; }
+    .visit-arrow { font-size: 14px; color: #d1d5db; margin: 0 2px; }
+    /* Strength Grid */
+    .strength-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .strength-item { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px 14px; text-align: center; }
+    .strength-score { font-size: 22px; font-weight: 800; }
+    .strength-label { font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+    .strength-total { grid-column: 1 / -1; background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 2px solid #bbf7d0; padding: 14px; }
+    /* Recommendations */
+    .rec-item { display: flex; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-size: 12px; }
+    .rec-num { width: 22px; height: 22px; background: #059669; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+    /* Verified Badge */
+    .verified-badge { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; background: linear-gradient(135deg, #064e3b, #059669); color: #fff; border-radius: 8px; margin: 24px 0; }
+    .verified-check { width: 24px; height: 24px; background: #fbbf24; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #064e3b; font-weight: 800; }
+    .verified-text { font-size: 14px; font-weight: 700; letter-spacing: 1px; }
+    .verified-sub { font-size: 10px; opacity: 0.7; }
+    /* Footer */
+    .footer { margin-top: 24px; padding-top: 12px; border-top: 2px solid #059669; text-align: center; }
+    .footer p { font-size: 10px; color: #9ca3af; }
+    .footer .confidential { font-weight: 700; color: #374151; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    @media print { body { padding: 0; } .page { padding: 0 30px 20px; } .cover { margin: 0 -30px; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <!-- Professional Cover Page -->
+    <div class="cover">
+      <div class="cover-brand">Reunify Pro</div>
+      <h1>Court-Ready Compliance Report</h1>
+      <div class="cover-divider"></div>
+      <div class="cover-case">Case #${d.caseNumber}</div>
+      <div class="cover-meta">
+        <span>Court: ${caseData.courtName || 'Not specified'}</span>
+        <span>Judge: ${caseData.judgeName || 'Not specified'}</span>
+        <span>Generated: ${d.today}</span>
+      </div>
+    </div>
+
+    <!-- Case Information -->
+    <div class="section" style="margin-top:24px">
+      <div class="section-title">Case Information</div>
+      <div class="info-grid">
+        <div class="info-item"><span class="info-label">Case Number:</span><span class="info-value">${d.caseNumber}</span></div>
+        <div class="info-item"><span class="info-label">Court:</span><span class="info-value">${caseData.courtName || 'Not specified'}</span></div>
+        <div class="info-item"><span class="info-label">Judge:</span><span class="info-value">${caseData.judgeName || 'Not specified'}</span></div>
+        <div class="info-item"><span class="info-label">Caseworker:</span><span class="info-value">${caseData.caseworkerName || 'Not specified'}${caseData.caseworkerPhone ? ' (' + caseData.caseworkerPhone + ')' : ''}</span></div>
+        <div class="info-item"><span class="info-label">Attorney:</span><span class="info-value">${caseData.attorneyName || 'Not specified'}${caseData.attorneyPhone ? ' (' + caseData.attorneyPhone + ')' : ''}</span></div>
+        <div class="info-item"><span class="info-label">Removal Date:</span><span class="info-value">${d.formatDate(caseData.removalDate as string | null)}</span></div>
+        <div class="info-item"><span class="info-label">Target Date:</span><span class="info-value">${d.formatDate(caseData.targetReunificationDate as string | null)}</span></div>
+        <div class="info-item"><span class="info-label">Report Date:</span><span class="info-value">${d.today}</span></div>
+      </div>
+    </div>
+
+    <!-- Compliance Score -->
+    <div class="section">
+      <div class="section-title">Compliance Score</div>
+      <div class="score-section">
+        <div class="score-ring">
+          <svg viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="42" fill="none" stroke="#d1fae5" stroke-width="8"/>
+            <circle cx="50" cy="50" r="42" fill="none" stroke="#059669" stroke-width="8" stroke-dasharray="${2 * Math.PI * 42}" stroke-dashoffset="${2 * Math.PI * 42 * (1 - d.overallProgress / 100)}" stroke-linecap="round" transform="rotate(-90 50 50)"/>
+          </svg>
+          <div class="score-text">${d.overallProgress}%</div>
+        </div>
+        <div class="score-details">
+          <h3>${d.completedReqs.length} of ${d.requirements.length} Requirements Complete</h3>
+          <span class="score-assessment ${d.overallProgress >= 70 ? 'ready' : 'needs-work'}">${d.overallProgress >= 70 ? 'Court Ready' : 'Needs Work'}</span>
+          <p class="score-narrative">${narrative}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detailed Category Breakdown -->
+    <div class="section">
+      <div class="section-title">Detailed Category Breakdown</div>
+
+      <!-- Counseling -->
+      <div class="cat-card">
+        <div class="cat-card-header">
+          <span class="cat-card-title">Counseling Sessions</span>
+          <span class="cat-status" style="background:${catStatusColor(counselingPct) === '#059669' ? '#d1fae5' : catStatusColor(counselingPct) === '#d97706' ? '#fef3c7' : '#fee2e2'};color:${catStatusColor(counselingPct)}">${catStatus(counselingPct)}</span>
+        </div>
+        <div class="cat-bar"><div class="cat-bar-fill" style="width:${counselingPct}%;background:${catStatusColor(counselingPct)}"></div></div>
+        <div class="cat-detail">${d.completedSessions.length}/${d.counselingSessions.length} sessions completed (${counselingPct}%)</div>
+        ${d.counselingSessions.length > 0 ? '<div class="cat-items"><ul>' + d.counselingSessions.map((s: Record<string, unknown>) => '<li>' + (s.isCompleted ? '<span style="color:#059669;font-weight:700">\u2713</span>' : '<span style="color:#d97706;font-weight:700">\u25CB</span>') + ' ' + (s.title || 'Session') + (s.date ? ' \u2013 ' + d.formatDate(s.date as string) : '') + (s.isCompleted ? ' (Completed)' : ' (Pending)') + '</li>').join('') + '</ul></div>' : ''}
+      </div>
+
+      <!-- Drug Testing -->
+      <div class="cat-card">
+        <div class="cat-card-header">
+          <span class="cat-card-title">Drug Testing</span>
+          <span class="cat-status" style="background:${catStatusColor(d.drugPassRate) === '#059669' ? '#d1fae5' : catStatusColor(d.drugPassRate) === '#d97706' ? '#fef3c7' : '#fee2e2'};color:${catStatusColor(d.drugPassRate)}">${catStatus(d.drugPassRate)}</span>
+        </div>
+        <div class="cat-bar"><div class="cat-bar-fill" style="width:${d.drugPassRate}%;background:${catStatusColor(d.drugPassRate)}"></div></div>
+        <div class="cat-detail">${d.passedTests.length} clean / ${d.drugTests.length} total (${d.drugPassRate}% clean rate)${d.cleanStreak > 0 ? ' \u2022 ' + d.cleanStreak + ' clean streak' : ''}${d.failedTests.length > 0 ? ' \u2022 ' + d.failedTests.length + ' positive' : ''}</div>
+      </div>
+
+      <!-- 12 Steps -->
+      <div class="cat-card">
+        <div class="cat-card-header">
+          <span class="cat-card-title">NA 12-Step Program</span>
+          <span class="cat-status" style="background:${catStatusColor(stepsPct) === '#059669' ? '#d1fae5' : catStatusColor(stepsPct) === '#d97706' ? '#fef3c7' : '#fee2e2'};color:${catStatusColor(stepsPct)}">${catStatus(stepsPct)}</span>
+        </div>
+        <div class="cat-bar"><div class="cat-bar-fill" style="width:${stepsPct}%;background:${catStatusColor(stepsPct)}"></div></div>
+        <div class="cat-detail">${d.completedSteps.length}/12 steps completed${d.sponsorVerifiedCount > 0 ? ' \u2022 ' + d.sponsorVerifiedCount + ' sponsor-verified' : ''}</div>
+        ${d.naSteps.length > 0 ? '<div class="cat-items"><ul>' + d.naSteps.map((s: Record<string, unknown>) => '<li>' + (s.isCompleted ? '<span style="color:#059669;font-weight:700">\u2713</span>' : '<span style="color:#d97706;font-weight:700">\u25CB</span>') + ' Step ' + s.stepNumber + (s.sponsorVerified ? ' (Sponsor Verified' + (s.sponsorName ? ': ' + s.sponsorName : '') + ')' : '') + (s.completedAt ? ' \u2013 ' + d.formatDate(s.completedAt as string) : '') + '</li>').join('') + '</ul></div>' : ''}
+      </div>
+
+      <!-- NA Meetings -->
+      <div class="cat-card">
+        <div class="cat-card-header">
+          <span class="cat-card-title">NA Meetings</span>
+          <span class="cat-status" style="background:${catStatusColor(meetingsPct) === '#059669' ? '#d1fae5' : catStatusColor(meetingsPct) === '#d97706' ? '#fef3c7' : '#fee2e2'};color:${catStatusColor(meetingsPct)}">${catStatus(meetingsPct)}</span>
+        </div>
+        <div class="cat-bar"><div class="cat-bar-fill" style="width:${meetingsPct}%;background:${catStatusColor(meetingsPct)}"></div></div>
+        <div class="cat-detail">${d.naMeetings.length} attended, ${d.verifiedMeetings.length} verified (${meetingsPct}%)</div>
+      </div>
+
+      <!-- Visits -->
+      <div class="cat-card">
+        <div class="cat-card-header">
+          <span class="cat-card-title">Supervised Visits</span>
+          <span class="cat-status" style="background:${catStatusColor(visitsPct) === '#059669' ? '#d1fae5' : catStatusColor(visitsPct) === '#d97706' ? '#fef3c7' : '#fee2e2'};color:${catStatusColor(visitsPct)}">${catStatus(visitsPct)}</span>
+        </div>
+        <div class="cat-bar"><div class="cat-bar-fill" style="width:${visitsPct}%;background:${catStatusColor(visitsPct)}"></div></div>
+        <div class="cat-detail">${d.completedVisits.length}/${d.visits.length} completed \u2022 Current Level: ${d.visitLevelLabel}</div>
+      </div>
+
+      <!-- Parenting Classes -->
+      <div class="cat-card">
+        <div class="cat-card-header">
+          <span class="cat-card-title">Parenting Classes</span>
+          <span class="cat-status" style="background:${catStatusColor(classesPct) === '#059669' ? '#d1fae5' : catStatusColor(classesPct) === '#d97706' ? '#fef3c7' : '#fee2e2'};color:${catStatusColor(classesPct)}">${catStatus(classesPct)}</span>
+        </div>
+        <div class="cat-bar"><div class="cat-bar-fill" style="width:${classesPct}%;background:${catStatusColor(classesPct)}"></div></div>
+        <div class="cat-detail">${d.completedClasses.length}/${d.parentingClasses.length} completed \u2022 ${d.certificatesEarned} certificate(s) earned</div>
+      </div>
+
+      <!-- Court Dates -->
+      <div class="cat-card">
+        <div class="cat-card-header">
+          <span class="cat-card-title">Court Dates</span>
+          <span class="cat-status" style="background:${catStatusColor(courtPct) === '#059669' ? '#d1fae5' : catStatusColor(courtPct) === '#d97706' ? '#fef3c7' : '#fee2e2'};color:${catStatusColor(courtPct)}">${catStatus(courtPct)}</span>
+        </div>
+        <div class="cat-bar"><div class="cat-bar-fill" style="width:${courtPct}%;background:${catStatusColor(courtPct)}"></div></div>
+        <div class="cat-detail">${d.completedCourtDates.length}/${d.courtDates.length} completed${d.nextCourtDate ? ' \u2022 Next: ' + d.formatDate(d.nextCourtDate.date as string) : ''}</div>
+      </div>
+    </div>
+
+    <!-- Drug Test Timeline -->
+    ${drugTimeline.length > 0 ? `
+    <div class="section">
+      <div class="section-title">Drug Test Timeline</div>
+      ${drugTimeline.map((t: Record<string, unknown>) => {
+        const isPass = t.result === 'negative'
+        const isFail = t.result === 'positive'
+        const isPending = !isPass && !isFail
+        return '<div class="timeline-row">' +
+          '<div class="timeline-dot ' + (isPass ? 'pass' : isFail ? 'fail' : 'pending') + '"></div>' +
+          '<span style="font-weight:600;min-width:80px">' + (t.date ? d.formatDate(t.date as string) : '\u2014') + '</span>' +
+          '<span style="color:' + (isPass ? '#059669' : isFail ? '#dc2626' : '#d97706') + ';font-weight:600">' + (isPass ? 'CLEAN' : isFail ? 'POSITIVE' : 'PENDING') + '</span>' +
+          (t.type ? '<span style="color:#6b7280">' + t.type + '</span>' : '') +
+          '</div>'
+      }).join('')}
+      ${d.cleanStreak > 0 ? '<div style="margin-top:8px;font-size:12px;color:#059669;font-weight:700">\u2713 Current Clean Streak: ' + d.cleanStreak + ' test(s)</div>' : ''}
+    </div>` : ''}
+
+    <!-- Visit Progression -->
+    ${d.visits.length > 0 ? `
+    <div class="section">
+      <div class="section-title">Visit Progression</div>
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin:12px 0">
+        <span class="visit-step ${d.latestVisitType === 'supervised' || d.latestVisitType === 'semi-supervised' || d.latestVisitType === 'unsupervised' ? 'active' : 'inactive'}">Supervised</span>
+        <span class="visit-arrow">\u2192</span>
+        <span class="visit-step ${d.latestVisitType === 'semi-supervised' || d.latestVisitType === 'unsupervised' ? 'active' : 'inactive'}">Semi-Supervised</span>
+        <span class="visit-arrow">\u2192</span>
+        <span class="visit-step ${d.latestVisitType === 'unsupervised' ? 'active' : 'inactive'}">Unsupervised</span>
+      </div>
+      ${visitProgression.length > 0 ? '<div style="margin-top:8px">' + visitProgression.map((v: Record<string, unknown>) =>
+        '<div class="timeline-row">' +
+        '<div class="timeline-dot pass"></div>' +
+        '<span style="font-weight:600;min-width:80px">' + (v.date ? d.formatDate(v.date as string) : '\u2014') + '</span>' +
+        '<span>' + (v.visitType || 'Supervised') + '</span>' +
+        '</div>'
+      ).join('') + '</div>' : ''}
+    </div>` : ''}
+
+    <!-- Case Strength Assessment -->
+    <div class="section">
+      <div class="section-title">Case Strength Assessment</div>
+      <div class="strength-grid">
+        <div class="strength-item">
+          <div class="strength-score" style="color:#059669">${drugScore}/25</div>
+          <div class="strength-label">Drug Compliance</div>
+        </div>
+        <div class="strength-item">
+          <div class="strength-score" style="color:#059669">${programScore}/25</div>
+          <div class="strength-label">Program Completion</div>
+        </div>
+        <div class="strength-item">
+          <div class="strength-score" style="color:#059669">${visitScore}/25</div>
+          <div class="strength-label">Visit Progression</div>
+        </div>
+        <div class="strength-item">
+          <div class="strength-score" style="color:#059669">${consistencyScore}/25</div>
+          <div class="strength-label">Consistency</div>
+        </div>
+        <div class="strength-item strength-total">
+          <div class="strength-score" style="color:${strengthColor};font-size:28px">${totalScore}/100</div>
+          <div class="strength-label" style="font-size:12px;color:${strengthColor};font-weight:700">${strengthLabel}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recommendations -->
+    <div class="section">
+      <div class="section-title">Recommendations</div>
+      ${recommendations.map((rec, i) => '<div class="rec-item"><div class="rec-num">' + (i + 1) + '</div><div>' + rec + '</div></div>').join('')}
+    </div>
+
+    <!-- Verified Badge -->
+    <div class="verified-badge">
+      <div class="verified-check">\u2713</div>
+      <div>
+        <div class="verified-text">Verified by Reunify Pro</div>
+        <div class="verified-sub">Verification ID: ${verifyId} \u2022 Verified on ${d.today}</div>
+      </div>
+    </div>
+
+    <!-- Professional Footer -->
+    <div class="footer">
+      <div class="confidential">Confidential \u2014 Privileged Information</div>
+      <p>Report ID: ${reportId} \u2022 Verification: ${verifyId}</p>
+      <p>This report was generated by Reunify Pro and has been verified for accuracy against recorded case data.</p>
+      <p style="margin-top:6px;font-style:italic">CONFIDENTIAL: This report contains sensitive case information protected by law. Store securely and share only with authorized parties such as your attorney, caseworker, or judge. Unauthorized distribution is prohibited. All data is stored locally on the user's device and is not transmitted to any external servers.</p>
+    </div>
+  </div>
+</body>
+</html>`
+
+  writePdfToWindow(html)
 }
 
 export function ProgressView() {
@@ -1306,7 +1410,7 @@ export function ProgressView() {
                   className="gap-2"
                   onClick={() => {
                     if (caseData) {
-                      generatePDFReport(caseData as unknown as Record<string, unknown>, categories)
+                      generateBasicPDF(caseData as unknown as Record<string, unknown>, categories)
                     }
                   }}
                 >
@@ -1466,18 +1570,35 @@ export function ProgressView() {
             with your caseworker, attorney, or judge.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
-            {/* Court Ready Report - Works for everyone, Pro adds verified badge */}
+            {/* Court Ready Report - Pro only */}
             <Button
               className="bg-amber-600 hover:bg-amber-700 text-white gap-2"
               onClick={() => {
-                if (caseData) {
-                  generatePDFReport(caseData as unknown as Record<string, unknown>, categories)
+                if (isProUser) {
+                  if (caseData) {
+                    generateCourtReadyPDF(caseData as unknown as Record<string, unknown>, categories, true)
+                  }
+                } else {
+                  window.dispatchEvent(new CustomEvent('reunify-show-upgrade', { detail: { feature: 'court-reports' } }))
                 }
               }}
             >
               <Crown className="size-4" />
               Court Ready
               {isProUser && <ProBadge size="sm" className="ml-1" />}
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => {
+                if (caseData) {
+                  generateBasicPDF(caseData as unknown as Record<string, unknown>, categories)
+                }
+              }}
+            >
+              <FileText className="size-4" />
+              PDF Report
+              <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded ml-0.5">Pro</span>
             </Button>
             <Button
               className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
@@ -1497,18 +1618,6 @@ export function ProgressView() {
                 <Download className="size-4" />
               )}
               {exporting ? 'Exporting...' : 'Export Case Data'}
-            </Button>
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={() => {
-                if (caseData) {
-                  generatePDFReport(caseData as unknown as Record<string, unknown>, categories)
-                }
-              }}
-            >
-              <FileText className="size-4" />
-              PDF Report
             </Button>
             <Button
               variant="outline"

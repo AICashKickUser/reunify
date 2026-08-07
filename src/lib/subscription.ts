@@ -4,21 +4,21 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 // ─── Pro Feature Definitions ────────────────────────────────────────────────
-// Pro features are ADDITIVE — the free app is fully functional for all
-// core tracking, reporting, and case management. Pro adds premium extras
-// that make you look even better to the court.
+// The free app is fully functional for ALL tracking — no limits on entries.
+// Pro makes the OUTPUT dramatically better: court-ready reports, cloud backup,
+// email reports, verified badge. The value is in what you SHOW the court.
 
 export const FREE_FEATURES = [
   {
     id: 'case-tracking',
-    title: 'Full Case Tracking',
-    description: 'Track all requirements, drug tests, visits, classes, and milestones',
+    title: 'Unlimited Case Tracking',
+    description: 'Track every requirement, drug test, visit, class, and milestone — no limits',
     icon: '📋',
   },
   {
-    id: 'pdf-reports',
-    title: 'Court Ready PDF Reports',
-    description: 'Generate professional progress reports for judges and social workers',
+    id: 'basic-pdf',
+    title: 'Basic PDF Reports',
+    description: 'Generate simple progress reports with your compliance data',
     icon: '📄',
   },
   {
@@ -35,7 +35,7 @@ export const FREE_FEATURES = [
   },
   {
     id: 'data-export',
-    title: 'Data Export & Backup',
+    title: 'Data Export & Local Backup',
     description: 'Export all your data and automatic local backups',
     icon: '💾',
   },
@@ -43,33 +43,33 @@ export const FREE_FEATURES = [
 
 export const PRO_FEATURES = [
   {
+    id: 'court-ready-pdf',
+    title: 'Court-Ready PDF Report',
+    description: 'Professional report with compliance narrative, strength score, verified badge, and recommendations — designed for judges',
+    icon: '⚖️',
+  },
+  {
     id: 'auto-cloud-backup',
     title: 'Auto Cloud Backup',
-    description: 'Automatic encrypted cloud backups so you never lose data',
+    description: 'Encrypted cloud backups so you never lose your case data',
     icon: '☁️',
   },
   {
     id: 'email-reports',
-    title: 'Email Progress Reports',
-    description: 'Send progress updates directly to your attorney or social worker',
+    title: 'Email Reports to Attorney',
+    description: 'Send court-ready progress reports directly to your attorney or social worker',
     icon: '📧',
-  },
-  {
-    id: 'enhanced-charts',
-    title: 'Enhanced Progress Charts',
-    description: 'Advanced visualizations with detailed trend analysis',
-    icon: '📈',
   },
   {
     id: 'verified-badge',
     title: 'Verified by Reunify Pro',
-    description: 'Verified badge on reports showing court-ready documentation',
+    description: 'Verified badge on reports proving court-ready, documented compliance',
     icon: '✅',
   },
   {
     id: 'priority-support',
     title: 'Priority Support',
-    description: 'Get help faster when you need it most',
+    description: 'Get help faster when court dates are approaching',
     icon: '🎯',
   },
 ] as const
