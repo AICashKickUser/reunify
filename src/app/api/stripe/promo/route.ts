@@ -8,12 +8,24 @@ const DEFAULT_PROMO_CODES = [
   'reunify-founder',     // Founder code
 ]
 
+// Promo code config: code -> { days, label }
+// Allows different codes to grant different durations
+const PROMO_CONFIG: Record<string, { days: number; label: string }> = {
+  'reunify-pro-2025': { days: 365, label: 'Pro activated for 1 year!' },
+  'reunify-review': { days: 90, label: 'Pro activated for 90 days (review access).' },
+  'reunify-founder': { days: 3650, label: 'Founder Pro activated — thank you!' },
+}
+
 function getValidPromoCodes(): string[] {
   const envCodes = process.env.PROMO_CODES
   if (envCodes) {
-    return envCodes.split(',').map(c => c.trim()).filter(Boolean)
+    return envCodes.split(',').map(c => c.trim().toLowerCase()).filter(Boolean)
   }
   return DEFAULT_PROMO_CODES
+}
+
+function getPromoConfig(code: string): { days: number; label: string } {
+  return PROMO_CONFIG[code] || { days: 365, label: 'Pro activated! Enjoy all premium features.' }
 }
 
 export async function POST(request: NextRequest) {
@@ -32,9 +44,11 @@ export async function POST(request: NextRequest) {
     const validCodes = getValidPromoCodes()
 
     if (validCodes.includes(normalizedCode)) {
-      // Activate Pro via promo code - 1 year access
+      const config = getPromoConfig(normalizedCode)
       const now = new Date()
-      const periodEnd = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000)
+      const periodEnd = new Date(now.getTime() + config.days * 24 * 60 * 60 * 1000)
+
+      console.log(`[stripe/promo] Activated Pro with code "${normalizedCode}" for ${config.days} days, expires ${periodEnd.toISOString()}`)
 
       return NextResponse.json({
         success: true,
@@ -42,10 +56,11 @@ export async function POST(request: NextRequest) {
         status: 'active',
         currentPeriodEnd: periodEnd.toISOString(),
         trialEnd: null,
-        message: 'Pro activated! Enjoy all premium features.',
+        message: config.label,
       })
     }
 
+    console.log(`[stripe/promo] Invalid promo code attempted: "${normalizedCode}"`)
     return NextResponse.json(
       { error: 'Invalid promo code. Please check and try again.' },
       { status: 400 }

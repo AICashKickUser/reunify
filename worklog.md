@@ -157,3 +157,28 @@ Stage Summary:
 - 3 promo codes available: reunify-pro-2025, reunify-review, reunify-founder
 - Users can bypass payment entirely with a valid promo code
 - Checkout route now logs which env vars are missing for debugging
+---
+Task ID: 1
+Agent: main
+Task: Fix "payment system being set up" error and add promo code feature to Go Pro view
+
+Work Log:
+- Investigated the "payment system being set up" error — found it was caused by go-pro-view.tsx hard-blocking when Stripe config check failed
+- Found that go-pro-view.tsx had NO promo code UI — only upgrade-dialog.tsx had it
+- Found that Go Pro and Backup views were blocked by activeCaseId check in page.tsx (line 225)
+- Fixed go-pro-view.tsx: removed hard error toast, added promo code input UI with Ticket icon
+- Fixed go-pro-view.tsx: added handlePromoCode function, promo state variables, promo code input section
+- Fixed go-pro-view.tsx: updated Pro status banner to show "Pro via Promo Code" when activated via promo
+- Fixed go-pro-view.tsx: handleManage now recognizes promo customers and skips billing portal
+- Fixed upgrade-dialog.tsx: removed confusing toast error, now silently opens promo input when Stripe unavailable
+- Fixed page.tsx: Go Pro and Backup views now render without requiring activeCaseId
+- Enhanced /api/stripe/promo/route.ts: added duration config per code (365 days, 90 days review, 10 years founder)
+- Added PROMO_CODES env var to .env file
+- Browser-verified: Stripe checkout redirects to checkout.stripe.com successfully
+- Browser-verified: Promo code "reunify-pro-2025" activates Pro showing "Pro via Promo Code - Active until 8/7/2027"
+
+Stage Summary:
+- Both Stripe payment AND promo code paths work side by side
+- Three promo codes available: reunify-pro-2025 (1yr), reunify-review (90d), reunify-founder (10yr)
+- Go Pro view now renders even without an active case
+- No more "payment system being set up" hard block — falls back to promo code gracefully

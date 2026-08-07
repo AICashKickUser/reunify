@@ -6,7 +6,8 @@ import { isProActive, useSubscriptionStore, PRO_FEATURES, FREE_FEATURES } from '
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Crown, Check, Sparkles, Loader2, Shield, FileText, Cloud, Mail, BarChart3, Target, ClipboardList, Camera, BarChart2, Save } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Crown, Check, Sparkles, Loader2, Shield, FileText, Cloud, Mail, BarChart3, Target, ClipboardList, Camera, BarChart2, Save, Ticket } from 'lucide-react'
 import { toast } from 'sonner'
 
 const FEATURE_ICONS: Record<string, React.ElementType> = {
@@ -26,6 +27,10 @@ export function GoProView() {
   const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
   const [loading, setLoading] = useState(false)
   const [configured, setConfigured] = useState(false)
+  const [configChecked, setConfigChecked] = useState(false)
+  const [promoCode, setPromoCode] = useState('')
+  const [promoLoading, setPromoLoading] = useState(false)
+  const [showPromo, setShowPromo] = useState(false)
   const subscription = useSubscriptionStore()
   const isPro = isProActive(subscription)
 
@@ -34,14 +39,10 @@ export function GoProView() {
       .then(r => r.json())
       .then(data => setConfigured(data.configured === true))
       .catch(() => setConfigured(false))
+      .finally(() => setConfigChecked(true))
   }, [])
 
   const handleUpgrade = async () => {
-    if (!configured) {
-      toast.error('Payment system is being set up. Please try again later.')
-      return
-    }
-
     setLoading(true)
     try {
       const response = await fetch('/api/stripe/checkout', {
@@ -67,9 +68,47 @@ export function GoProView() {
     }
   }
 
+  const handlePromoCode = async () => {
+    if (!promoCode.trim()) {
+      toast.error('Please enter a promo code.')
+      return
+    }
+
+    setPromoLoading(true)
+    try {
+      const response = await fetch('/api/stripe/promo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: promoCode.trim() }),
+      })
+
+      const data = await response.json()
+
+      if (data.error) {
+        toast.error(data.error)
+        return
+      }
+
+      if (data.success) {
+        subscription.activatePro({
+          periodEnd: data.currentPeriodEnd,
+          customerId: 'promo',
+          subscriptionId: `promo-${Date.now()}`,
+        })
+        toast.success(data.message || 'Pro activated!')
+        setPromoCode('')
+        setShowPromo(false)
+      }
+    } catch {
+      toast.error('Could not validate promo code. Please try again.')
+    } finally {
+      setPromoLoading(false)
+    }
+  }
+
   const handleManage = async () => {
-    if (!subscription.stripeCustomerId) {
-      toast.error('No billing account found')
+    if (!subscription.stripeCustomerId || subscription.stripeCustomerId === 'promo') {
+      toast.info('Pro was activated via promo code. No billing portal needed.')
       return
     }
 
@@ -126,17 +165,23 @@ export function GoProView() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-                {subscription.status === 'trialing' ? 'Free Trial Active' : 'Pro Subscription Active'}
+                {subscription.stripeCustomerId === 'promo'
+                  ? 'Pro via Promo Code'
+                  : subscription.status === 'trialing'
+                    ? 'Free Trial Active'
+                    : 'Pro Subscription Active'}
               </p>
               {subscription.currentPeriodEnd && (
                 <p className="text-xs text-muted-foreground">
-                  {subscription.cancelAtPeriodEnd
-                    ? `Ends ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`
-                    : `Renews ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`}
+                  {subscription.stripeCustomerId === 'promo'
+                    ? `Active until ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`
+                    : subscription.cancelAtPeriodEnd
+                      ? `Ends ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`
+                      : `Renews ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`}
                 </p>
               )}
             </div>
-            {subscription.stripeCustomerId && (
+            {subscription.stripeCustomerId && subscription.stripeCustomerId !== 'promo' && (
               <Button variant="outline" size="sm" onClick={handleManage} disabled={loading}>
                 {loading ? <Loader2 className="size-4 animate-spin" /> : 'Manage'}
               </Button>
@@ -205,56 +250,105 @@ export function GoProView() {
         </CardContent>
       </Card>
 
-      {/* Pricing */}
+      {/* Pricing + Promo Code */}
       {!isPro && (
         <Card className="border-amber-200 dark:border-amber-800">
           <CardContent className="p-4 sm:p-6 space-y-4">
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setBilling('monthly')}
-                className={`flex-1 p-3 rounded-lg border-2 text-center transition-all ${
-                  billing === 'monthly'
-                    ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20'
-                    : 'border-muted hover:border-amber-200'
-                }`}
-              >
-                <p className="text-base font-bold">${monthlyPrice}</p>
-                <p className="text-xs text-muted-foreground">per month</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => setBilling('annual')}
-                className={`flex-1 p-3 rounded-lg border-2 text-center transition-all relative ${
-                  billing === 'annual'
-                    ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20'
-                    : 'border-muted hover:border-amber-200'
-                }`}
-              >
-                <Badge className="absolute -top-2 -right-1 bg-emerald-600 text-white text-[9px] px-1.5 py-0 h-4">
-                  Save 33%
-                </Badge>
-                <p className="text-base font-bold">${annualMonthly}</p>
-                <p className="text-xs text-muted-foreground">per month (${annualPrice}/yr)</p>
-              </button>
-            </div>
+            {/* Stripe Payment Option */}
+            {configured && (
+              <>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBilling('monthly')}
+                    className={`flex-1 p-3 rounded-lg border-2 text-center transition-all ${
+                      billing === 'monthly'
+                        ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20'
+                        : 'border-muted hover:border-amber-200'
+                    }`}
+                  >
+                    <p className="text-base font-bold">${monthlyPrice}</p>
+                    <p className="text-xs text-muted-foreground">per month</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBilling('annual')}
+                    className={`flex-1 p-3 rounded-lg border-2 text-center transition-all relative ${
+                      billing === 'annual'
+                        ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20'
+                        : 'border-muted hover:border-amber-200'
+                    }`}
+                  >
+                    <Badge className="absolute -top-2 -right-1 bg-emerald-600 text-white text-[9px] px-1.5 py-0 h-4">
+                      Save 33%
+                    </Badge>
+                    <p className="text-base font-bold">${annualMonthly}</p>
+                    <p className="text-xs text-muted-foreground">per month (${annualPrice}/yr)</p>
+                  </button>
+                </div>
 
-            <Button
-              onClick={handleUpgrade}
-              disabled={loading || !configured}
-              className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white h-12 text-base font-semibold shadow-lg shadow-amber-500/20"
-            >
-              {loading ? (
-                <Loader2 className="size-5 animate-spin mr-2" />
+                <Button
+                  onClick={handleUpgrade}
+                  disabled={loading}
+                  className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white h-12 text-base font-semibold shadow-lg shadow-amber-500/20"
+                >
+                  {loading ? (
+                    <Loader2 className="size-5 animate-spin mr-2" />
+                  ) : (
+                    <Sparkles className="size-5 mr-2" />
+                  )}
+                  Start 7-Day Free Trial
+                </Button>
+
+                <p className="text-[11px] text-center text-muted-foreground">
+                  7-day free trial, then {billing === 'monthly' ? `$${monthlyPrice}/month` : `$${annualPrice}/year`}. Cancel anytime.
+                </p>
+              </>
+            )}
+
+            {/* Stripe not configured message */}
+            {!configured && configChecked && (
+              <div className="text-center py-2">
+                <p className="text-sm text-muted-foreground">Payment setup in progress — use a promo code below to unlock Pro now.</p>
+              </div>
+            )}
+
+            {/* Promo Code Section - always available */}
+            <div className="pt-1 border-t border-border/50">
+              {!showPromo ? (
+                <button
+                  type="button"
+                  onClick={() => setShowPromo(true)}
+                  className="flex items-center gap-1.5 mx-auto text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Ticket className="size-3.5" />
+                  Have a promo code?
+                </button>
               ) : (
-                <Sparkles className="size-5 mr-2" />
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value)}
+                      placeholder="Enter promo code"
+                      className="flex-1 h-9 text-sm"
+                      onKeyDown={(e) => e.key === 'Enter' && handlePromoCode()}
+                    />
+                    <Button
+                      onClick={handlePromoCode}
+                      disabled={promoLoading || !promoCode.trim()}
+                      size="sm"
+                      className="bg-amber-600 hover:bg-amber-700 text-white"
+                    >
+                      {promoLoading ? <Loader2 className="size-3 animate-spin" /> : 'Apply'}
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground text-center">
+                    Promo codes unlock Pro features without payment.
+                  </p>
+                </div>
               )}
-              {configured ? 'Start 7-Day Free Trial' : 'Coming Soon'}
-            </Button>
-
-            <p className="text-[11px] text-center text-muted-foreground">
-              7-day free trial, then {billing === 'monthly' ? `$${monthlyPrice}/month` : `$${annualPrice}/year`}. Cancel anytime. Your free app always works.
-            </p>
+            </div>
           </CardContent>
         </Card>
       )}

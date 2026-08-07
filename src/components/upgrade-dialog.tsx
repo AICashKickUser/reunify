@@ -41,7 +41,6 @@ export function UpgradeDialog({ open, onOpenChange, feature }: UpgradeDialogProp
 
   const handleUpgrade = async () => {
     if (!configured) {
-      toast.error('Bypassing payment — using promo code? Click "Have a promo code?" below.')
       setShowPromo(true)
       return
     }
