@@ -107,3 +107,34 @@ Stage Summary:
 - .env permanently removed from git history (secrets safe)
 - All versions now show 1.11.0 on the deployed site
 - New SW cache name (reunify-v1.11.0) will auto-invalidate old caches
+
+---
+Task ID: 5
+Agent: Main
+Task: Comprehensive bug sweep and fix
+
+Work Log:
+- Ran full codebase bug sweep - found 22 bugs total
+- Fixed 11 bugs (4 critical, 5 high, 2 medium):
+  1. Created missing /api/backup/upload/route.ts (cloud backups were always 404)
+  2. Fixed btoa() crash in encryptBackupData (XOR produces non-Latin1 bytes)
+  3. Fixed cloud backup pulling from server DB instead of client IndexedDB
+  4. Added escapeHtml() to PDF report to prevent XSS
+  5. Added scan-case-plan and go-pro to VALID_VIEWS (Android back button fix)
+  6. Fixed clean streak counting diluted/refused/pending as clean (CPS safety)
+  7. Standardized upgrade event name to reunify-show-upgrade across all files
+  8. Removed invalid Pages Router body size config from scan-case-plan route
+  9. Fixed download-aab passing raw Buffer instead of Uint8Array
+  10. Eliminated double calculateStreakFromDates call (performance)
+  11. Added manifest.json id field for stable PWA identity
+- Added @@index([caseId]) to all 9 child Prisma models
+- Ran db:push to update schema
+- Lint passes cleanly
+- Committed and pushed to GitHub (Vercel auto-deploy triggered)
+
+Stage Summary:
+- 11 bugs fixed, 9 DB indexes added
+- Cloud backups now fully functional
+- Clean streak is CPS-safe (only negative counts)
+- Upgrade dialog works from all Pro feature gates
+- XSS no longer possible in PDF reports
