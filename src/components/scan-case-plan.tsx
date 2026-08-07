@@ -247,8 +247,16 @@ function applyExifOrientation(
 
 /**
  * Compress an image file with EXIF orientation correction and size limits.
- * Uses createImageBitmap with imageOrientation when available (modern browsers),
- * falls back to manual EXIF correction for older browsers.
+ *
+ * Strategy: Always read EXIF orientation from the file, then use the fastest
+ * available decoding method while ensuring EXIF correction is applied correctly.
+ *
+ * 1. Read EXIF orientation from the file's binary data
+ * 2. Try createImageBitmap with imageOrientation:'none' — this gives us raw
+ *    pixels WITHOUT EXIF rotation, so we can apply it manually on canvas.
+ *    If imageOrientation:'none' is not supported, fall through.
+ * 3. Fallback: Use Image element + FileReader + manual EXIF correction on canvas
+ *
  * Handles the common mobile camera issues:
  * - EXIF orientation data (stripped by canvas, causing distortion)
  * - Very large images (12-20MP) that exceed canvas limits
@@ -258,54 +266,70 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promis
   // Mobile-safe: cap dimensions to avoid canvas memory issues
   const safeMaxWidth = Math.min(maxWidth, 1200)
 
-  // Try createImageBitmap with imageOrientation first (handles EXIF automatically)
-  // Only use this path if the browser supports imageOrientation — otherwise
-  // the bitmap will NOT have EXIF applied and will look distorted on mobile.
+  // Always read EXIF orientation first — needed for all code paths
+  const orientation = await getExifOrientation(file)
+
+  // Helper: compute scaled dimensions respecting EXIF orientation
+  function computeCanvasDims(rawWidth: number, rawHeight: number) {
+    let width = rawWidth
+    let height = rawHeight
+
+    // Scale down if needed — use mobile-safe dimensions
+    const maxDim = Math.min(safeMaxWidth, 1200)
+    if (width > maxDim) {
+      height = Math.round((height * maxDim) / width)
+      width = maxDim
+    }
+    if (height > maxDim) {
+      width = Math.round((width * maxDim) / height)
+      height = maxDim
+    }
+
+    // Ensure even dimensions
+    width = Math.round(width / 2) * 2
+    height = Math.round(height / 2) * 2
+
+    // Safety check: skip canvas if dimensions are too large for mobile devices
+    if (width * height > 4000000) {
+      const scale = Math.sqrt(4000000 / (width * height))
+      width = Math.round((width * scale) / 2) * 2
+      height = Math.round((height * scale) / 2) * 2
+    }
+
+    return { width, height }
+  }
+
+  // Path A: createImageBitmap with imageOrientation:'none'
+  // This explicitly requests raw pixels (no EXIF rotation), so we apply it manually.
+  // This is the PRIMARY path on modern mobile browsers.
   try {
     if (typeof createImageBitmap === 'function') {
-      // Try with imageOrientation option first (modern browsers)
       let bitmap: ImageBitmap
-      let usedImageOrientation = false
       try {
-        bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
-        usedImageOrientation = true
+        // Request raw pixels without EXIF orientation applied
+        bitmap = await createImageBitmap(file, { imageOrientation: 'none' })
       } catch {
-        // imageOrientation option not supported on this device
-        // Don't use createImageBitmap without it — it will ignore EXIF
-        // and cause distorted images. Fall through to manual method instead.
-        throw new Error('imageOrientation not supported, using manual EXIF fallback')
+        // imageOrientation:'none' not supported on this browser
+        // Fall through to the Image element method which handles EXIF correctly
+        throw new Error('imageOrientation:none not supported, using Image fallback')
       }
       try {
-        let width = bitmap.width
-        let height = bitmap.height
+        const { width, height } = computeCanvasDims(bitmap.width, bitmap.height)
 
-        // Scale down if needed — use mobile-safe dimensions
-        const maxDim = Math.min(safeMaxWidth, 1200)
-        if (width > maxDim) {
-          height = Math.round((height * maxDim) / width)
-          width = maxDim
-        }
-        if (height > maxDim) {
-          width = Math.round((width * maxDim) / height)
-          height = maxDim
-        }
-
-        // Ensure even dimensions
-        width = Math.round(width / 2) * 2
-        height = Math.round(height / 2) * 2
-
-        // Safety check: skip canvas if dimensions are too large for mobile devices
-        if (width * height > 4000000) {
-          const scale = Math.sqrt(4000000 / (width * height))
-          width = Math.round((width * scale) / 2) * 2
-          height = Math.round((height * scale) / 2) * 2
-        }
+        // For orientations 5-8, swap canvas dimensions (90°/270° rotation)
+        const needsSwap = orientation >= 5 && orientation <= 8
+        const canvasWidth = needsSwap ? height : width
+        const canvasHeight = needsSwap ? width : height
 
         const canvas = document.createElement('canvas')
-        canvas.width = width
-        canvas.height = height
+        canvas.width = canvasWidth
+        canvas.height = canvasHeight
+
         const ctx = canvas.getContext('2d')
         if (ctx) {
+          // Apply EXIF orientation correction to canvas transform
+          applyExifOrientation(ctx, orientation, width, height)
+          // Draw the raw (un-oriented) bitmap with computed dimensions
           ctx.drawImage(bitmap, 0, 0, width, height)
           bitmap.close()
           return canvas.toDataURL('image/jpeg', quality)
@@ -316,45 +340,24 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promis
       }
     }
   } catch {
-    // createImageBitmap not supported or imageOrientation not available
+    // createImageBitmap not supported or imageOrientation:'none' not available
     // Fall through to manual method which handles EXIF correctly
   }
 
-  // Fallback: manual EXIF orientation correction
+  // Path B: Fallback — manual EXIF orientation correction using Image element
+  // This works on ALL browsers including older mobile devices
   return new Promise(async (resolve, reject) => {
     try {
-      const orientation = await getExifOrientation(file)
-
       const reader = new FileReader()
       reader.onload = (e) => {
         const img = document.createElement('img')
         img.onload = () => {
           try {
             // Get original pixel dimensions
-            let width = img.naturalWidth || img.width
-            let height = img.naturalHeight || img.height
-
-            // Scale down if needed — use mobile-safe dimensions
-            const maxDim = Math.min(safeMaxWidth, 1200)
-            if (width > maxDim) {
-              height = Math.round((height * maxDim) / width)
-              width = maxDim
-            }
-            if (height > maxDim) {
-              width = Math.round((width * maxDim) / height)
-              height = maxDim
-            }
-
-            // Ensure even dimensions
-            width = Math.round(width / 2) * 2
-            height = Math.round(height / 2) * 2
-
-            // Safety check: skip canvas if dimensions are too large for mobile devices
-            if (width * height > 4000000) {
-              const scale = Math.sqrt(4000000 / (width * height))
-              width = Math.round((width * scale) / 2) * 2
-              height = Math.round((height * scale) / 2) * 2
-            }
+            const { width, height } = computeCanvasDims(
+              img.naturalWidth || img.width,
+              img.naturalHeight || img.height
+            )
 
             // For orientations 5-8, swap canvas dimensions
             const needsSwap = orientation >= 5 && orientation <= 8
@@ -374,7 +377,7 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.6): Promis
             // Apply EXIF orientation correction
             applyExifOrientation(ctx, orientation, width, height)
 
-            // Draw the image with original dimensions
+            // Draw the image with computed dimensions
             ctx.drawImage(img, 0, 0, width, height)
 
             resolve(canvas.toDataURL('image/jpeg', quality))
@@ -593,16 +596,18 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
     // Reset the input to ensure the same file can be selected again
     if (cameraInputRef.current) {
       cameraInputRef.current.value = ''
+      // Small delay helps some mobile browsers open the file picker
+      setTimeout(() => cameraInputRef.current?.click(), 50)
     }
-    cameraInputRef.current?.click()
   }, [])
 
   const handleGalleryClick = useCallback(() => {
     // Reset the input to ensure the same file can be selected again
     if (galleryInputRef.current) {
       galleryInputRef.current.value = ''
+      // Small delay helps some mobile browsers open the file picker
+      setTimeout(() => galleryInputRef.current?.click(), 50)
     }
-    galleryInputRef.current?.click()
   }, [])
 
   // Drag-and-drop handlers for fallback photo upload
@@ -1218,13 +1223,15 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
 
   const renderCapture = () => (
     <div className="space-y-6">
-      {/* Hidden file inputs — use sr-only instead of hidden for better mobile compatibility */}
+      {/* Hidden file inputs — use hidden (display:none) instead of sr-only for mobile compatibility.
+          sr-only uses position:absolute with 1px dimensions which can prevent the file picker
+          from opening on some mobile browsers. display:none is more reliable. */}
       <input
         ref={cameraInputRef}
         type="file"
         accept="image/*"
         capture="environment"
-        className="sr-only"
+        className="hidden"
         onChange={(e) => handleFilesSelected(e.target.files, true)}
       />
       <input
@@ -1232,7 +1239,7 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
         type="file"
         accept="image/*"
         multiple
-        className="sr-only"
+        className="hidden"
         onChange={(e) => handleFilesSelected(e.target.files, false)}
       />
 

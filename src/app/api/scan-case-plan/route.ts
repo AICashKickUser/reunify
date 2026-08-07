@@ -3,10 +3,22 @@ import ZAI from 'z-ai-web-dev-sdk'
 
 // Cache the SDK instance
 let zaiInstance: Awaited<ReturnType<typeof ZAI.create>> | null = null
+let zaiInitError: string | null = null
 
 async function getZAI() {
+  if (zaiInitError) {
+    throw new Error(`SDK initialization failed: ${zaiInitError}`)
+  }
   if (!zaiInstance) {
-    zaiInstance = await ZAI.create()
+    try {
+      zaiInstance = await ZAI.create()
+      console.log('[scan-case-plan] ZAI SDK initialized successfully')
+    } catch (initErr) {
+      const msg = initErr instanceof Error ? initErr.message : 'Unknown init error'
+      zaiInitError = msg
+      console.error('[scan-case-plan] ZAI SDK initialization failed:', msg)
+      throw new Error(`AI service unavailable: ${msg}`)
+    }
   }
   return zaiInstance
 }
@@ -103,7 +115,9 @@ EXTRACTION RULES:
 // Route segment config for large payloads
 export const maxDuration = 60
 
-// Increase body size limit for image uploads (up to 5 compressed images)
+// Max payload size: 15MB (5 images × ~3MB each after compression)
+const MAX_PAYLOAD_BYTES = 15 * 1024 * 1024
+
 export async function OPTIONS() {
   return NextResponse.json({}, {
     status: 200,
@@ -117,7 +131,17 @@ export async function OPTIONS() {
 
 export async function POST(request: NextRequest) {
   try {
-    // Try to parse the body - if it's too large, this will fail
+    // Pre-check content-length header to reject oversized payloads early
+    const contentLength = request.headers.get('content-length')
+    if (contentLength && parseInt(contentLength, 10) > MAX_PAYLOAD_BYTES) {
+      console.warn(`[scan-case-plan] Payload too large: ${contentLength} bytes (limit: ${MAX_PAYLOAD_BYTES})`)
+      return NextResponse.json(
+        { error: 'Photos are too large. Please try with fewer or smaller photos. You can also take photos from further away for smaller file sizes.' },
+        { status: 413 }
+      )
+    }
+
+    // Parse the request body
     let body
     try {
       body = await request.json()
@@ -153,10 +177,32 @@ export async function POST(request: NextRequest) {
     }
 
     // Log total payload size for debugging
-    const totalSize = images.reduce((sum, img) => sum + img.length, 0)
+    const totalSize = images.reduce((sum, img) => sum + (typeof img === 'string' ? img.length : 0), 0)
     console.log(`[scan-case-plan] Processing ${images.length} images, total size: ${(totalSize / 1024 / 1024).toFixed(2)}MB`)
 
-    const zai = await getZAI()
+    // Validate each image is a proper data URL
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i]
+      if (typeof img !== 'string' || !img.startsWith('data:')) {
+        console.error(`[scan-case-plan] Image ${i + 1} is not a valid data URL (starts with: ${typeof img === 'string' ? img.substring(0, 20) : typeof img})`)
+        return NextResponse.json(
+          { error: `Image ${i + 1} is not in a valid format. Please retake the photo and try again.` },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Initialize the AI SDK
+    let zai
+    try {
+      zai = await getZAI()
+    } catch (sdkErr) {
+      console.error('[scan-case-plan] SDK init error:', sdkErr)
+      return NextResponse.json(
+        { error: 'The AI service is currently unavailable. Please try again in a moment.' },
+        { status: 503 }
+      )
+    }
 
     // Build the content array with all images
     const imageContents = images.map((img) => ({
@@ -196,8 +242,10 @@ export async function POST(request: NextRequest) {
         userMessage = 'The AI service is currently unavailable. Please try again later.'
       } else if (errMsg.includes('content') || errMsg.includes('safety') || errMsg.includes('policy')) {
         userMessage = 'The AI could not process this image. Please make sure the photo is clear and shows a document.'
+      } else if (errMsg.includes('image') || errMsg.includes('format') || errMsg.includes('decode')) {
+        userMessage = 'The AI could not read this image. Please retake the photo with better lighting and try again.'
       } else {
-        userMessage = `AI analysis failed. Please try again with clearer photos taken from a well-lit area.`
+        userMessage = 'AI analysis failed. Please try again with clearer photos taken from a well-lit area.'
       }
       return NextResponse.json(
         { error: userMessage },
@@ -208,6 +256,7 @@ export async function POST(request: NextRequest) {
     const content = response.choices[0]?.message?.content
 
     if (!content) {
+      console.warn('[scan-case-plan] VLM returned empty content')
       return NextResponse.json(
         { error: 'No response from vision model. Please try again.' },
         { status: 502 }
@@ -226,9 +275,9 @@ export async function POST(request: NextRequest) {
     let parsed
     try {
       parsed = JSON.parse(cleanedContent)
-    } catch {
+    } catch (jsonErr) {
       // If JSON parse fails, return the raw content for the frontend to handle
-      console.log('[scan-case-plan] JSON parse failed, returning raw content')
+      console.warn('[scan-case-plan] JSON parse failed, returning raw content. Error:', jsonErr instanceof Error ? jsonErr.message : 'unknown')
       return NextResponse.json({
         success: true,
         raw: true,
@@ -245,9 +294,23 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('[scan-case-plan] Unexpected error:', error)
+    // Sanitize error message — don't expose internal details to client
     const errMsg = error instanceof Error ? error.message : 'Unknown error'
+    // Check for common infrastructure errors
+    if (errMsg.includes('ECONNREFUSED') || errMsg.includes('ENOTFOUND') || errMsg.includes('fetch failed')) {
+      return NextResponse.json(
+        { error: 'Could not connect to the AI service. Please check your internet connection and try again.' },
+        { status: 502 }
+      )
+    }
+    if (errMsg.includes('abort') || errMsg.includes('cancel')) {
+      return NextResponse.json(
+        { error: 'The analysis was cancelled. Please try again.' },
+        { status: 499 }
+      )
+    }
     return NextResponse.json(
-      { error: `Failed to analyze case plan: ${errMsg}` },
+      { error: 'Failed to analyze case plan. Please try again with clear, well-lit photos.' },
       { status: 500 }
     )
   }

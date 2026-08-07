@@ -163,7 +163,7 @@ export function AppLockScreen({ onUnlock }: AppLockScreenProps) {
   const getModeTitle = () => {
     switch (mode) {
       case 'setup': return 'Set Your PIN'
-      case 'confirm': return 'Confirm Your PIN'
+      case 'confirm': return 'Re-Enter Your PIN'
       case 'unlock': return 'Enter Your PIN'
     }
   }
@@ -171,7 +171,7 @@ export function AppLockScreen({ onUnlock }: AppLockScreenProps) {
   const getModeSubtitle = () => {
     switch (mode) {
       case 'setup': return 'Choose a 4-digit PIN to protect your data'
-      case 'confirm': return 'Re-enter your PIN to confirm'
+      case 'confirm': return 'Enter the same 4 digits to confirm'
       case 'unlock': return 'Enter your PIN to unlock'
     }
   }
@@ -198,6 +198,14 @@ export function AppLockScreen({ onUnlock }: AppLockScreenProps) {
         <h1 className="text-2xl font-bold text-white mb-1">Reunify</h1>
         <p className="text-emerald-300/80 text-sm mb-2">{getModeTitle()}</p>
         <p className="text-emerald-400/50 text-xs mb-8">{getModeSubtitle()}</p>
+
+        {/* Confirm mode transition banner */}
+        {mode === 'confirm' && (
+          <div className="mb-4 px-4 py-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-center max-w-xs">
+            <p className="text-amber-200 text-sm font-semibold">PIN entered!</p>
+            <p className="text-amber-300/80 text-xs mt-1">Now re-enter the same 4 digits to confirm</p>
+          </div>
+        )}
 
         {/* PIN Dots */}
         <div
@@ -233,20 +241,20 @@ export function AppLockScreen({ onUnlock }: AppLockScreenProps) {
         )}
 
         {/* Keypad */}
-        <div className="grid grid-cols-3 gap-3 w-full max-w-[280px] mb-6">
+        <div className="grid grid-cols-3 gap-4 w-full max-w-[300px] mb-6">
           {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'].map((key) => {
             if (key === '') {
-              return <div key="empty" className="h-16" />
+              return <div key="empty" className="min-h-[72px]" />
             }
             if (key === 'del') {
               return (
                 <button
                   key="del"
                   onClick={handleDelete}
-                  className="flex items-center justify-center h-16 rounded-2xl bg-white/5 hover:bg-white/15 active:bg-white/20 active:scale-95 transition-all text-white/60 hover:text-white"
+                  className="flex items-center justify-center min-h-[72px] rounded-2xl bg-white/5 hover:bg-white/15 active:bg-white/20 active:scale-95 transition-all text-white/60 hover:text-white"
                   aria-label="Delete"
                 >
-                  <Delete className="size-6" />
+                  <Delete className="size-7" />
                 </button>
               )
             }
@@ -255,7 +263,7 @@ export function AppLockScreen({ onUnlock }: AppLockScreenProps) {
                 key={key}
                 onClick={() => handleDigitPress(key)}
                 disabled={cooldown > 0}
-                className="flex items-center justify-center h-16 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-white/25 active:scale-95 transition-all text-white text-2xl font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex items-center justify-center min-h-[72px] rounded-2xl bg-white/10 hover:bg-white/20 active:bg-white/25 active:scale-95 transition-all text-white text-3xl font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                 aria-label={`Digit ${key}`}
               >
                 {key}

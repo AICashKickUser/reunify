@@ -6,6 +6,7 @@ import {
   useDrugTests,
   useCreateItem,
   useUpdateItem,
+  useDeleteItem,
 } from '@/lib/data-hooks'
 import { CATEGORY_COLORS } from '@/lib/types'
 import type { DrugTest } from '@/lib/types'
@@ -28,6 +29,7 @@ import {
   ChevronUp,
   PhoneOff,
   Loader2,
+  Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -140,6 +142,7 @@ export function DrugTestingView() {
   const { data: drugTests, isLoading } = useDrugTests(activeCaseId)
   const createMutation = useCreateItem('drug-tests')
   const updateMutation = useUpdateItem('drug-tests')
+  const deleteMutation = useDeleteItem('drug-tests')
 
   const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set())
   const [previousWeeksExpanded, setPreviousWeeksExpanded] = useState(true)
@@ -171,6 +174,27 @@ export function DrugTestingView() {
     return map
   }, [drugTests])
 
+  // ─── Detect duplicate entries per date ─────────────────────────────────
+
+  const duplicateEntries = useMemo(() => {
+    if (!drugTests || drugTests.length <= 1) return []
+    const dateCounts = new Map<string, DrugTest[]>()
+    for (const test of drugTests) {
+      const key = safeDateKey(test.date)
+      const list = dateCounts.get(key) || []
+      list.push(test)
+      dateCounts.set(key, list)
+    }
+    // Return all entries for dates that have more than one
+    const dupes: { dateKey: string; entries: DrugTest[] }[] = []
+    for (const [key, list] of dateCounts) {
+      if (list.length > 1) {
+        dupes.push({ dateKey: key, entries: list })
+      }
+    }
+    return dupes
+  }, [drugTests])
+
   // Keep a ref to the latest testByDate so callbacks always read fresh data
   // MUST be after testByDate useMemo so it captures the correct value
   const testByDateRef = useRef(testByDate)
@@ -184,6 +208,8 @@ export function DrugTestingView() {
   createMutateRef.current = createMutation.mutate
   const updateMutateRef = useRef(updateMutation.mutate)
   updateMutateRef.current = updateMutation.mutate
+  const deleteMutateRef = useRef(deleteMutation.mutate)
+  deleteMutateRef.current = deleteMutation.mutate
 
   // Keep a ref for activeCaseId so callbacks never go stale
   const activeCaseIdRef = useRef(activeCaseId)
@@ -441,6 +467,18 @@ export function DrugTestingView() {
       }
     },
     [] // All dependencies read from refs
+  )
+
+  // ─── Handler: Delete a drug test entry ────────────────────────────────────
+
+  const handleDelete = useCallback(
+    (testId: string, dayLabel: string) => {
+      deleteMutateRef.current(testId, {
+        onSuccess: () => toast.success(`${dayLabel}: Entry removed`),
+        onError: () => toast.error('Failed to delete — please try again'),
+      })
+    },
+    []
   )
 
   // ─── Toggle result expansion ─────────────────────────────────────────────
@@ -759,12 +797,24 @@ export function DrugTestingView() {
                         <span className="font-medium">Positive result — contact your caseworker immediately.</span>
                       </div>
                     )}
+                    {/* Delete button */}
+                    <div className="mt-2 pt-2 border-t border-amber-200/50 dark:border-amber-800/50">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(test.id, DAY_NAMES[dayIndex])}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 text-xs h-7"
+                      >
+                        <Trash2 className="size-3 mr-1" />
+                        Delete this entry
+                      </Button>
+                    </div>
                   </div>
                 )}
 
                 {/* Compact result badge for tested days (when not expanded) */}
                 {status === 'called-tested' && test && test.result && !isExpanded && (
-                  <div className="sm:ml-[100px]">
+                  <div className="sm:ml-[100px] flex items-center gap-1.5">
                     <Badge
                       className={
                         test.result === 'negative'
@@ -778,6 +828,13 @@ export function DrugTestingView() {
                     >
                       {test.result === 'negative' ? '✓ Clean' : test.result === 'positive' ? '✗ Positive' : test.result === 'diluted' ? 'Diluted' : 'Pending'}
                     </Badge>
+                    <button
+                      onClick={() => handleDelete(test.id, DAY_NAMES[dayIndex])}
+                      className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/20 text-red-400 hover:text-red-600 transition-colors"
+                      aria-label="Delete entry"
+                    >
+                      <Trash2 className="size-3" />
+                    </button>
                   </div>
                 )}
               </div>
@@ -897,10 +954,20 @@ export function DrugTestingView() {
                         return (
                           <div
                             key={key}
-                            className={`flex flex-col items-center justify-center py-1.5 rounded ${cellBg} ${cellText}`}
+                            className={`relative flex flex-col items-center justify-center py-1.5 rounded ${cellBg} ${cellText} group`}
                           >
                             <span className="text-[10px] font-medium leading-none mb-0.5">{DAY_NAMES[i]}</span>
                             {icon}
+                            {/* Delete button on hover/tap */}
+                            {t && (
+                              <button
+                                onClick={() => handleDelete(t.id, DAY_NAMES[i])}
+                                className="absolute -top-1 -right-1 size-4 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                aria-label={`Delete ${DAY_NAMES[i]} entry`}
+                              >
+                                <Trash2 className="size-2.5" />
+                              </button>
+                            )}
                           </div>
                         )
                       })}
@@ -924,6 +991,63 @@ export function DrugTestingView() {
               })}
             </CardContent>
           )}
+        </Card>
+      )}
+
+      {/* ── Duplicate Entries Cleanup ─────────────────────────────────────── */}
+      {duplicateEntries.length > 0 && (
+        <Card className="border-orange-200 dark:border-orange-800 bg-orange-50/30 dark:bg-orange-950/5">
+          <CardHeader className="pb-2 px-3 sm:px-6">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="size-4 text-orange-600" />
+              <CardTitle className="text-sm font-semibold text-orange-700 dark:text-orange-400">
+                Duplicate Entries Found
+              </CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2 px-3 sm:px-6">
+            <p className="text-xs text-orange-600/80 dark:text-orange-400/80">
+              Some dates have multiple entries. The most recent one is shown in the weekly view. Delete extras below.
+            </p>
+            {duplicateEntries.map(({ dateKey, entries }) => (
+              <div key={dateKey} className="space-y-1">
+                <p className="text-xs font-medium text-foreground">{dateKey} — {entries.length} entries:</p>
+                {entries.map((entry, i) => {
+                  const isPrimary = testByDate.get(dateKey)?.id === entry.id
+                  return (
+                    <div key={entry.id} className="flex items-center justify-between gap-2 p-1.5 rounded bg-white dark:bg-gray-900/30 border border-orange-200/50 dark:border-orange-800/30">
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-muted-foreground">#{i + 1}</span>
+                        <Badge className={
+                          entry.result === 'negative'
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                            : entry.result === 'positive'
+                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                            : entry.result === 'diluted'
+                            ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                        }>
+                          {entry.result || entry.callResult || 'entry'}
+                        </Badge>
+                        {isPrimary && <span className="text-emerald-600 text-[10px] font-medium">← shown in view</span>}
+                      </div>
+                      {!isPrimary && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(entry.id, dateKey)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 text-xs h-6 px-2"
+                        >
+                          <Trash2 className="size-3 mr-1" />
+                          Delete
+                        </Button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </CardContent>
         </Card>
       )}
 
