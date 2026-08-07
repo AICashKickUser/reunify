@@ -554,7 +554,7 @@ export function AppSidebar() {
         </div>
         <div className="group-data-[collapsible=icon]:hidden mt-2">
           <p className="text-[10px] text-muted-foreground text-center leading-tight">
-            v1.9.0 · Every step brings you closer
+            v1.11.0 · Every step brings you closer
             <br />
             to your kids
           </p>

@@ -66,3 +66,24 @@ Stage Summary:
 - assetlinks.json now has both upload key and app signing key fingerprints
 - Build script updated with upload key fingerprint
 - AAB is ready for upload to Google Play Console
+
+---
+Task ID: 3
+Agent: Main
+Task: Fix version number mismatch - user sees "1.7" but should see "1.11.0"
+
+Work Log:
+- Found 5 different version numbers scattered across codebase (1.7.0, 1.9.0, 1.10.0, 1.11.0)
+- Updated package.json: 1.7.0 → 1.11.0
+- Updated manifest.json: 1.10.0 → 1.11.0
+- Updated sw.js CACHE_NAME: reunify-v1.10.0 → reunify-v1.11.0
+- Updated app-sidebar.tsx: v1.9.0 → v1.11.0
+- page.tsx footer was already v1.11.0 (confirmed)
+- Updated download API route default and allowedFiles
+- Updated download-aab API route to serve 1.11.0 AAB
+- Verified all 7 locations now show 1.11.0
+
+Stage Summary:
+- All version numbers synchronized to 1.11.0
+- New SW cache name (reunify-v1.11.0) will force cache invalidation on next load
+- User seeing "1.7" was from stale Vercel deployment / cached service worker

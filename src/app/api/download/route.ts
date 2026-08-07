@@ -5,7 +5,7 @@ import { join } from 'path';
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const file = searchParams.get('file') || 'reunify-1.0.0.aab';
+    const file = searchParams.get('file') || 'reunify-1.11.0.aab';
     
     // Only allow specific files for security
     const allowedFiles = [
@@ -22,6 +22,10 @@ export async function GET(request: NextRequest) {
       'reunify-1.6.0.zip',
       'reunify-1.7.0.aab',
       'reunify-1.7.0.zip',
+      'reunify-1.8.0.aab',
+      'reunify-1.10.0.aab',
+      'reunify-1.11.0.aab',
+      'reunify-1.11.0.zip',
       'reunify-key.jks',
     ];
     
