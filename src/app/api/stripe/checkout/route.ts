@@ -7,8 +7,12 @@ export async function POST(request: NextRequest) {
     const priceAnnual = process.env.STRIPE_PRICE_ANNUAL
 
     if (!stripeSecretKey || !priceMonthly) {
+      const missing = []
+      if (!stripeSecretKey) missing.push('STRIPE_SECRET_KEY')
+      if (!priceMonthly) missing.push('STRIPE_PRICE_MONTHLY')
+      console.error('[stripe/checkout] Missing env vars:', missing.join(', '))
       return NextResponse.json(
-        { error: 'Payment system is being set up. Please try again later.' },
+        { error: 'Payment system is being set up. Please try again later or use a promo code.' },
         { status: 503 }
       )
     }

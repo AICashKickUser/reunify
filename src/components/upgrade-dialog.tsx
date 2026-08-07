@@ -10,9 +10,9 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Crown, Check, Loader2, Sparkles } from 'lucide-react'
-import { PRO_FEATURES } from '@/lib/subscription'
-import { useSubscriptionStore, isProActive } from '@/lib/subscription'
+import { Input } from '@/components/ui/input'
+import { Crown, Check, Loader2, Sparkles, Ticket } from 'lucide-react'
+import { PRO_FEATURES, useSubscriptionStore, isProActive } from '@/lib/subscription'
 import { toast } from 'sonner'
 
 interface UpgradeDialogProps {
@@ -25,6 +25,9 @@ export function UpgradeDialog({ open, onOpenChange, feature }: UpgradeDialogProp
   const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
   const [loading, setLoading] = useState(false)
   const [configured, setConfigured] = useState(false)
+  const [promoCode, setPromoCode] = useState('')
+  const [promoLoading, setPromoLoading] = useState(false)
+  const [showPromo, setShowPromo] = useState(false)
   const subscription = useSubscriptionStore()
   const isPro = isProActive(subscription)
 
@@ -36,19 +39,10 @@ export function UpgradeDialog({ open, onOpenChange, feature }: UpgradeDialogProp
       .catch(() => setConfigured(false))
   }, [])
 
-  // Listen for upgrade dialog events
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const customEvent = e as CustomEvent
-      console.log('[upgrade-dialog] Show upgrade for:', customEvent.detail?.featureId)
-    }
-    window.addEventListener('reunify-show-upgrade', handler)
-    return () => window.removeEventListener('reunify-show-upgrade', handler)
-  }, [])
-
   const handleUpgrade = async () => {
     if (!configured) {
-      toast.error('Payment system is being set up. Please try again later.')
+      toast.error('Bypassing payment — using promo code? Click "Have a promo code?" below.')
+      setShowPromo(true)
       return
     }
 
@@ -78,9 +72,49 @@ export function UpgradeDialog({ open, onOpenChange, feature }: UpgradeDialogProp
     }
   }
 
+  const handlePromoCode = async () => {
+    if (!promoCode.trim()) {
+      toast.error('Please enter a promo code.')
+      return
+    }
+
+    setPromoLoading(true)
+    try {
+      const response = await fetch('/api/stripe/promo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: promoCode.trim() }),
+      })
+
+      const data = await response.json()
+
+      if (data.error) {
+        toast.error(data.error)
+        return
+      }
+
+      if (data.success) {
+        // Activate Pro in the local subscription store
+        subscription.activatePro({
+          periodEnd: data.currentPeriodEnd,
+          customerId: 'promo',
+          subscriptionId: `promo-${Date.now()}`,
+        })
+        toast.success(data.message || 'Pro activated!')
+        onOpenChange(false)
+        setPromoCode('')
+        setShowPromo(false)
+      }
+    } catch (err) {
+      toast.error('Could not validate promo code. Please try again.')
+    } finally {
+      setPromoLoading(false)
+    }
+  }
+
   const handleManage = async () => {
-    if (!subscription.stripeCustomerId) {
-      toast.error('No billing account found')
+    if (!subscription.stripeCustomerId || subscription.stripeCustomerId === 'promo') {
+      toast.info('Pro was activated via promo code. No billing portal needed.')
       return
     }
 
@@ -145,14 +179,14 @@ export function UpgradeDialog({ open, onOpenChange, feature }: UpgradeDialogProp
         {/* Pro Feature List */}
         <div className="space-y-2.5 my-2">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pro adds:</p>
-          {PRO_FEATURES.map((feature) => (
-            <div key={feature.id} className="flex items-start gap-2.5">
+          {PRO_FEATURES.map((feat) => (
+            <div key={feat.id} className="flex items-start gap-2.5">
               <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 mt-0.5">
                 <Check className="size-3 text-amber-600" />
               </div>
               <div>
-                <p className="text-sm font-medium">{feature.title}</p>
-                <p className="text-xs text-muted-foreground">{feature.description}</p>
+                <p className="text-sm font-medium">{feat.title}</p>
+                <p className="text-xs text-muted-foreground">{feat.description}</p>
               </div>
             </div>
           ))}
@@ -193,7 +227,7 @@ export function UpgradeDialog({ open, onOpenChange, feature }: UpgradeDialogProp
 
             <Button
               onClick={handleUpgrade}
-              disabled={loading || !configured}
+              disabled={loading}
               className="w-full bg-amber-600 hover:bg-amber-700 text-white h-11"
             >
               {loading ? (
@@ -208,6 +242,43 @@ export function UpgradeDialog({ open, onOpenChange, feature }: UpgradeDialogProp
               Free trial then {billing === 'monthly' ? `$${monthlyPrice}/month` : `$${annualPrice}/year`}. Cancel anytime.
               Your basic app features always work for free.
             </p>
+
+            {/* Promo Code Section */}
+            <div className="pt-1">
+              {!showPromo ? (
+                <button
+                  type="button"
+                  onClick={() => setShowPromo(true)}
+                  className="flex items-center gap-1.5 mx-auto text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Ticket className="size-3" />
+                  Have a promo code?
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value)}
+                      placeholder="Enter promo code"
+                      className="flex-1 h-9 text-sm"
+                      onKeyDown={(e) => e.key === 'Enter' && handlePromoCode()}
+                    />
+                    <Button
+                      onClick={handlePromoCode}
+                      disabled={promoLoading || !promoCode.trim()}
+                      size="sm"
+                      className="bg-amber-600 hover:bg-amber-700 text-white"
+                    >
+                      {promoLoading ? <Loader2 className="size-3 animate-spin" /> : 'Apply'}
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground text-center">
+                    Promo codes unlock Pro features without payment.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -218,19 +289,23 @@ export function UpgradeDialog({ open, onOpenChange, feature }: UpgradeDialogProp
               <Crown className="size-4 text-amber-600" />
               <div>
                 <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
-                  {subscription.status === 'trialing' ? 'Free Trial Active' : 'Pro Active'}
+                  {subscription.stripeCustomerId === 'promo'
+                    ? 'Pro via Promo Code'
+                    : subscription.status === 'trialing'
+                      ? 'Free Trial Active'
+                      : 'Pro Active'}
                 </p>
                 {subscription.currentPeriodEnd && (
                   <p className="text-xs text-muted-foreground">
                     {subscription.cancelAtPeriodEnd
                       ? `Ends ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`
-                      : `Renews ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`}
+                      : `Active until ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`}
                   </p>
                 )}
               </div>
             </div>
 
-            {subscription.stripeCustomerId && (
+            {subscription.stripeCustomerId && subscription.stripeCustomerId !== 'promo' && (
               <Button
                 onClick={handleManage}
                 variant="outline"
