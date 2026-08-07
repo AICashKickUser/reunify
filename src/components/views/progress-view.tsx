@@ -1062,7 +1062,7 @@ export function ProgressView() {
   const { data: caseData, isLoading } = useCase(activeCaseId)
   const [exporting, setExporting] = useState(false)
   const [summaryOpen, setSummaryOpen] = useState(false)
-  const { isPro: isProUser } = useProFeature('court-reports')
+  const { isPro: isProUser } = useProFeature('court-ready-pdf')
   async function handleExport() {
     if (!activeCaseId) return
     try {
