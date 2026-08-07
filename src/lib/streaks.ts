@@ -246,7 +246,7 @@ export function recordActivity(type: string): CelebrationType | null {
 
   // Calculate streak
   const activeDates = history.activities.map(a => a.date)
-  const { currentStreak } = calculateStreakFromDates(activeDates)
+  const { currentStreak, longestStreak } = calculateStreakFromDates(activeDates)
 
   // Check for celebration milestone
   const milestone = CELEBRATION_MILESTONES[currentStreak]
@@ -255,7 +255,7 @@ export function recordActivity(type: string): CelebrationType | null {
     saveStreakHistory(history)
     saveStreakData({
       currentStreak,
-      longestStreak: calculateStreakFromDates(activeDates).longestStreak,
+      longestStreak,
       lastActiveDate: today,
       totalActiveDays: new Set(activeDates).size,
       thisWeekActive: countThisWeekActive(activeDates),
@@ -266,7 +266,7 @@ export function recordActivity(type: string): CelebrationType | null {
   saveStreakHistory(history)
   saveStreakData({
     currentStreak,
-    longestStreak: calculateStreakFromDates(activeDates).longestStreak,
+    longestStreak,
     lastActiveDate: today,
     totalActiveDays: new Set(activeDates).size,
     thisWeekActive: countThisWeekActive(activeDates),
@@ -502,7 +502,8 @@ export function calculateCleanStreak(drugTests: DrugTest[]): CleanStreakResult {
 
   for (let i = testsWithResults.length - 1; i >= 0; i--) {
     const test = testsWithResults[i]
-    if (test.result === 'positive') {
+    // Only 'negative' counts as clean. Anything else (positive, diluted, refused, pending) breaks the streak.
+    if (test.result !== 'negative') {
       break
     }
     currentStreak++
@@ -513,7 +514,8 @@ export function calculateCleanStreak(drugTests: DrugTest[]): CleanStreakResult {
   let tempStreak = 0
 
   for (const test of testsWithResults) {
-    if (test.result === 'positive') {
+    // Only 'negative' extends the streak. Anything else breaks it.
+    if (test.result !== 'negative') {
       longestStreak = Math.max(longestStreak, tempStreak)
       tempStreak = 0
     } else {
@@ -522,7 +524,7 @@ export function calculateCleanStreak(drugTests: DrugTest[]): CleanStreakResult {
   }
   longestStreak = Math.max(longestStreak, tempStreak)
 
-  if (currentStreak === 0 && testsWithResults.every((t) => t.result !== 'positive')) {
+  if (currentStreak === 0 && testsWithResults.every((t) => t.result === 'negative')) {
     currentStreak = testsWithResults.length
     startDate = testsWithResults[0].date
   }

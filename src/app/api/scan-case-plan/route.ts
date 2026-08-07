@@ -103,15 +103,6 @@ EXTRACTION RULES:
 // Route segment config for large payloads
 export const maxDuration = 60
 
-// Allow larger request bodies for image uploads (up to 5 compressed images at ~2MB each)
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '15mb',
-    },
-  },
-}
-
 // Increase body size limit for image uploads (up to 5 compressed images)
 export async function OPTIONS() {
   return NextResponse.json({}, {

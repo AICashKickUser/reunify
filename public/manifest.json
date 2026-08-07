@@ -4,6 +4,7 @@
   "description": "Track your CPS reunification case plan progress. Stay organized, stay focused, bring your kids home.",
   "version": "1.11.0",
   "version_name": "1.11.0 - Pro Subscription & Stripe Integration",
+  "id": "/",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

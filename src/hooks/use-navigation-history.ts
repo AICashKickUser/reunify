@@ -7,6 +7,7 @@ const VALID_VIEWS: ViewType[] = [
   'dashboard', 'timeline', 'case-plan', 'counseling', 'drug-testing',
   'na-steps', 'na-meetings', 'supervised-visits', 'court-dates',
   'parenting-classes', 'daily-checkins', 'progress', 'backup',
+  'scan-case-plan', 'go-pro',
 ]
 
 /**

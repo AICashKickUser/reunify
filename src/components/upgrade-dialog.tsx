@@ -42,8 +42,8 @@ export function UpgradeDialog({ open, onOpenChange, feature }: UpgradeDialogProp
       const customEvent = e as CustomEvent
       console.log('[upgrade-dialog] Show upgrade for:', customEvent.detail?.featureId)
     }
-    window.addEventListener('show-upgrade-dialog', handler)
-    return () => window.removeEventListener('show-upgrade-dialog', handler)
+    window.addEventListener('reunify-show-upgrade', handler)
+    return () => window.removeEventListener('reunify-show-upgrade', handler)
   }, [])
 
   const handleUpgrade = async () => {

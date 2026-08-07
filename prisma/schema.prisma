@@ -64,6 +64,8 @@ model CaseRequirement {
   updatedAt       DateTime @updatedAt
 
   case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
 }
 
 model CounselingSession {
@@ -79,6 +81,8 @@ model CounselingSession {
   updatedAt       DateTime @updatedAt
 
   case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
 }
 
 model DrugTest {
@@ -98,6 +102,8 @@ model DrugTest {
   updatedAt       DateTime @updatedAt
 
   case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
 }
 
 model NAStep {
@@ -115,6 +121,8 @@ model NAStep {
   updatedAt       DateTime @updatedAt
 
   case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
 }
 
 model NAMeeting {
@@ -131,6 +139,8 @@ model NAMeeting {
   updatedAt       DateTime @updatedAt
 
   case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
 }
 
 model SupervisedVisit {
@@ -149,6 +159,8 @@ model SupervisedVisit {
   updatedAt       DateTime @updatedAt
 
   case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
 }
 
 model CourtDate {
@@ -165,6 +177,8 @@ model CourtDate {
   updatedAt       DateTime @updatedAt
 
   case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
 }
 
 model ParentingClass {
@@ -181,6 +195,8 @@ model ParentingClass {
   updatedAt       DateTime @updatedAt
 
   case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
 }
 
 model Milestone {
@@ -197,6 +213,8 @@ model Milestone {
   updatedAt       DateTime @updatedAt
 
   case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
 }
 
 model DailyCheckIn {
@@ -212,4 +230,6 @@ model DailyCheckIn {
   updatedAt       DateTime @updatedAt
 
   case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
 }

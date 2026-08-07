@@ -4,6 +4,8 @@
  * Uses simple XOR encryption with a key derived from the case ID.
  */
 
+import { exportAllData } from '@/lib/client-db'
+
 const BACKUP_VERSION = '1.0.0'
 const AUTO_BACKUP_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
 const LOCALSTORAGE_KEY_PREFIX = 'reunify-last-backup-'
@@ -30,12 +32,35 @@ function deriveKey(caseId: string): string {
  * XOR encrypt/decrypt a string using a key.
  * XOR is symmetric: encrypt === decrypt.
  */
-function xorCipher(text: string, key: string): string {
-  let result = ''
+function xorCipher(text: string, key: string): Uint8Array {
+  const result = new Uint8Array(text.length)
   for (let i = 0; i < text.length; i++) {
-    result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length))
+    result[i] = text.charCodeAt(i) ^ key.charCodeAt(i % key.length)
   }
   return result
+}
+
+/**
+ * Convert a Uint8Array to a base64 string (works in all environments).
+ */
+function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = ''
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  return btoa(binary)
+}
+
+/**
+ * Convert a base64 string to a Uint8Array.
+ */
+function base64ToUint8(base64: string): Uint8Array {
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return bytes
 }
 
 /**
@@ -44,8 +69,7 @@ function xorCipher(text: string, key: string): string {
 export function encryptBackupData(jsonString: string, caseId: string): string {
   const key = deriveKey(caseId)
   const encrypted = xorCipher(jsonString, key)
-  // Convert to base64 for safe storage
-  return btoa(encrypted)
+  return uint8ToBase64(encrypted)
 }
 
 /**
@@ -53,8 +77,13 @@ export function encryptBackupData(jsonString: string, caseId: string): string {
  */
 export function decryptBackupData(encryptedBase64: string, caseId: string): string {
   const key = deriveKey(caseId)
-  const encrypted = atob(encryptedBase64)
-  return xorCipher(encrypted, key)
+  const encryptedBytes = base64ToUint8(encryptedBase64)
+  // Decrypt by XOR-ing each byte with the key
+  let result = ''
+  for (let i = 0; i < encryptedBytes.length; i++) {
+    result += String.fromCharCode(encryptedBytes[i] ^ key.charCodeAt(i % key.length))
+  }
+  return result
 }
 
 // ── LocalStorage Helpers ────────────────────────────────────────────────
@@ -162,10 +191,8 @@ export async function getServerBackupStatus(caseId: string): Promise<BackupStatu
 
 export async function performBackup(caseId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    // 1. Gather all case data from the server
-    const res = await fetch(`/api/export?caseId=${caseId}`)
-    if (!res.ok) throw new Error('Failed to gather case data')
-    const caseData = await res.json()
+    // 1. Gather all case data from client-side IndexedDB
+    const caseData = await exportAllData()
 
     // 2. Encrypt the data
     const jsonString = JSON.stringify(caseData)

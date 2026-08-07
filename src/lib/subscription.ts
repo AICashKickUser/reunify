@@ -173,7 +173,7 @@ export function useProFeature(featureId: ProFeatureId): {
     isTrialing: isTrialing(store),
     showUpgrade: () => {
       // Dispatch event to show upgrade dialog
-      window.dispatchEvent(new CustomEvent('show-upgrade-dialog', { detail: { featureId } }))
+      window.dispatchEvent(new CustomEvent('reunify-show-upgrade', { detail: { feature: featureId } }))
     },
   }
 }
