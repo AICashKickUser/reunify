@@ -19,7 +19,7 @@ const fs = require('fs')
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-const APP_VERSION_CODE = 10
+const APP_VERSION_CODE = 11
 const APP_VERSION_NAME = '1.11.0'
 const TARGET_SDK_VERSION = 36
 const MIN_SDK_VERSION = 24
