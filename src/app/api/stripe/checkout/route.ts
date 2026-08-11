@@ -10,9 +10,11 @@ export async function POST(request: NextRequest) {
       const missing = []
       if (!stripeSecretKey) missing.push('STRIPE_SECRET_KEY')
       if (!priceMonthly) missing.push('STRIPE_PRICE_MONTHLY')
+      if (!priceAnnual) missing.push('STRIPE_PRICE_ANNUAL')
       console.error('[stripe/checkout] Missing env vars:', missing.join(', '))
+      // Return which vars are missing so we can debug
       return NextResponse.json(
-        { error: 'Payment system is being set up. Please try again later or use a promo code.' },
+        { error: `Missing: ${missing.join(', ')}. Please set in Vercel env vars and redeploy.` },
         { status: 503 }
       )
     }
