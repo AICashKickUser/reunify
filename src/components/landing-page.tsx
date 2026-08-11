@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   Shield, Check, FileText, Cloud, Camera, BarChart3,
-  ChevronRight, Smartphone, Lock, Heart, Download, Star
+  ChevronRight, Smartphone, Lock, Heart, Download, Star, Ticket, Users, Copy
 } from 'lucide-react'
 
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.aicashkick.reunify'
@@ -57,12 +57,13 @@ const TESTIMONIALS = [
 ]
 
 export function LandingPage() {
-  const [ref, setRef] = useState<string>('')
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    setRef(params.get('ref') || 'direct')
-  }, [])
+  const [ref] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      return params.get('ref') || 'direct'
+    }
+    return 'direct'
+  })
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
@@ -207,6 +208,56 @@ export function LandingPage() {
             cloud backup &amp; restore, and AI case plan scanning.{' '}
             <strong>7-day free trial</strong>, then $4.99/mo or $39.99/yr.
           </p>
+        </div>
+      </section>
+
+      {/* For Professionals — Promo Code */}
+      <section className="py-12 sm:py-16 bg-amber-50/60">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
+          <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-sm font-medium mb-4">
+            <Users className="size-4" /> For Professionals
+          </div>
+          <h3 className="text-xl sm:text-2xl font-bold mb-3">
+            Social workers, attorneys &amp; CASA volunteers
+          </h3>
+          <p className="text-gray-600 mb-6 max-w-xl mx-auto">
+            Help the families on your caseload stay compliant. Share Reunify with them — and use this
+            promo code to get <strong>90 days of Pro features free</strong> (court-ready reports, cloud backup, AI scanning).
+          </p>
+          <div className="inline-flex items-center gap-3 bg-white border-2 border-amber-300 rounded-xl px-5 py-3 shadow-sm">
+            <Ticket className="size-5 text-amber-500" />
+            <span className="text-lg font-mono font-bold text-gray-900 tracking-wider">reunify-review</span>
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText('reunify-review')
+              }}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label="Copy promo code"
+            >
+              <Copy className="size-4" />
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-3">
+            Enter in app under Go Pro → Have a promo code?
+          </p>
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4 text-sm text-gray-600">
+            <a
+              href={`${PLAY_STORE_URL}&referrer=${ref}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-emerald-700 font-semibold hover:text-emerald-800 transition-colors"
+            >
+              <Download className="size-4" /> Download for your families
+            </a>
+            <span className="hidden sm:inline text-gray-300">|</span>
+            <a
+              href={`https://reunify-six.vercel.app/?landing&ref=socialworker`}
+              className="inline-flex items-center gap-2 text-emerald-700 font-semibold hover:text-emerald-800 transition-colors"
+            >
+              <ChevronRight className="size-4" /> Share landing page
+            </a>
+          </div>
         </div>
       </section>
 

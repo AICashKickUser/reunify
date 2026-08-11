@@ -194,13 +194,13 @@ function useCheckoutSuccess() {
 }
 
 function useShowLanding() {
-  const [show, setShow] = useState(false)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    if (params.has('landing') || params.has('ref')) {
-      setShow(true)
+  const [show] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      return params.has('landing') || params.has('ref')
     }
-  }, [])
+    return false
+  })
   return show
 }
 
