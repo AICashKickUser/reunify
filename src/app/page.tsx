@@ -17,6 +17,7 @@ import { useAutoBackup } from '@/hooks/use-auto-backup'
 import { useCases } from '@/lib/data-hooks'
 import { UpgradeDialog } from '@/components/upgrade-dialog'
 import { useSubscriptionStore, isProActive } from '@/lib/subscription'
+import { LandingPage } from '@/components/landing-page'
 
 /**
  * Auto-detects existing cases and sets the activeCaseId if none is set.
@@ -192,7 +193,19 @@ function useCheckoutSuccess() {
   }, [])
 }
 
+function useShowLanding() {
+  const [show, setShow] = useState(false)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.has('landing') || params.has('ref')) {
+      setShow(true)
+    }
+  }, [])
+  return show
+}
+
 export default function Home() {
+  const showLanding = useShowLanding()
   const { activeCaseId, activeView } = useAppStore()
   const { isUnlocked, handleUnlock, mounted } = useAppLock()
   const { upgradeOpen, setUpgradeOpen, upgradeFeature } = useUpgradeDialog()
@@ -208,6 +221,11 @@ export default function Home() {
 
   // Auto-select existing case so the app doesn't show onboarding when data exists
   useAutoSelectCase()
+
+  // Show landing page for marketing links (?landing or ?ref=...)
+  if (showLanding) {
+    return <LandingPage />
+  }
 
   // Show lock screen if app lock is enabled and not yet unlocked
   if (mounted && !isUnlocked) {
@@ -232,7 +250,7 @@ export default function Home() {
           <footer className="border-t bg-background py-2 sm:py-3 px-3 sm:px-4 mt-auto">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-1 max-w-5xl mx-auto">
               <p className="text-xs text-muted-foreground">
-                Reunify v1.11.0 — Every step brings you closer to your kids
+                Reunify v1.12.0 — Every step brings you closer to your kids
               </p>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a>
