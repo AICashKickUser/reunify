@@ -417,3 +417,31 @@ Stage Summary:
 - AAB file ready to upload (1.4MB, v1.11.0, targets API 36)
 - Stripe LIVE keys are active on production
 - Real user data confirms the app is working for actual users
+
+---
+Task ID: outreach-1
+Agent: Main
+Task: Create outreach marketing materials (emails, Reddit posts, landing page promo section)
+
+Work Log:
+- Created outreach/EMAIL-DRAFTS.md with 4 copy/paste email templates:
+  - Email 1: Social Workers (caseload referral)
+  - Email 2: Family Law Attorneys (client tool)
+  - Email 3: CPS Agency Directors (bulk referral)
+  - Email 4: CASA/Guardian ad Litem volunteers
+- Created outreach/REDDIT-POSTS.md with 4 Reddit posts:
+  - r/CPS, r/familylaw, r/recovery, r/SideProject
+- Added "For Professionals" section to landing page with:
+  - Promo code display (reunify-review) with copy button
+  - "Download for your families" and "Share landing page" links
+  - Amber/gold styling to make it stand out
+- Fixed lint errors (useState initializer pattern instead of setState in useEffect)
+- Pushed to GitHub — Vercel auto-deploy triggered
+- Browser-verified: all landing page sections render correctly including new promo code section
+
+Stage Summary:
+- 4 email templates ready for copy/paste outreach
+- 4 Reddit post templates ready
+- Landing page now has professional promo code section for social workers/attorneys
+- User confirmed they posted first 2 Reddit posts already
+- All changes live on Vercel
