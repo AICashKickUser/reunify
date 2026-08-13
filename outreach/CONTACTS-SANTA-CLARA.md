@@ -1,159 +1,202 @@
 # Reunify Outreach Contacts — Santa Clara County, San Jose, CA
-> Real contacts found via web search. Start emailing these today.
+> Updated: individual emails that WILL go through (no restricted groups)
 
 ---
 
-## 🔴 TOP PRIORITY — These Will Give You the Most Users
+## 🔴 EMAIL THESE FIRST — Individual People (Not Group Lists)
 
-### 1. Dependency Advocacy Center (DAC) ⭐⭐⭐
-**THE #1 CONTACT.** They specifically help families in Santa Clara County's CPS/dependency system.
-This is your exact target audience — they assign attorneys to parents in reunification cases.
+### 1. Katie Joh — CEO, Dependency Advocacy Center ⭐⭐⭐
+THE #1 PERSON. She runs the entire org that helps parents in dependency court.
+Formerly their Managing Attorney, now CEO since Jan 2024.
 
-- **Phone:** (408) 401-6691
-- **Warm Line:** (408) 856-2992
-- **Email:** dac@sccdac.org
-- **First Call for Families:** firstcall@sccdac.org
-- **Website:** https://sccdac.org
-- **What to send:** Email 3 (Agency Director) — ask them to share with ALL their attorneys and clients
+- **Email:** kjoh@sccdac.org
+- **Phone:** 669-287-1569
+- **LinkedIn:** https://www.linkedin.com/in/katherinejoh
+- **What to send:** Email 2 (Attorney) — personalized. Mention you're local in Santa Clara County.
 
-### 2. First Call for Families ⭐⭐⭐
-A warm line run by DAC specifically for parents contacted by CPS. These parents ARE your users.
+### 2. First Call for Families — Warm Line Staff ⭐⭐⭐
+They answer the warm line for parents contacted by CPS. Every parent who calls = your user.
 
-- **Phone:** (408) 856-2992
 - **Email:** firstcall@sccdac.org
-- **What to send:** Email 4 (CASA) adapted — "Can you share this free app with the parents who call your warm line?"
+- **Phone:** (408) 856-2992
+- **What to send:** Short email — "Can you share this free app with parents who call your warm line?"
 
----
+### 3. Corridor Program — Prevention Services ⭐⭐
+Prevention program at DAC for families at risk of CPS involvement.
 
-## 🟠 HIGH PRIORITY — Social Workers / CPS Agency
+- **Email:** corridor@sccdac.org
+- **Phone:** (408) 564-5142
+- **What to send:** Email 1 (Social Worker) — they work directly with families
 
-### 3. Santa Clara County DFCS (Department of Family & Children's Services)
-The actual CPS agency. Social workers here have entire caseloads of families.
-
-- **Address:** 373 W. Julian St., San Jose, CA 95110
-- **Front Desk:** (408) 501-6300
-- **CPS Hotline:** (833) 722-5437 (833-SCC-KIDS)
-- **Family Services Center:** (408) 793-8800
-- **General Email:** clientcomments@ssa.sccgov.org
-- **CPS Reporting Email:** SSA_CANC_eFAX@ssa.sccgov.org
-- **Website:** https://ssa.santaclaracounty.gov/departments/department-family-and-childrens-services
-- **What to send:** Email 3 (Agency Director) to clientcomments@ssa.sccgov.org
-  — Ask if they can share with their social workers
-
-### 4. NASW California Chapter
-Professional association for social workers statewide. One email = reach thousands.
-
-- **General Email:** contact@naswca.org
-- **Membership:** membership@naswca.org
-- **Events:** eventreg@naswca.org
-- **Phone:** 800-538-2565
-- **Website:** https://www.naswca.org
-- **What to send:** Email 3 adapted — "Can you share this with your child welfare section members?"
-  — They have a Child Welfare section — these are EXACTLY your people
-
-### 5. Child Advocates of Silicon Valley (CASA Program)
-Court Appointed Special Advocates — volunteers assigned to kids in foster care.
-
-- **Email:** training@childadvocatessv.org
-- **CASA Info:** (408) 416-0400
-- **Website:** https://childadvocatessv.org
-- **What to send:** Email 4 (CASA Volunteers) — they can share with all their volunteers
-
----
-
-## 🟡 GOOD PRIORITY — Attorneys (Direct Referrers)
-
-### 6. Dennis Ingols — CPS/Family Law Attorney, San Jose ⭐
-Practices specifically in CPS defense and juvenile dependency. His clients = your users.
+### 4. Dennis Ingols — CPS/Family Law Attorney ⭐⭐
+Practices CPS defense in San Jose. His clients need your app.
 
 - **Email:** dennis@ingolslaw.com
 - **Phone:** (408) 601-0126
 - **Address:** 84 W. Santa Clara St, Ste 700, San Jose, CA 95113
 - **Website:** https://www.ingolslaw.com
-- **What to send:** Email 2 (Attorney) — personalized
+- **What to send:** Email 2 (Attorney)
 
-### 7. Bay Area Legal Aid — Santa Clara Office
-Free legal services for low-income families. They handle CPS cases.
+### 5. DFCS Ombudsman ⭐⭐
+The ombudsman handles complaints/feedback about DFCS. They know the system.
 
+- **Email:** DFCS.Ombuds@ssa.sccgov.org
+- **Phone:** (408) 993-4114
+- **What to send:** Email 1 (Social Worker) — ask if they can share with social workers
+
+### 6. Bay Area Legal Aid — Santa Clara Managing Attorney ⭐
+Free legal services. They handle CPS cases for low-income families.
+
+- **Email:** tbrady@baylegal.org
 - **Phone:** (408) 283-3700
 - **Advice Line:** 800-551-5554
-- **Email:** tbrady@baylegal.org (Managing Attorney, Santa Clara)
-- **Address:** 4 North Second Street, Suite 600, San Jose, CA 95113
-- **Website:** https://baylegal.org
-- **What to send:** Email 3 (Agency) — they can share with all their dependency attorneys
+- **What to send:** Email 3 (Agency)
 
-### 8. Santa Clara County Bar Association — Family Law Section
-Can share with their entire family law section membership.
+---
 
+## 🟠 EMAIL THESE SECOND — Program Managers & Associations
+
+### 7. Lorraine Aguilar — Program Manager III, DFCS
+Manages programs at DFCS. Can share with social workers.
+
+- **Email:** lorraine.aguilar@ssa.sccgov.org
+- **What to send:** Email 3 (Agency Director)
+
+### 8. Priscilla Mojica-Angulo — Program Manager II, DFCS
+Another DFCS program manager.
+
+- **Email:** priscilla.mojica-a@ssa.sccgov.org
+- **What to send:** Email 3 (Agency Director)
+
+### 9. DFCS Program Audit
+Handles concerns about DFCS programs — knows the system well.
+
+- **Email:** DFCSProgramAudit@ssa.sccgov.org
+- **Phone:** (408) 501-6876
+- **What to send:** Email 3 — ask them to forward to social work supervisors
+
+### 10. NASW California Chapter
+Professional association — one email reaches thousands of social workers.
+
+- **Email:** contact@naswca.org
+- **Phone:** 800-538-2565
+- **What to send:** "Can you share with your Child Welfare section members?"
+
+### 11. Santa Clara County Bar Association — Family Law Section
+Can share with their entire family law section.
+
+- **Email:** stephaniec@sccba.com (Sections Coordinator)
 - **Referral Line:** 669-302-7803
-- **Sections Contact:** stephaniec@sccba.com
-- **Website:** https://www.sccba.com
-- **Family Law Directory:** https://members.sccba.com/public-attorney-directory/Search/family-law-323139
-- **What to send:** Email to stephaniec@sccba.com — "Can you share this with your Family Law section members?"
+- **What to send:** "Can you share with your Family Law section?"
 
-### 9. Erickson Family Law LLP
-Large family law firm in San Jose area.
+### 12. Child Advocates of Silicon Valley (CASA)
+CASA volunteers advocate for kids in foster care.
 
-- **Phone:** (408) 840-2393
-- **Website:** https://www.ericksonfamilylawllp.com
-- **What to send:** Email 2 (Attorney) — use their contact form on website
-
-### 10. Santa Clara County Family Reunification Program
-The county literally has a Family Reunification program. This is your exact mission.
-
-- **Public Affairs:** SCCPublicAffairs@ceo.sccgov.org
-- **Phone:** (408) 299-5151
-- **What to send:** Email 3 (Agency Director) — this is literally their job
+- **Email:** training@childadvocatessv.org
+- **Phone:** (408) 416-0400
+- **What to send:** Email 4 (CASA Volunteers)
 
 ---
 
-## ✅ YOUR STEP-BY-STEP PLAN (Do This NOW)
+## 🟡 BACKUP — Call If Emails Don't Work
 
-### Step 1: Email the top 3 (15 minutes)
-1. **dac@sccdac.org** — Email 3, ask them to share with all their attorneys and clients
-2. **firstcall@sccdac.org** — Email 4, ask them to share with parents who call the warm line
-3. **dennis@ingolslaw.com** — Email 2, personalized
+### Santa Clara County DFCS Front Desk
+- **Phone:** (408) 501-6300
+- **Ask for:** "Social work supervisor" or "Family reunification program"
+- **Say:** "I built a free app that helps CPS families track their case plans. Can I speak with a supervisor about sharing it with social workers?"
 
-### Step 2: Email the next 3 (10 minutes)
-4. **clientcomments@ssa.sccgov.org** — Email 3, ask to share with social workers
-5. **tbrady@baylegal.org** — Email 3, ask to share with their dependency attorneys
-6. **training@childadvocatessv.org** — Email 4, for CASA volunteers
-
-### Step 3: Email the associations (10 minutes)
-7. **contact@naswca.org** — Email 3, ask to share with child welfare section
-8. **stephaniec@sccba.com** — Ask to share with family law section
-9. **SCCPublicAffairs@ceo.sccgov.org** — Email 3, county reunification program
-
-### Step 4: Post on Reddit
-10. **r/recovery** — Post 3 from REDDIT-POSTS.md
+### Dependency Advocacy Center Main Line
+- **Phone:** (408) 995-0714
+- **Ask for:** Katie Joh or a managing attorney
+- **Say:** "I have a free app called Reunify that helps parents in dependency cases track their compliance. Can I speak with someone about sharing it with your families?"
 
 ---
 
-## 📋 QUICK COPY: Email Template for DAC (Your #1 Target)
+## ✅ DO THIS NOW (Step by Step)
 
-**To:** dac@sccdac.org
-**Subject:** Free app that helps your families track CPS case plans — Santa Clara County
+### Step 1: Open Gmail (5 minutes per email)
 
-Hi there,
+**Email 1 — Katie Joh (most important):**
+- To: kjoh@sccdac.org
+- Subject: Free app for your dependency families — Santa Clara County
+- Body: Copy/paste this:
 
-I'm reaching out because I built a free app called Reunify that helps parents in Santa Clara County track their CPS case plans — and I think the families you serve could really benefit from it.
+```
+Hi Katie,
 
-As someone who's been through the dependency system, I know how overwhelming it is for parents to track every single requirement. The Dependency Advocacy Center does incredible work helping families navigate this, and I think Reunify could be a complementary tool that helps parents stay compliant between court dates.
+I'm reaching out because I built a free app called Reunify that helps parents in Santa Clara County track their CPS case plans — and I think the families DAC serves could really benefit.
 
-**What it does:**
+As someone who's been through the dependency system, I know how overwhelming it is for parents to track every requirement. DAC does incredible work helping families navigate this, and I think Reunify could complement that by helping parents stay compliant between court dates.
+
+What it does:
 - Tracks drug tests, counseling, supervised visits, parenting classes, NA meetings, court dates in one app
 - Shows compliance rate and upcoming deadlines
 - Generates court-ready progress reports with compliance narrative and case strength score
 - Works offline, no account needed, data stays on the phone (privacy-first)
-- AI can scan their paper case plan and extract all requirements
+- AI scans paper case plans and extracts all requirements
 
-**Cost:** Free with no ads. Pro features (court-ready reports, cloud backup) are $4.99/mo with 7-day trial.
-**Professional promo code:** reunify-review (90 days free Pro access)
+Cost: Free with no ads. Pro features (court-ready reports, cloud backup) are $4.99/mo with 7-day trial.
+Professional promo code: reunify-review (90 days free Pro access)
 
 Google Play: https://play.google.com/store/apps/details?id=com.aicashkick.reunify
 Landing page: https://reunify-six.vercel.app/?landing&ref=dac
 
-Would you be willing to share this with your attorneys and the families you serve? I'd love to demo it for your team.
+Would you be willing to share this with your attorneys and the families you serve?
 
 — [YOUR NAME]
-Reunify — Built by a parent who's been there.
+```
+
+**Email 2 — First Call for Families:**
+- To: firstcall@sccdac.org
+- Subject: Free app for parents who call your warm line
+
+```
+Hi,
+
+I built a free app called Reunify that helps parents track their CPS case plans (drug tests, counseling, visits, court dates). It works offline, no account needed, data stays on their phone.
+
+Could you share this with parents who call your warm line?
+
+Google Play: https://play.google.com/store/apps/details?id=com.aicashkick.reunify
+Landing page: https://reunify-six.vercel.app/?landing&ref=firstcall
+
+Professional promo code: reunify-review (90 days free Pro access)
+
+Thanks,
+[YOUR NAME]
+```
+
+**Email 3 — Dennis Ingols:**
+- To: dennis@ingolslaw.com
+- Subject: Tool for your CPS clients — track compliance, generate court reports
+
+```
+Hi Dennis,
+
+I built a free app called Reunify that helps parents in CPS cases track their case plan compliance. I think it could help your clients show the court they're meeting every requirement.
+
+- Logs drug tests (with results), counseling, supervised visits, parenting classes, NA meetings, court dates
+- Dashboard shows compliance rate, clean streaks, upcoming deadlines
+- Court-ready PDF reports with compliance narrative, case strength score (/100), verified badge
+- Works offline, no account needed, data stays on the phone
+- AI scans paper case plans and extracts requirements
+
+Free on Google Play. Pro features (court-ready reports, cloud backup, AI scanning) are $4.99/mo with 7-day trial.
+Professional review code: reunify-review (90 days free Pro)
+
+https://play.google.com/store/apps/details?id=com.aicashkick.reunify
+
+— [YOUR NAME]
+```
+
+### Step 2: Send the rest (next batch)
+
+4. corridor@sccdac.org — Email 1 (Social Worker)
+5. DFCS.Ombuds@ssa.sccgov.org — Email 1
+6. tbrady@baylegal.org — Email 3
+7. lorraine.aguilar@ssa.sccgov.org — Email 3
+8. contact@naswca.org — Ask to share with child welfare section
+9. stephaniec@sccba.com — Ask to share with family law section
+10. training@childadvocatessv.org — Email 4 (CASA)
+
+### Step 3: Fix Reddit posts (see REDDIT-FIXED.md)
