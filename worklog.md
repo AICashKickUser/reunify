@@ -445,3 +445,34 @@ Stage Summary:
 - Landing page now has professional promo code section for social workers/attorneys
 - User confirmed they posted first 2 Reddit posts already
 - All changes live on Vercel
+
+---
+Task ID: improvements-1
+Agent: Main
+Task: Implement 3 app improvements based on AI feedback review
+
+Work Log:
+- Reviewed AI recommendations and identified 3 real improvements (most were already done)
+- Added privacy trust messaging to onboarding wizard step 0:
+  - Amber banner: "Your data is private. Everything stays on your phone.CPS, your social worker, or anyone"
+  - Shield icon + amber styling with dark mode support
+- Made onboarding dialog non-blocking:
+  - Removed onPointerDownOutside blocker from OnboardingDialog
+  - Users can now dismiss with X button or "Skip tour" at any step
+  - Added "Your Data is Private" as new step 2 in the dialog
+- Built browser notifications system (use-notifications.ts):
+  - Checks for upcoming court dates and drug tests within 7 days
+  - Shows browser notifications for events within 3 days (Today/Tomorrow/in N days)
+  - Deduplicates notifications using localStorage tracking
+  - Checks every 30 minutes while app is open
+  - "Reminders" toggle in sidebar footer with Bell/BellOff icon
+  - Permission request flow with toast feedback
+  - Service worker handles notificationclick (focus/open app) and push events
+- All 3 features browser-verified and working
+- Lint passes clean, pushed to GitHub
+
+Stage Summary:
+- Privacy trust messaging addresses #1 adoption barrier for CPS parents
+- Non-blocking onboarding reduces friction for new users
+- Notifications make Reunify essential (reminds about court dates/drug tests)
+- These changes take the app from "helpful tracker" to "essential tool"
