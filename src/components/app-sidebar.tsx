@@ -340,7 +340,7 @@ export function AppSidebar() {
                 const result = await requestNotificationPermission()
                 if (result === 'granted') {
                   toast.success('Reminders enabled', {
-                    description: 'You\'ll be notified about upcoming court dates and drug tests.',
+                    description: 'You\'ll get reminders for court dates, drug tests, visits, counseling, and more.',
                   })
                 } else if (result === 'denied') {
                   toast.error('Notifications blocked', {
@@ -593,7 +593,7 @@ export function AppSidebar() {
         </div>
         <div className="group-data-[collapsible=icon]:hidden mt-2">
           <p className="text-[10px] text-muted-foreground text-center leading-tight">
-            v1.11.0 · Every step brings you closer
+            v1.12.0 · Every step brings you closer
             <br />
             to your kids
           </p>

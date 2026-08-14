@@ -9,11 +9,20 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { FolderHeart, Plus, ArrowRight, RotateCcw, Camera, Check, Shield } from 'lucide-react'
+import { FolderHeart, Plus, ArrowRight, RotateCcw, Camera, Check, Shield, X, Eye, EyeOff, Lock } from 'lucide-react'
 
 const ONBOARDING_KEY = 'reunify-onboarding-seen'
 
-const steps = [
+interface OnboardingStep {
+  icon: React.ComponentType<{ className?: string }>
+  title: string
+  description: string
+  color: string
+  bg: string
+  isPrivacy?: boolean
+}
+
+const steps: OnboardingStep[] = [
   {
     icon: FolderHeart,
     title: 'Welcome to Reunify',
@@ -24,9 +33,10 @@ const steps = [
   {
     icon: Shield,
     title: 'Your Data is Private',
-    description: 'Everything stays on your phone. Never shared with CPS, your social worker, or anyone — unless you choose to export it. No account needed.',
+    description: '',
     color: 'text-amber-600',
     bg: 'bg-amber-100 dark:bg-amber-900/30',
+    isPrivacy: true,
   },
   {
     icon: Plus,
@@ -76,25 +86,67 @@ export function OnboardingDialog() {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose() }}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm" showCloseButton={false}>
+        {/* Custom close button — always visible so dialog is non-blocking */}
+        <button
+          onClick={handleClose}
+          className="absolute right-3 top-3 rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors z-10"
+          aria-label="Close tour"
+        >
+          <X className="size-4" />
+        </button>
+
         <DialogHeader className="text-center items-center">
           <div className={`flex size-16 items-center justify-center rounded-full ${currentStep.bg} mb-2`}>
             <currentStep.icon className={`size-8 ${currentStep.color}`} />
           </div>
           <DialogTitle className="text-xl">{currentStep.title}</DialogTitle>
-          <DialogDescription className="text-sm leading-relaxed">
-            {currentStep.description}
-          </DialogDescription>
+          {currentStep.isPrivacy ? (
+            <DialogDescription asChild>
+              <div className="text-sm leading-relaxed space-y-3">
+                {/* Prominent privacy callout */}
+                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 space-y-2">
+                  <div className="flex items-center gap-2 justify-center">
+                    <Lock className="size-4 text-amber-600" />
+                    <span className="font-semibold text-amber-700 dark:text-amber-400">Never shared with CPS</span>
+                  </div>
+                  <p className="text-amber-700/80 dark:text-amber-400/80 text-center text-xs">
+                    Your data stays on YOUR phone. Not on our servers. Not accessible to your social worker, judge, or anyone else.
+                  </p>
+                </div>
+                <div className="space-y-2 text-left">
+                  <div className="flex items-start gap-2">
+                    <EyeOff className="size-4 text-emerald-600 mt-0.5 shrink-0" />
+                    <span>No account or email required</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <EyeOff className="size-4 text-emerald-600 mt-0.5 shrink-0" />
+                    <span>All data stored locally on your device</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Eye className="size-4 text-emerald-600 mt-0.5 shrink-0" />
+                    <span>You choose what to export and share</span>
+                  </div>
+                </div>
+              </div>
+            </DialogDescription>
+          ) : (
+            <DialogDescription className="text-sm leading-relaxed">
+              {currentStep.description}
+            </DialogDescription>
+          )}
         </DialogHeader>
 
-        {/* Step indicators */}
+        {/* Step indicators — clickable for non-blocking navigation */}
         <div className="flex items-center justify-center gap-2 my-2">
           {steps.map((_, i) => (
-            <div
+            <button
               key={i}
+              onClick={() => setStep(i)}
               className={`h-1.5 rounded-full transition-all ${
-                i === step ? 'w-6 bg-emerald-600' : i < step ? 'w-1.5 bg-emerald-300' : 'w-1.5 bg-muted'
+                i === step ? 'w-6 bg-emerald-600' : i < step ? 'w-1.5 bg-emerald-300 cursor-pointer hover:bg-emerald-400' : 'w-1.5 bg-muted cursor-pointer hover:bg-muted-foreground/30'
               }`}
+              aria-label={`Go to step ${i + 1}`}
             />
           ))}
         </div>

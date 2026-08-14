@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useCallback } from 'react'
-import { useCourtDates, useDrugTests } from '@/lib/data-hooks'
+import { useCourtDates, useDrugTests, useCounselingSessions, useSupervisedVisits, useParentingClasses, useNAMeetings } from '@/lib/data-hooks'
 import { useAppStore } from '@/lib/store'
 
 const NOTIFICATION_KEY = 'reunify-notifications-enabled'
@@ -11,7 +11,7 @@ interface UpcomingEvent {
   id: string
   title: string
   date: Date
-  type: 'court-date' | 'drug-test'
+  type: 'court-date' | 'drug-test' | 'counseling' | 'supervised-visit' | 'parenting-class' | 'na-meeting' | 'drug-test-call'
 }
 
 function getNotificationsEnabled(): boolean {
@@ -95,20 +95,38 @@ async function showNotification(title: string, body: string, tag: string): Promi
   }
 }
 
+/** Friendly label for event types */
+function eventTypeLabel(type: UpcomingEvent['type']): string {
+  switch (type) {
+    case 'court-date': return 'court date'
+    case 'drug-test': return 'drug test'
+    case 'drug-test-call': return 'drug test call'
+    case 'counseling': return 'counseling session'
+    case 'supervised-visit': return 'supervised visit'
+    case 'parenting-class': return 'parenting class'
+    case 'na-meeting': return 'NA/AA meeting'
+  }
+}
+
 /**
- * Main hook: checks for upcoming court dates and drug tests,
- * shows browser notifications and in-app toasts.
+ * Main hook: checks for upcoming court dates, drug tests, counseling sessions,
+ * supervised visits, parenting classes, and NA meetings.
+ * Shows browser notifications and in-app toasts for events within 3 days.
+ * Also reminds about daily drug test facility calls.
  */
 export function useNotifications() {
   const { activeCaseId } = useAppStore()
   const { data: courtDates } = useCourtDates(activeCaseId)
   const { data: drugTests } = useDrugTests(activeCaseId)
+  const { data: counselingSessions } = useCounselingSessions(activeCaseId)
+  const { data: supervisedVisits } = useSupervisedVisits(activeCaseId)
+  const { data: parentingClasses } = useParentingClasses(activeCaseId)
+  const { data: naMeetings } = useNAMeetings(activeCaseId)
   const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const hasCheckedRef = useRef(false)
 
   const checkAndNotify = useCallback(() => {
     if (!getNotificationsEnabled()) return
-    if (!courtDates && !drugTests) return
 
     const now = new Date()
     const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
@@ -144,6 +162,78 @@ export function useNotifications() {
             date,
             type: 'drug-test',
           })
+          // Drug test call reminder — if call hasn't been made yet
+          if (!dt.callMade) {
+            upcoming.push({
+              id: `drug-call-${dt.id}`,
+              title: 'Call for drug testing',
+              date,
+              type: 'drug-test-call',
+            })
+          }
+        }
+      }
+    }
+
+    // Check counseling sessions
+    if (counselingSessions) {
+      for (const cs of counselingSessions) {
+        if (cs.isCompleted) continue
+        const date = new Date(cs.date)
+        if (date >= now && date <= in7Days) {
+          upcoming.push({
+            id: `counseling-${cs.id}`,
+            title: cs.sessionType ? `Counseling: ${cs.sessionType}` : 'Counseling session',
+            date,
+            type: 'counseling',
+          })
+        }
+      }
+    }
+
+    // Check supervised visits
+    if (supervisedVisits) {
+      for (const sv of supervisedVisits) {
+        if (sv.isCompleted) continue
+        const date = new Date(sv.date)
+        if (date >= now && date <= in7Days) {
+          upcoming.push({
+            id: `visit-${sv.id}`,
+            title: sv.visitType ? `Visit: ${sv.visitType}` : 'Supervised visit',
+            date,
+            type: 'supervised-visit',
+          })
+        }
+      }
+    }
+
+    // Check parenting classes
+    if (parentingClasses) {
+      for (const pc of parentingClasses) {
+        if (pc.isCompleted) continue
+        const date = new Date(pc.date)
+        if (date >= now && date <= in7Days) {
+          upcoming.push({
+            id: `parenting-${pc.id}`,
+            title: pc.className ? `Parenting: ${pc.className}` : 'Parenting class',
+            date,
+            type: 'parenting-class',
+          })
+        }
+      }
+    }
+
+    // Check NA/AA meetings
+    if (naMeetings) {
+      for (const nm of naMeetings) {
+        const date = new Date(nm.date)
+        if (date >= now && date <= in7Days) {
+          upcoming.push({
+            id: `na-meeting-${nm.id}`,
+            title: nm.meetingName ? `Meeting: ${nm.meetingName}` : 'NA/AA meeting',
+            date,
+            type: 'na-meeting',
+          })
         }
       }
     }
@@ -161,15 +251,49 @@ export function useNotifications() {
       const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
       if (event.date <= in3Days) {
         const urgency = relative === 'Today' ? ' TODAY' : relative === 'Tomorrow' ? ' TOMORROW' : ''
-        showNotification(
-          `Reunify: ${event.title}${urgency}`,
-          `You have a ${event.type === 'court-date' ? 'court date' : 'drug test'} ${relative}. Don't forget!`,
-          event.id,
-        )
+        const typeLabel = eventTypeLabel(event.type)
+
+        if (event.type === 'drug-test-call') {
+          showNotification(
+            `Reunify: Call testing facility${urgency}`,
+            `Don't forget to call your drug testing line ${relative} to check if you need to test.`,
+            event.id,
+          )
+        } else if (event.type === 'supervised-visit') {
+          showNotification(
+            `Reunify: ${event.title}${urgency}`,
+            `You have a supervised visit ${relative}. Be present and engaged!`,
+            event.id,
+          )
+        } else if (event.type === 'counseling') {
+          showNotification(
+            `Reunify: ${event.title}${urgency}`,
+            `You have a counseling session ${relative}. Keep showing up!`,
+            event.id,
+          )
+        } else if (event.type === 'parenting-class') {
+          showNotification(
+            `Reunify: ${event.title}${urgency}`,
+            `You have a parenting class ${relative}. Every class counts!`,
+            event.id,
+          )
+        } else if (event.type === 'na-meeting') {
+          showNotification(
+            `Reunify: ${event.title}${urgency}`,
+            `You have an NA/AA meeting ${relative}. Recovery works one day at a time.`,
+            event.id,
+          )
+        } else {
+          showNotification(
+            `Reunify: ${event.title}${urgency}`,
+            `You have a ${typeLabel} ${relative}. Don't forget!`,
+            event.id,
+          )
+        }
         markShown(event.id)
       }
     }
-  }, [courtDates, drugTests])
+  }, [courtDates, drugTests, counselingSessions, supervisedVisits, parentingClasses, naMeetings])
 
   // Check on mount and every 30 minutes while app is open
   useEffect(() => {
@@ -194,11 +318,11 @@ export function useNotifications() {
 
   // Re-check when data changes (if we haven't checked yet)
   useEffect(() => {
-    if (!hasCheckedRef.current && getNotificationsEnabled() && (courtDates || drugTests)) {
+    if (!hasCheckedRef.current && getNotificationsEnabled() && (courtDates || drugTests || counselingSessions || supervisedVisits || parentingClasses || naMeetings)) {
       const timer = setTimeout(checkAndNotify, 2000)
       return () => clearTimeout(timer)
     }
-  }, [courtDates, drugTests, checkAndNotify])
+  }, [courtDates, drugTests, counselingSessions, supervisedVisits, parentingClasses, naMeetings, checkAndNotify])
 }
 
 /**
@@ -249,6 +373,10 @@ export function useUpcomingEvents() {
   const { activeCaseId } = useAppStore()
   const { data: courtDates } = useCourtDates(activeCaseId)
   const { data: drugTests } = useDrugTests(activeCaseId)
+  const { data: counselingSessions } = useCounselingSessions(activeCaseId)
+  const { data: supervisedVisits } = useSupervisedVisits(activeCaseId)
+  const { data: parentingClasses } = useParentingClasses(activeCaseId)
+  const { data: naMeetings } = useNAMeetings(activeCaseId)
 
   const now = new Date()
   const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
@@ -280,6 +408,73 @@ export function useUpcomingEvents() {
           title: 'Drug test',
           date,
           type: 'drug-test',
+        })
+        if (!dt.callMade) {
+          events.push({
+            id: `drug-call-${dt.id}`,
+            title: 'Call for testing',
+            date,
+            type: 'drug-test-call',
+          })
+        }
+      }
+    }
+  }
+
+  if (counselingSessions) {
+    for (const cs of counselingSessions) {
+      if (cs.isCompleted) continue
+      const date = new Date(cs.date)
+      if (date >= now && date <= in7Days) {
+        events.push({
+          id: `counseling-${cs.id}`,
+          title: cs.sessionType ? `Counseling: ${cs.sessionType}` : 'Counseling session',
+          date,
+          type: 'counseling',
+        })
+      }
+    }
+  }
+
+  if (supervisedVisits) {
+    for (const sv of supervisedVisits) {
+      if (sv.isCompleted) continue
+      const date = new Date(sv.date)
+      if (date >= now && date <= in7Days) {
+        events.push({
+          id: `visit-${sv.id}`,
+          title: sv.visitType ? `Visit: ${sv.visitType}` : 'Supervised visit',
+          date,
+          type: 'supervised-visit',
+        })
+      }
+    }
+  }
+
+  if (parentingClasses) {
+    for (const pc of parentingClasses) {
+      if (pc.isCompleted) continue
+      const date = new Date(pc.date)
+      if (date >= now && date <= in7Days) {
+        events.push({
+          id: `parenting-${pc.id}`,
+          title: pc.className ? `Parenting: ${pc.className}` : 'Parenting class',
+          date,
+          type: 'parenting-class',
+        })
+      }
+    }
+  }
+
+  if (naMeetings) {
+    for (const nm of naMeetings) {
+      const date = new Date(nm.date)
+      if (date >= now && date <= in7Days) {
+        events.push({
+          id: `na-meeting-${nm.id}`,
+          title: nm.meetingName ? `Meeting: ${nm.meetingName}` : 'NA/AA meeting',
+          date,
+          type: 'na-meeting',
         })
       }
     }

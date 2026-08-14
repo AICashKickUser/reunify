@@ -476,3 +476,37 @@ Stage Summary:
 - Non-blocking onboarding reduces friction for new users
 - Notifications make Reunify essential (reminds about court dates/drug tests)
 - These changes take the app from "helpful tracker" to "essential tool"
+---
+Task ID: notification-expansion
+Agent: Main
+Task: Enhance privacy messaging, make onboarding non-blocking, expand notifications to all event types including daily drug test call reminders
+
+Work Log:
+- Enhanced onboarding dialog privacy step (step 2):
+  - Added prominent amber callout box with Lock icon: "Never shared with CPS"
+  - Added clear trust statement: "Your data stays on YOUR phone. Not on our servers. Not accessible to your social worker, judge, or anyone else."
+  - Added 3 privacy bullet points with EyeOff/Eye icons: no account, local storage, you choose what to share
+  - Removed default Radix close button (showCloseButton={false}), added custom X button always visible
+  - Made step indicators clickable (can jump to any step)
+- Expanded notification system from 2 event types to 7:
+  - Court dates (existing)
+  - Drug tests (existing)
+  - Drug test CALL reminders (NEW) - reminds to call testing facility if callMade is false
+  - Counseling sessions (NEW)
+  - Supervised visits (NEW) - with encouragement message "Be present and engaged!"
+  - Parenting classes (NEW) - with encouragement "Every class counts!"
+  - NA/AA meetings (NEW) - with encouragement "Recovery works one day at a time."
+- Each event type has custom, encouraging notification body text
+- Drug test call reminder: "Don't forget to call your drug testing line [Today/Tomorrow] to check if you need to test."
+- Updated sidebar reminder toggle toast: "You'll get reminders for court dates, drug tests, visits, counseling, and more."
+- Updated service worker cache version to reunify-v1.12.0
+- Updated sidebar version display to v1.12.0
+- Lint passes clean, no runtime errors
+- Browser-verified: privacy step shows enhanced messaging, close button works, step indicators are clickable
+
+Stage Summary:
+- Privacy trust messaging is now the centerpiece of onboarding step 2 (amber callout, bullet points)
+- Onboarding dialog is fully non-blocking (X button + clickable steps + skip tour)
+- Notifications now cover ALL event types: court dates, drug tests, call-for-testing, counseling, visits, parenting classes, NA meetings
+- Drug test call reminders specifically address "call the testing line every day" use case
+- Version bumped to 1.12.0
