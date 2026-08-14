@@ -27,6 +27,8 @@ import {
   Lock,
   Unlock,
   ScanLine,
+  Bell,
+  BellOff,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -71,6 +73,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { isAppLockEnabled, isPinSet, enableAppLock, disableAppLock, clearAppLock, setAppLockPin, verifyPin } from '@/lib/app-lock'
+import { getNotificationStatus, setNotificationsEnabled, requestNotificationPermission } from '@/hooks/use-notifications'
 import { LastSynced } from '@/components/last-synced'
 
 interface NavItem {
@@ -316,6 +319,42 @@ export function AppSidebar() {
 
       <SidebarFooter className="p-3">
         <SidebarSeparator />
+
+        {/* Notifications Toggle */}
+        <div className="group-data-[collapsible=icon]:hidden flex items-center justify-between px-1">
+          <div className="flex items-center gap-2 text-sm">
+            {(() => {
+              const status = getNotificationStatus()
+              return status.enabled ? (
+                <Bell className="size-4 text-emerald-600" />
+              ) : (
+                <BellOff className="size-4 text-muted-foreground" />
+              )
+            })()}
+            <span className="text-muted-foreground">Reminders</span>
+          </div>
+          <Switch
+            checked={getNotificationStatus().enabled}
+            onCheckedChange={async (checked) => {
+              if (checked) {
+                const result = await requestNotificationPermission()
+                if (result === 'granted') {
+                  toast.success('Reminders enabled', {
+                    description: 'You\'ll be notified about upcoming court dates and drug tests.',
+                  })
+                } else if (result === 'denied') {
+                  toast.error('Notifications blocked', {
+                    description: 'Enable notifications in your browser settings to get reminders.',
+                  })
+                }
+              } else {
+                setNotificationsEnabled(false)
+                toast.info('Reminders disabled')
+              }
+            }}
+            aria-label="Toggle reminders"
+          />
+        </div>
 
         {/* App Lock Toggle */}
         <div className="group-data-[collapsible=icon]:hidden mt-2 flex items-center justify-between px-1">

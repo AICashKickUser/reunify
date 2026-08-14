@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { FolderHeart, Plus, ArrowRight, RotateCcw, Camera, Check } from 'lucide-react'
+import { FolderHeart, Plus, ArrowRight, RotateCcw, Camera, Check, Shield } from 'lucide-react'
 
 const ONBOARDING_KEY = 'reunify-onboarding-seen'
 
@@ -20,6 +20,13 @@ const steps = [
     description: 'Your personal CPS reunification progress tracker. Stay organized, stay focused, and bring your kids home.',
     color: 'text-emerald-600',
     bg: 'bg-emerald-100 dark:bg-emerald-900/30',
+  },
+  {
+    icon: Shield,
+    title: 'Your Data is Private',
+    description: 'Everything stays on your phone. Never shared with CPS, your social worker, or anyone — unless you choose to export it. No account needed.',
+    color: 'text-amber-600',
+    bg: 'bg-amber-100 dark:bg-amber-900/30',
   },
   {
     icon: Plus,
@@ -69,7 +76,7 @@ export function OnboardingDialog() {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose() }}>
-      <DialogContent className="max-w-sm" onPointerDownOutside={(e) => e.preventDefault()}>
+      <DialogContent className="max-w-sm">
         <DialogHeader className="text-center items-center">
           <div className={`flex size-16 items-center justify-center rounded-full ${currentStep.bg} mb-2`}>
             <currentStep.icon className={`size-8 ${currentStep.color}`} />

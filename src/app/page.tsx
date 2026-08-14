@@ -18,6 +18,7 @@ import { useCases } from '@/lib/data-hooks'
 import { UpgradeDialog } from '@/components/upgrade-dialog'
 import { useSubscriptionStore, isProActive } from '@/lib/subscription'
 import { LandingPage } from '@/components/landing-page'
+import { useNotifications } from '@/hooks/use-notifications'
 
 /**
  * Auto-detects existing cases and sets the activeCaseId if none is set.
@@ -218,6 +219,9 @@ export default function Home() {
 
   // Handle Stripe checkout success/cancel redirects
   useCheckoutSuccess()
+
+  // Enable notifications for upcoming court dates & drug tests
+  useNotifications()
 
   // Auto-select existing case so the app doesn't show onboarding when data exists
   useAutoSelectCase()

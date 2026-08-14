@@ -89,3 +89,46 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+// Handle notification clicks — open/focus the app
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      // If app is already open, focus it
+      for (const client of clients) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Otherwise open the app
+      return self.clients.openWindow('/');
+    })
+  );
+});
+
+// Handle push events (for future server-side push notifications)
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  try {
+    const data = event.data.json();
+    event.waitUntil(
+      self.registration.showNotification(data.title || 'Reunify', {
+        body: data.body || '',
+        tag: data.tag || 'reunify-push',
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/icon-72x72.png',
+      })
+    );
+  } catch {
+    // Fallback for plain text push
+    event.waitUntil(
+      self.registration.showNotification('Reunify', {
+        body: event.data.text(),
+        icon: '/icons/icon-192x192.png',
+      })
+    );
+  }
+});

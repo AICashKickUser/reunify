@@ -37,6 +37,7 @@ import {
   FlaskConical,
   User,
   Sparkles,
+  Shield,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -279,6 +280,16 @@ function StepCaseInfo({
 
   return (
     <div className="space-y-6">
+      {/* Privacy Trust Banner */}
+      <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
+        <div className="flex items-start gap-2">
+          <Shield className="size-4 text-amber-600 mt-0.5 shrink-0" />
+          <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+            <strong>Your data is private.</strong> Everything stays on your phone. Never shared with CPS, your social worker, or anyone — unless you choose to export it.
+          </p>
+        </div>
+      </div>
+
       <div className="text-center space-y-2">
         <div className="flex justify-center">
           <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-900/30">
