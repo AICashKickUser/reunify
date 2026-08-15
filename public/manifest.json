@@ -122,6 +122,48 @@
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Progress report view"
+    },
+    {
+      "src": "/play-store/tablet-screenshots/tablet-8-dashboard-portrait.png",
+      "sizes": "1200x1920",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard on tablet"
+    },
+    {
+      "src": "/play-store/tablet-screenshots/tablet-2-case-plan.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Case plan on tablet"
+    },
+    {
+      "src": "/play-store/tablet-screenshots/tablet-3-drug-testing.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Drug testing on tablet"
+    },
+    {
+      "src": "/play-store/tablet-screenshots/tablet-5-progress.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Progress report on tablet"
+    },
+    {
+      "src": "/play-store/tablet-screenshots/tablet-6-dashboard-wide.png",
+      "sizes": "1600x900",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard on large tablet"
+    },
+    {
+      "src": "/play-store/tablet-screenshots/tablet-7-counseling-wide.png",
+      "sizes": "1600x900",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Counseling on large tablet"
     }
   ],
   "shortcuts": [
