@@ -96,6 +96,9 @@ export function BackupView() {
   }, [activeCaseId])
 
   useEffect(() => {
+    // Refresh cloud backup status from the server when the active case changes.
+    // refreshCloudStatus is async, so setState happens after await (not synchronous).
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async refresh, not a sync setState
     refreshCloudStatus()
   }, [refreshCloudStatus])
 

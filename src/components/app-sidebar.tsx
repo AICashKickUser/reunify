@@ -29,6 +29,7 @@ import {
   ScanLine,
   Bell,
   BellOff,
+  MessageSquare,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -102,6 +103,7 @@ const NAV_GROUPS: NavGroup[] = [
       { view: 'case-plan', label: 'Case Plan', icon: ClipboardList },
       { view: 'scan-case-plan', label: 'Scan Plan', icon: ScanLine },
       { view: 'court-dates', label: 'Court Dates', icon: Scale },
+      { view: 'communications', label: 'Communication Log', icon: MessageSquare },
     ],
   },
   {

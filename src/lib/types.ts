@@ -162,6 +162,23 @@ export interface DailyCheckIn {
   updatedAt: string
 }
 
+export interface CommunicationLog {
+  id: string
+  caseId: string
+  date: string
+  contactType: string | null  // call, text, email, in-person, voicemail, letter
+  direction: string | null    // incoming, outgoing
+  contactName: string | null
+  contactRole: string | null  // social-worker, attorney, judge, casa, supervisor, family, other
+  subject: string | null
+  notes: string | null
+  actionItems: string | null
+  followUpDate: string | null
+  isFollowUpCompleted: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 // Category colors for visual consistency
 export const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'counseling': { bg: 'bg-emerald-50 dark:bg-emerald-950/20', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800' },

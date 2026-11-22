@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { 
   CaseInfo, CaseRequirement, CounselingSession, DrugTest, 
   NAStep, NAMeeting, SupervisedVisit, CourtDate, 
-  ParentingClass, Milestone, DailyCheckIn 
+  ParentingClass, Milestone, DailyCheckIn, CommunicationLog 
 } from '@/lib/types'
 import { recordActivity, type CelebrationType } from '@/lib/streaks'
 
@@ -21,6 +21,7 @@ import {
   getParentingClasses,
   getMilestones,
   getDailyCheckIns,
+  getCommunications,
   createCase as dbCreateCase,
   deleteCase as dbDeleteCase,
   createItemByEndpoint,
@@ -44,6 +45,7 @@ function endpointToActivityType(endpoint: string): string {
     'parenting-classes': 'parenting-class',
     'milestones': 'milestone',
     'daily-checkins': 'check-in',
+    'communications': 'communication',
     'requirements': 'requirement',
   }
   return mapping[endpoint] || endpoint
@@ -197,6 +199,18 @@ export function useDailyCheckIns(caseId: string | null) {
     queryFn: async () => {
       if (!caseId) return []
       return getDailyCheckIns(caseId)
+    },
+    enabled: !!caseId,
+  })
+}
+
+// Fetch communication logs
+export function useCommunications(caseId: string | null) {
+  return useQuery({
+    queryKey: ['communications', caseId],
+    queryFn: async () => {
+      if (!caseId) return []
+      return getCommunications(caseId)
     },
     enabled: !!caseId,
   })

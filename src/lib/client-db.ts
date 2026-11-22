@@ -16,6 +16,7 @@ import type {
   ParentingClass,
   Milestone,
   DailyCheckIn,
+  CommunicationLog,
 } from '@/lib/types'
 
 // ============================================================
@@ -37,6 +38,7 @@ type StoreName =
   | 'parentingClasses'
   | 'milestones'
   | 'dailyCheckIns'
+  | 'communications'
 
 export const ALL_STORES: StoreName[] = [
   'cases',
@@ -50,6 +52,7 @@ export const ALL_STORES: StoreName[] = [
   'parentingClasses',
   'milestones',
   'dailyCheckIns',
+  'communications',
 ]
 
 let dbInstance: IDBPDatabase | null = null
@@ -76,6 +79,7 @@ async function getDB(): Promise<IDBPDatabase> {
         { name: 'parentingClasses' },
         { name: 'milestones' },
         { name: 'dailyCheckIns' },
+        { name: 'communications' },
       ]
 
       for (const { name } of childStores) {
@@ -269,6 +273,7 @@ export async function deleteCase(caseId: string): Promise<void> {
     'parentingClasses',
     'milestones',
     'dailyCheckIns',
+    'communications',
   ]
   for (const store of childStores) {
     await deleteItemsByCaseId(store, caseId)
@@ -289,13 +294,14 @@ export async function getCaseWithRelated(id: string): Promise<
       parentingClasses: ParentingClass[]
       milestones: Milestone[]
       dailyCheckIns: DailyCheckIn[]
+      communicationLogs: CommunicationLog[]
     })
   | null
 > {
   const caseData = await getCase(id)
   if (!caseData) return null
 
-  const [requirements, counselingSessions, drugTests, naSteps, naMeetings, supervisedVisits, courtDates, parentingClasses, milestones, dailyCheckIns] = await Promise.all([
+  const [requirements, counselingSessions, drugTests, naSteps, naMeetings, supervisedVisits, courtDates, parentingClasses, milestones, dailyCheckIns, communicationLogs] = await Promise.all([
     getItemsByCaseId<CaseRequirement>('requirements', id),
     getItemsByCaseId<CounselingSession>('counselingSessions', id),
     getItemsByCaseId<DrugTest>('drugTests', id),
@@ -306,6 +312,7 @@ export async function getCaseWithRelated(id: string): Promise<
     getItemsByCaseId<ParentingClass>('parentingClasses', id),
     getItemsByCaseId<Milestone>('milestones', id),
     getItemsByCaseId<DailyCheckIn>('dailyCheckIns', id),
+    getItemsByCaseId<CommunicationLog>('communications', id),
   ])
 
   return {
@@ -320,6 +327,7 @@ export async function getCaseWithRelated(id: string): Promise<
     parentingClasses,
     milestones,
     dailyCheckIns,
+    communicationLogs,
   }
 }
 
@@ -621,6 +629,38 @@ export async function deleteDailyCheckIn(id: string): Promise<void> {
 }
 
 // ============================================================
+// Communication log operations
+// ============================================================
+
+export async function createCommunication(data: Partial<CommunicationLog> & { caseId: string }): Promise<CommunicationLog> {
+  return createItem('communications', {
+    caseId: data.caseId,
+    date: data.date || new Date().toISOString(),
+    contactType: data.contactType ?? null,
+    direction: data.direction ?? null,
+    contactName: data.contactName ?? null,
+    contactRole: data.contactRole ?? null,
+    subject: data.subject ?? null,
+    notes: data.notes ?? null,
+    actionItems: data.actionItems ?? null,
+    followUpDate: data.followUpDate ?? null,
+    isFollowUpCompleted: data.isFollowUpCompleted ?? false,
+  })
+}
+
+export async function getCommunications(caseId: string): Promise<CommunicationLog[]> {
+  return getItemsByCaseId<CommunicationLog>('communications', caseId)
+}
+
+export async function updateCommunication(id: string, data: Partial<CommunicationLog>): Promise<CommunicationLog> {
+  return updateItem('communications', id, data) as Promise<CommunicationLog>
+}
+
+export async function deleteCommunication(id: string): Promise<void> {
+  return deleteItem('communications', id)
+}
+
+// ============================================================
 // Generic endpoint-based CRUD
 // (Maps endpoint names to store names and operations)
 // ============================================================
@@ -636,6 +676,7 @@ const ENDPOINT_TO_STORE: Record<string, StoreName> = {
   'parenting-classes': 'parentingClasses',
   'milestones': 'milestones',
   'daily-checkins': 'dailyCheckIns',
+  'communications': 'communications',
 }
 
 export function endpointToStoreName(endpoint: string): StoreName {
@@ -678,6 +719,7 @@ export async function resetCaseData(caseId: string): Promise<void> {
     'parentingClasses',
     'milestones',
     'dailyCheckIns',
+    'communications',
   ]
   for (const store of childStores) {
     await deleteItemsByCaseId(store, caseId)
@@ -1011,11 +1053,12 @@ export interface ExportData {
   parentingClasses: ParentingClass[]
   milestones: Milestone[]
   dailyCheckIns: DailyCheckIn[]
+  communicationLogs: CommunicationLog[]
 }
 
 export async function exportAllData(): Promise<ExportData> {
   const db = await getDB()
-  const [cases, requirements, counselingSessions, drugTests, naSteps, naMeetings, supervisedVisits, courtDates, parentingClasses, milestones, dailyCheckIns] = await Promise.all([
+  const [cases, requirements, counselingSessions, drugTests, naSteps, naMeetings, supervisedVisits, courtDates, parentingClasses, milestones, dailyCheckIns, communicationLogs] = await Promise.all([
     db.getAll('cases') as Promise<CaseInfo[]>,
     db.getAll('requirements') as Promise<CaseRequirement[]>,
     db.getAll('counselingSessions') as Promise<CounselingSession[]>,
@@ -1027,6 +1070,7 @@ export async function exportAllData(): Promise<ExportData> {
     db.getAll('parentingClasses') as Promise<ParentingClass[]>,
     db.getAll('milestones') as Promise<Milestone[]>,
     db.getAll('dailyCheckIns') as Promise<DailyCheckIn[]>,
+    db.getAll('communications') as Promise<CommunicationLog[]>,
   ])
 
   return {
@@ -1043,6 +1087,7 @@ export async function exportAllData(): Promise<ExportData> {
     parentingClasses,
     milestones,
     dailyCheckIns,
+    communicationLogs,
   }
 }
 
@@ -1065,6 +1110,7 @@ export async function importAllData(data: ExportData): Promise<void> {
     { name: 'parentingClasses', items: data.parentingClasses },
     { name: 'milestones', items: data.milestones },
     { name: 'dailyCheckIns', items: data.dailyCheckIns },
+    { name: 'communications', items: data.communicationLogs },
   ]
 
   for (const { name, items } of storeNames) {

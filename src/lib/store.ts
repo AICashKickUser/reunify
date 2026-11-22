@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type ViewType = 
+export type ViewType =
   | 'dashboard'
   | 'timeline'
   | 'case-plan'
@@ -13,6 +13,7 @@ export type ViewType =
   | 'court-dates'
   | 'parenting-classes'
   | 'daily-checkins'
+  | 'communications'
   | 'progress'
   | 'backup'
   | 'go-pro'

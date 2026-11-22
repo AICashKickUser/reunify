@@ -1041,10 +1041,13 @@ export function OnboardingWizard() {
     // The activeCaseId is already set
   }, [])
 
-  // Check if user has already completed onboarding
+  // Check if user has already completed onboarding.
+  // Initial value is false on both server and client to avoid hydration mismatch;
+  // the effect then reads from localStorage (an external store) after mount.
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false)
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot external-store (localStorage) read on mount
       setHasCompletedOnboarding(!!localStorage.getItem(ONBOARDING_COMPLETE_KEY))
     }
   }, [])

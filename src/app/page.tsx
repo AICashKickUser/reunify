@@ -52,6 +52,7 @@ const CourtDatesView = lazy(() => import('@/components/views/court-dates-view'))
 const ParentingClassesView = lazy(() => import('@/components/views/parenting-classes-view'))
 const ProgressView = lazy(() => import('@/components/views/progress-view'))
 const DailyCheckinsView = lazy(() => import('@/components/views/daily-checkins-view'))
+const CommunicationsView = lazy(() => import('@/components/views/communications-view'))
 const BackupView = lazy(() => import('@/components/views/backup-view'))
 const GoProView = lazy(() => import('@/components/views/go-pro-view'))
 
@@ -68,6 +69,7 @@ const VIEW_MAP: Record<ViewType, React.ComponentType> = {
   'court-dates': CourtDatesView,
   'parenting-classes': ParentingClassesView,
   'daily-checkins': DailyCheckinsView,
+  'communications': CommunicationsView,
   'progress': ProgressView,
   'backup': BackupView,
   'go-pro': GoProView,

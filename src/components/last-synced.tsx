@@ -26,6 +26,8 @@ export function LastSynced({ caseId, compact = false }: LastSyncedProps) {
   }, [caseId])
 
   useEffect(() => {
+    // Sync with local backup store on mount and when case changes, then poll every 30s.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- legitimate external-store sync
     refreshStatus()
     // Refresh every 30 seconds
     const interval = setInterval(refreshStatus, 30000)

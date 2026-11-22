@@ -33,6 +33,7 @@ model Case {
   parentingClasses      ParentingClass[]
   milestones            Milestone[]
   dailyCheckIns         DailyCheckIn[]
+  communicationLogs     CommunicationLog[]
   cloudBackups          CloudBackup[]
 }
 
@@ -213,6 +214,27 @@ model Milestone {
   updatedAt       DateTime @updatedAt
 
   case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+}
+
+model CommunicationLog {
+  id                  String   @id @default(cuid())
+  caseId              String
+  date                DateTime
+  contactType         String?  // call, text, email, in-person, voicemail, letter
+  direction           String?  // incoming, outgoing
+  contactName         String?
+  contactRole         String?  // social-worker, attorney, judge, casa, supervisor, family, other
+  subject             String?
+  notes               String?
+  actionItems         String?
+  followUpDate        DateTime?
+  isFollowUpCompleted Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  case                Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
   @@index([caseId])
 }

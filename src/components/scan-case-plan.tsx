@@ -922,6 +922,42 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
   }, [])
 
   // ============================================================
+  // Reset & close
+  // ============================================================
+
+  const handleClose = useCallback(() => {
+    setPhase('capture')
+    setPages([])
+    setExtractedData(null)
+    setAnalyzeProgress('')
+    setApplyProgress('')
+    setApplyError(null)
+    setSectionToggles({
+      caseInfo: true,
+      requirements: true,
+      counseling: true,
+      drugTesting: true,
+      naMeetings: true,
+      supervisedVisits: true,
+      parentingClasses: true,
+      courtDates: true,
+      milestones: true,
+    })
+    setExpandedSections({
+      caseInfo: true,
+      requirements: true,
+      counseling: true,
+      drugTesting: true,
+      naMeetings: true,
+      supervisedVisits: true,
+      parentingClasses: true,
+      courtDates: true,
+      milestones: true,
+    })
+    onClose()
+  }, [onClose])
+
+  // ============================================================
   // Phase 3: Apply data to case
   // ============================================================
 
@@ -1160,43 +1196,7 @@ export function ScanCasePlan({ isOpen, onClose, activeCaseId, onComplete }: Scan
       setApplyError(message)
       toast.error('Failed to apply some data. Please try again.')
     }
-  }, [extractedData, activeCaseId, sectionToggles, onComplete])
-
-  // ============================================================
-  // Reset & close
-  // ============================================================
-
-  const handleClose = useCallback(() => {
-    setPhase('capture')
-    setPages([])
-    setExtractedData(null)
-    setAnalyzeProgress('')
-    setApplyProgress('')
-    setApplyError(null)
-    setSectionToggles({
-      caseInfo: true,
-      requirements: true,
-      counseling: true,
-      drugTesting: true,
-      naMeetings: true,
-      supervisedVisits: true,
-      parentingClasses: true,
-      courtDates: true,
-      milestones: true,
-    })
-    setExpandedSections({
-      caseInfo: true,
-      requirements: true,
-      counseling: true,
-      drugTesting: true,
-      naMeetings: true,
-      supervisedVisits: true,
-      parentingClasses: true,
-      courtDates: true,
-      milestones: true,
-    })
-    onClose()
-  }, [onClose])
+  }, [extractedData, activeCaseId, sectionToggles, onComplete, handleClose])
 
   // ============================================================
   // Summary count for review phase
