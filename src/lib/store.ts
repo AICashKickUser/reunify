@@ -14,6 +14,7 @@ export type ViewType =
   | 'parenting-classes'
   | 'daily-checkins'
   | 'communications'
+  | 'documents'
   | 'progress'
   | 'backup'
   | 'go-pro'

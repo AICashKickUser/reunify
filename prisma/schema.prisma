@@ -34,6 +34,7 @@ model Case {
   milestones            Milestone[]
   dailyCheckIns         DailyCheckIn[]
   communicationLogs     CommunicationLog[]
+  caseDocuments         CaseDocument[]
   cloudBackups          CloudBackup[]
 }
 
@@ -235,6 +236,26 @@ model CommunicationLog {
   updatedAt           DateTime @updatedAt
 
   case                Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+}
+
+model CaseDocument {
+  id              String   @id @default(cuid())
+  caseId          String
+  title           String
+  documentType    String?  // court-order, certificate, drug-test-result, service-referral, case-plan, evaluation, discharge-summary, other
+  date            DateTime?
+  issuer          String?  // court name, facility, provider, etc.
+  notes           String?
+  fileData        String   // base64-encoded file content (image or PDF)
+  fileName        String?
+  fileType        String?  // mime type: image/jpeg, application/pdf, etc.
+  fileSize        Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
   @@index([caseId])
 }

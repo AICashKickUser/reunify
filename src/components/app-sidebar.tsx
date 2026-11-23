@@ -30,6 +30,7 @@ import {
   Bell,
   BellOff,
   MessageSquare,
+  FolderArchive,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -104,6 +105,7 @@ const NAV_GROUPS: NavGroup[] = [
       { view: 'scan-case-plan', label: 'Scan Plan', icon: ScanLine },
       { view: 'court-dates', label: 'Court Dates', icon: Scale },
       { view: 'communications', label: 'Communication Log', icon: MessageSquare },
+      { view: 'documents', label: 'Document Vault', icon: FolderArchive },
     ],
   },
   {
@@ -595,7 +597,7 @@ export function AppSidebar() {
         </div>
         <div className="group-data-[collapsible=icon]:hidden mt-2">
           <p className="text-[10px] text-muted-foreground text-center leading-tight">
-            v1.12.0 · Every step brings you closer
+            v1.13.0 · Every step brings you closer
             <br />
             to your kids
           </p>

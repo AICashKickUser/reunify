@@ -53,6 +53,7 @@ const ParentingClassesView = lazy(() => import('@/components/views/parenting-cla
 const ProgressView = lazy(() => import('@/components/views/progress-view'))
 const DailyCheckinsView = lazy(() => import('@/components/views/daily-checkins-view'))
 const CommunicationsView = lazy(() => import('@/components/views/communications-view'))
+const DocumentsView = lazy(() => import('@/components/views/documents-view'))
 const BackupView = lazy(() => import('@/components/views/backup-view'))
 const GoProView = lazy(() => import('@/components/views/go-pro-view'))
 
@@ -70,6 +71,7 @@ const VIEW_MAP: Record<ViewType, React.ComponentType> = {
   'parenting-classes': ParentingClassesView,
   'daily-checkins': DailyCheckinsView,
   'communications': CommunicationsView,
+  'documents': DocumentsView,
   'progress': ProgressView,
   'backup': BackupView,
   'go-pro': GoProView,
@@ -256,7 +258,7 @@ export default function Home() {
           <footer className="border-t bg-background py-2 sm:py-3 px-3 sm:px-4 mt-auto">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-1 max-w-5xl mx-auto">
               <p className="text-xs text-muted-foreground">
-                Reunify v1.12.0 — Every step brings you closer to your kids
+                Reunify v1.13.0 — Every step brings you closer to your kids
               </p>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a>

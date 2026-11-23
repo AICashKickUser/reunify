@@ -1,5 +1,38 @@
 # Reunify Release Notes
 
+## v1.13.0 — Communication Log & Document Vault (November 2025)
+
+### 📝 New Feature: Communication Log
+- **Track every contact** with your social worker, attorney, judge, CASA, visit supervisor, and family members
+- Log calls, texts, emails, in-person conversations, voicemails, and letters
+- Record direction (incoming/outgoing), contact name, role, subject, and detailed notes
+- **Action items** with optional follow-up dates and completion tracking
+- Dashboard stats: total logged, this month, pending follow-ups, and due-soon alerts
+- Filter by contact type and role
+- Fully integrated with backup/restore and cloud backup
+
+### 📁 New Feature: Document Vault
+- **Securely store documents** right on your phone — court orders, completion certificates, drug test results, service referrals, case plans, evaluations, and discharge summaries
+- Take photos directly or upload existing files (images and PDFs)
+- **Automatic image compression** to save storage space
+- Thumbnail grid with document type badges and color coding
+- Full-screen viewer for images, inline PDF preview
+- Download documents anytime
+- 8 document types with dedicated icons and colors
+- Everything stays private on your device — never uploaded to any server
+
+### 🔧 Maintenance & Dependency Updates
+- Updated Next.js 16.1.3 → 16.4.6 (security + bug fixes)
+- Updated React 19.2.3 → 19.3.1
+- Updated all Radix UI components to latest minors
+- Updated Stripe SDK and Prisma to latest patches
+- Fixed declaration-order bug in scan-case-plan component
+- Migrated `use-mobile` hook to `useSyncExternalStore` (modern React API)
+- Cleaned up 7 lint errors from updated React hooks plugin
+- All dependencies refreshed within current major versions (no breaking changes)
+
+---
+
 ## v1.6.0 — Feedback-Driven Improvements (July 2025)
 
 Based on closed testing feedback, we've made significant improvements to make Reunify more usable, reliable, and mobile-friendly on phones.

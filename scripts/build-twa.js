@@ -19,8 +19,8 @@ const fs = require('fs')
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-const APP_VERSION_CODE = 11
-const APP_VERSION_NAME = '1.11.0'
+const APP_VERSION_CODE = 12
+const APP_VERSION_NAME = '1.13.0'
 const TARGET_SDK_VERSION = 36
 const MIN_SDK_VERSION = 24
 const PACKAGE_ID = 'com.aicashkick.reunify'

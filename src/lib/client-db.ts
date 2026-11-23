@@ -17,6 +17,7 @@ import type {
   Milestone,
   DailyCheckIn,
   CommunicationLog,
+  CaseDocument,
 } from '@/lib/types'
 
 // ============================================================
@@ -39,6 +40,7 @@ type StoreName =
   | 'milestones'
   | 'dailyCheckIns'
   | 'communications'
+  | 'documents'
 
 export const ALL_STORES: StoreName[] = [
   'cases',
@@ -53,6 +55,7 @@ export const ALL_STORES: StoreName[] = [
   'milestones',
   'dailyCheckIns',
   'communications',
+  'documents',
 ]
 
 let dbInstance: IDBPDatabase | null = null
@@ -80,6 +83,7 @@ async function getDB(): Promise<IDBPDatabase> {
         { name: 'milestones' },
         { name: 'dailyCheckIns' },
         { name: 'communications' },
+        { name: 'documents' },
       ]
 
       for (const { name } of childStores) {
@@ -274,6 +278,7 @@ export async function deleteCase(caseId: string): Promise<void> {
     'milestones',
     'dailyCheckIns',
     'communications',
+    'documents',
   ]
   for (const store of childStores) {
     await deleteItemsByCaseId(store, caseId)
@@ -295,13 +300,14 @@ export async function getCaseWithRelated(id: string): Promise<
       milestones: Milestone[]
       dailyCheckIns: DailyCheckIn[]
       communicationLogs: CommunicationLog[]
+      caseDocuments: CaseDocument[]
     })
   | null
 > {
   const caseData = await getCase(id)
   if (!caseData) return null
 
-  const [requirements, counselingSessions, drugTests, naSteps, naMeetings, supervisedVisits, courtDates, parentingClasses, milestones, dailyCheckIns, communicationLogs] = await Promise.all([
+  const [requirements, counselingSessions, drugTests, naSteps, naMeetings, supervisedVisits, courtDates, parentingClasses, milestones, dailyCheckIns, communicationLogs, caseDocuments] = await Promise.all([
     getItemsByCaseId<CaseRequirement>('requirements', id),
     getItemsByCaseId<CounselingSession>('counselingSessions', id),
     getItemsByCaseId<DrugTest>('drugTests', id),
@@ -313,6 +319,7 @@ export async function getCaseWithRelated(id: string): Promise<
     getItemsByCaseId<Milestone>('milestones', id),
     getItemsByCaseId<DailyCheckIn>('dailyCheckIns', id),
     getItemsByCaseId<CommunicationLog>('communications', id),
+    getItemsByCaseId<CaseDocument>('documents', id),
   ])
 
   return {
@@ -328,6 +335,7 @@ export async function getCaseWithRelated(id: string): Promise<
     milestones,
     dailyCheckIns,
     communicationLogs,
+    caseDocuments,
   }
 }
 
@@ -661,6 +669,37 @@ export async function deleteCommunication(id: string): Promise<void> {
 }
 
 // ============================================================
+// Document vault operations
+// ============================================================
+
+export async function createDocument(data: Partial<CaseDocument> & { caseId: string; fileData: string }): Promise<CaseDocument> {
+  return createItem('documents', {
+    caseId: data.caseId,
+    title: data.title || 'Untitled Document',
+    documentType: data.documentType ?? null,
+    date: data.date ?? null,
+    issuer: data.issuer ?? null,
+    notes: data.notes ?? null,
+    fileData: data.fileData,
+    fileName: data.fileName ?? null,
+    fileType: data.fileType ?? null,
+    fileSize: data.fileSize ?? null,
+  })
+}
+
+export async function getDocuments(caseId: string): Promise<CaseDocument[]> {
+  return getItemsByCaseId<CaseDocument>('documents', caseId)
+}
+
+export async function updateDocument(id: string, data: Partial<CaseDocument>): Promise<CaseDocument> {
+  return updateItem('documents', id, data) as Promise<CaseDocument>
+}
+
+export async function deleteDocument(id: string): Promise<void> {
+  return deleteItem('documents', id)
+}
+
+// ============================================================
 // Generic endpoint-based CRUD
 // (Maps endpoint names to store names and operations)
 // ============================================================
@@ -677,6 +716,7 @@ const ENDPOINT_TO_STORE: Record<string, StoreName> = {
   'milestones': 'milestones',
   'daily-checkins': 'dailyCheckIns',
   'communications': 'communications',
+  'documents': 'documents',
 }
 
 export function endpointToStoreName(endpoint: string): StoreName {
@@ -720,6 +760,7 @@ export async function resetCaseData(caseId: string): Promise<void> {
     'milestones',
     'dailyCheckIns',
     'communications',
+    'documents',
   ]
   for (const store of childStores) {
     await deleteItemsByCaseId(store, caseId)
@@ -1054,11 +1095,12 @@ export interface ExportData {
   milestones: Milestone[]
   dailyCheckIns: DailyCheckIn[]
   communicationLogs: CommunicationLog[]
+  caseDocuments: CaseDocument[]
 }
 
 export async function exportAllData(): Promise<ExportData> {
   const db = await getDB()
-  const [cases, requirements, counselingSessions, drugTests, naSteps, naMeetings, supervisedVisits, courtDates, parentingClasses, milestones, dailyCheckIns, communicationLogs] = await Promise.all([
+  const [cases, requirements, counselingSessions, drugTests, naSteps, naMeetings, supervisedVisits, courtDates, parentingClasses, milestones, dailyCheckIns, communicationLogs, caseDocuments] = await Promise.all([
     db.getAll('cases') as Promise<CaseInfo[]>,
     db.getAll('requirements') as Promise<CaseRequirement[]>,
     db.getAll('counselingSessions') as Promise<CounselingSession[]>,
@@ -1071,6 +1113,7 @@ export async function exportAllData(): Promise<ExportData> {
     db.getAll('milestones') as Promise<Milestone[]>,
     db.getAll('dailyCheckIns') as Promise<DailyCheckIn[]>,
     db.getAll('communications') as Promise<CommunicationLog[]>,
+    db.getAll('documents') as Promise<CaseDocument[]>,
   ])
 
   return {
@@ -1088,6 +1131,7 @@ export async function exportAllData(): Promise<ExportData> {
     milestones,
     dailyCheckIns,
     communicationLogs,
+    caseDocuments,
   }
 }
 
@@ -1111,6 +1155,7 @@ export async function importAllData(data: ExportData): Promise<void> {
     { name: 'milestones', items: data.milestones },
     { name: 'dailyCheckIns', items: data.dailyCheckIns },
     { name: 'communications', items: data.communicationLogs },
+    { name: 'documents', items: data.caseDocuments },
   ]
 
   for (const { name, items } of storeNames) {

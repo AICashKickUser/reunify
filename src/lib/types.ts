@@ -179,6 +179,22 @@ export interface CommunicationLog {
   updatedAt: string
 }
 
+export interface CaseDocument {
+  id: string
+  caseId: string
+  title: string
+  documentType: string | null  // court-order, certificate, drug-test-result, service-referral, case-plan, evaluation, discharge-summary, other
+  date: string | null
+  issuer: string | null
+  notes: string | null
+  fileData: string             // base64-encoded file content
+  fileName: string | null
+  fileType: string | null      // mime type
+  fileSize: number | null
+  createdAt: string
+  updatedAt: string
+}
+
 // Category colors for visual consistency
 export const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'counseling': { bg: 'bg-emerald-50 dark:bg-emerald-950/20', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800' },
