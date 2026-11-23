@@ -199,6 +199,46 @@ async function main() {
     process.exit(1)
   }
 
+  // ─── Step 3b: Patch root build.gradle repositories (jcenter is dead) ──
+
+  console.log('🔧 Step 3b: Patching root build.gradle repositories (replace dead jcenter)...')
+
+  const rootBuildGradlePath = path.join(OUTPUT_DIR, 'build.gradle')
+  if (fs.existsSync(rootBuildGradlePath)) {
+    let rootGradle = fs.readFileSync(rootBuildGradlePath, 'utf-8')
+    // Replace jcenter() with Aliyun mirror + mavenCentral (jcenter shut down in 2022)
+    rootGradle = rootGradle.replace(
+      /jcenter\(\)/g,
+      "maven { url 'https://maven.aliyun.com/repository/public' }\n        maven { url 'https://maven.aliyun.com/repository/google' }\n        mavenCentral()"
+    )
+    fs.writeFileSync(rootBuildGradlePath, rootGradle)
+    console.log('✅ Replaced jcenter with Aliyun mirror + mavenCentral')
+  }
+
+  // ─── Step 3c: Create local.properties + gradle.properties ─────────────
+
+  console.log('🔧 Step 3c: Creating local.properties and gradle.properties...')
+
+  const androidHome = process.env.ANDROID_HOME
+  if (androidHome) {
+    fs.writeFileSync(
+      path.join(OUTPUT_DIR, 'local.properties'),
+      `sdk.dir=${androidHome}\n`
+    )
+    console.log(`✅ Created local.properties (sdk.dir=${androidHome})`)
+  }
+
+  // Append serialization settings to gradle.properties to avoid Maven rate-limiting
+  const gradlePropsPath = path.join(OUTPUT_DIR, 'gradle.properties')
+  if (fs.existsSync(gradlePropsPath)) {
+    let props = fs.readFileSync(gradlePropsPath, 'utf-8')
+    if (!props.includes('org.gradle.parallel=false')) {
+      props += '\norg.gradle.parallel=false\norg.gradle.max-workers=1\norg.gradle.daemon=false\n'
+      fs.writeFileSync(gradlePropsPath, props)
+      console.log('✅ Added serialization settings to gradle.properties')
+    }
+  }
+
   // ─── Step 4: Patch AndroidManifest.xml for API 36 compliance ──────────
 
   console.log('🔧 Step 4: Patching AndroidManifest.xml for API 36 compliance...')
@@ -241,61 +281,11 @@ async function main() {
     console.warn(`⚠️  AndroidManifest.xml not found at ${androidManifestPath}`)
   }
 
-  // ─── Step 4b: Patch TwaLauncherActivity for edge-to-edge ───────────────
-
-  console.log('🔧 Step 4b: Patching TwaLauncherActivity for edge-to-edge...')
-
-  // Find the launcher activity Java file
-  const srcDir = path.join(OUTPUT_DIR, 'app', 'src', 'main', 'java')
-  const javaFiles = findFiles(srcDir, '.java')
-  const launcherActivity = javaFiles.find(f => 
-    f.includes('LauncherActivity') || f.includes('TwaActivity')
-  )
-  
-  if (launcherActivity) {
-    let javaContent = fs.readFileSync(launcherActivity, 'utf-8')
-    
-    // Add enableEdgeToEdge() call in onCreate if not already present
-    if (!javaContent.includes('enableEdgeToEdge')) {
-      // Add import for EdgeToEdge
-      if (!javaContent.includes('import androidx.activity.enableEdgeToEdge')) {
-        javaContent = javaContent.replace(
-          /package ([\w.]+);/,
-          `package $1;\n\nimport androidx.activity.enableEdgeToEdge;`
-        )
-      }
-      // Add enableEdgeToEdge() call at the start of onCreate
-      javaContent = javaContent.replace(
-        /super\.onCreate\(/g,
-        'enableEdgeToEdge();\n        super.onCreate('
-      )
-    }
-    
-    fs.writeFileSync(launcherActivity, javaContent)
-    console.log('✅ Patched launcher activity for edge-to-edge')
-  } else {
-    console.warn('⚠️  Launcher activity not found, skipping edge-to-edge patch')
-  }
-
-  // ─── Step 4c: Patch build.gradle for AndroidX activity dependency ────────
-
-  console.log('🔧 Step 4c: Patching build.gradle for AndroidX activity dependency...')
-  
-  const appBuildGradlePath = path.join(OUTPUT_DIR, 'app', 'build.gradle')
-  if (fs.existsSync(appBuildGradlePath)) {
-    let gradle = fs.readFileSync(appBuildGradlePath, 'utf-8')
-    
-    // Add AndroidX activity dependency for enableEdgeToEdge()
-    if (!gradle.includes('androidx.activity:activity')) {
-      gradle = gradle.replace(
-        /dependencies\s*\{/,
-        'dependencies {\n    implementation "androidx.activity:activity-ktx:1.9.0"'
-      )
-    }
-    
-    fs.writeFileSync(appBuildGradlePath, gradle)
-    console.log('✅ Added AndroidX activity dependency')
-  }
+  // Note: Step 4b (edge-to-edge Java patch) and Step 4c (activity-ktx dependency)
+  // were removed because androidx.activity:activity-ktx:1.9.0 is not reliably
+  // available from mirrors. Android 16 handles edge-to-edge natively via the
+  // AndroidManifest patches in Step 4, so the Java patch is not required for
+  // Play Store compliance.
 
   // ─── Step 5: Build the AAB ──────────────────────────────────────────────
 
