@@ -602,18 +602,6 @@ export function AppSidebar() {
             to your kids
           </p>
         </div>
-        <div className="group-data-[collapsible=icon]:hidden mt-2">
-          <a
-            href="/api/download-aab"
-            download="reunify-1.13.0.aab"
-            target="_blank"
-            rel="noopener"
-            className="flex items-center justify-center gap-1.5 w-full rounded-md border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2 text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 transition-colors"
-          >
-            <HardDriveDownload className="size-3.5" />
-            Download App Bundle (AAB)
-          </a>
-        </div>
       </SidebarFooter>
 
       <SidebarRail />
