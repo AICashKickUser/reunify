@@ -25,7 +25,7 @@ import type {
 // ============================================================
 
 const DB_NAME = 'reunify-db'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 type StoreName =
   | 'cases'
@@ -137,11 +137,13 @@ async function getItem<T>(storeName: StoreName, id: string): Promise<T | undefin
 
 async function getAllItems<T>(storeName: StoreName): Promise<T[]> {
   const db = await getDB()
+  if (!db.objectStoreNames.contains(storeName)) return []
   return db.getAll(storeName) as Promise<T[]>
 }
 
 async function getItemsByCaseId<T>(storeName: StoreName, caseId: string): Promise<T[]> {
   const db = await getDB()
+  if (!db.objectStoreNames.contains(storeName)) return []
   return db.getAllFromIndex(storeName, 'caseId', caseId) as Promise<T[]>
 }
 
