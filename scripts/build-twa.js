@@ -19,7 +19,7 @@ const fs = require('fs')
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-const APP_VERSION_CODE = 12
+const APP_VERSION_CODE = 13
 const APP_VERSION_NAME = '1.13.0'
 const TARGET_SDK_VERSION = 36
 const MIN_SDK_VERSION = 24
@@ -219,7 +219,6 @@ async function main() {
 
   console.log('🔧 Step 3c: Creating local.properties and gradle.properties...')
 
-  const androidHome = process.env.ANDROID_HOME
   if (androidHome) {
     fs.writeFileSync(
       path.join(OUTPUT_DIR, 'local.properties'),
